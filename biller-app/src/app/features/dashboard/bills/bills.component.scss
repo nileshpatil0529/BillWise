@@ -1,0 +1,553 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+:host {
+  display: block;
+}
+
+.bills-container {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-md;
+}
+
+// Page Header
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: v.$spacing-md;
+
+  .header-title {
+    h1 {
+      margin-bottom: v.$spacing-xs;
+      
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+
+    .subtitle {
+      color: v.$light-text-secondary;
+      margin: 0;
+
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+  }
+
+  .header-actions {
+    button {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-xs;
+    }
+  }
+  
+  @include m.mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+// Filters Expansion Panel
+.filters-accordion {
+  .filters-expansion-panel {
+    background: v.$light-surface;
+    border-radius: v.$radius-md !important;
+    box-shadow: v.$shadow-sm;
+    
+    @include m.dark-theme {
+      background: v.$dark-surface;
+    }
+    
+    .mat-expansion-panel-header {
+      padding: v.$spacing-md v.$spacing-lg;
+      height: auto !important;
+      min-height: 56px;
+      
+      @include m.mobile {
+        padding: v.$spacing-sm v.$spacing-md;
+        min-height: 48px;
+      }
+      
+      &:hover {
+        background: rgba(v.$light-primary, 0.04) !important;
+        
+        @include m.dark-theme {
+          background: rgba(v.$dark-primary, 0.08) !important;
+        }
+      }
+    }
+    
+    mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      font-weight: 600;
+      font-size: 16px;
+      color: v.$light-text-primary;
+      flex-shrink: 0;
+      
+      @include m.dark-theme {
+        color: white;
+      }
+      
+      @include m.mobile {
+        font-size: 14px;
+      }
+      
+      mat-icon {
+        color: v.$light-primary;
+        
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+      }
+    }
+    
+    mat-panel-description {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex: 1;
+      
+      @include m.mobile {
+        display: none;
+      }
+      
+      .summary-preview {
+        display: flex;
+        align-items: center;
+        gap: v.$spacing-sm;
+        font-size: 13px;
+        color: v.$light-text-secondary;
+        
+        @include m.dark-theme {
+          color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .preview-item {
+          font-weight: 500;
+        }
+        
+        .preview-divider {
+          opacity: 0.5;
+        }
+      }
+    }
+    
+    .mat-expansion-panel-body {
+      padding: 0 v.$spacing-lg v.$spacing-lg;
+      
+      @include m.mobile {
+        padding: 0 v.$spacing-md v.$spacing-md;
+      }
+    }
+  }
+}
+
+// Filters Section (moved inside expansion panel)
+.filters-section {
+  margin-top: v.$spacing-md;
+  padding-top: v.$spacing-md;
+  border-top: 1px solid v.$light-divider;
+  
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+  
+  .filters-row {
+    display: flex;
+    flex-direction: column;
+    gap: v.$spacing-md;
+
+    .date-presets {
+      display: flex;
+      gap: v.$spacing-sm;
+      flex-wrap: wrap;
+
+      button {
+        font-size: 13px;
+        
+        @include m.mobile {
+          padding: 0 v.$spacing-sm;
+          font-size: 12px;
+          min-width: auto;
+        }
+        
+        &.active {
+          background: v.$light-primary;
+          color: white;
+
+          @include m.dark-theme {
+            background: v.$dark-primary;
+            color: black;
+          }
+        }
+      }
+    }
+
+    .filters-fields {
+      display: flex;
+      gap: v.$spacing-md;
+      flex-wrap: wrap;
+      align-items: flex-start;
+
+      mat-form-field {
+        min-width: 150px;
+        flex: 1;
+        
+        @include m.mobile {
+          min-width: 100%;
+          flex: none;
+        }
+
+        ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+          display: none;
+        }
+      }
+      
+      > button {
+        height: 56px;
+        
+        @include m.mobile {
+          width: 100%;
+          height: 48px;
+        }
+      }
+    }
+  }
+}
+
+// Summary Cards
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: v.$spacing-md;
+  
+  @include m.lg-down {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  @include m.mobile {
+    grid-template-columns: repeat(2, 1fr);
+    gap: v.$spacing-sm;
+  }
+
+  .summary-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: v.$spacing-sm;
+    padding: v.$spacing-lg v.$spacing-md;
+    border-radius: v.$radius-lg;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: v.$shadow-md;
+    }
+    
+    @include m.mobile {
+      padding: v.$spacing-md v.$spacing-sm;
+      gap: v.$spacing-xs;
+    }
+
+    .icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: v.$radius-lg;
+      background: rgba(v.$light-primary, 0.1);
+      
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.15);
+      }
+      
+      @include m.mobile {
+        width: 44px;
+        height: 44px;
+      }
+    }
+
+    mat-icon {
+      font-size: 32px;
+      width: 32px;
+      height: 32px;
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+      
+      @include m.mobile {
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+      }
+    }
+
+    // Sales card (default blue)
+    &:first-child {
+      mat-icon {
+        color: #42a5f5;
+      }
+      .icon-wrapper, mat-icon {
+        background: rgba(#42a5f5, 0.1);
+        @include m.dark-theme {
+          background: rgba(#42a5f5, 0.15);
+        }
+      }
+    }
+    
+    // Bills card (purple)
+    &:nth-child(2) {
+      mat-icon {
+        color: #7e57c2;
+      }
+      .icon-wrapper, mat-icon {
+        background: rgba(#7e57c2, 0.1);
+        @include m.dark-theme {
+          background: rgba(#7e57c2, 0.15);
+        }
+      }
+    }
+
+    &.cash mat-icon {
+      color: v.$light-success;
+      background: rgba(v.$light-success, 0.1);
+
+      @include m.dark-theme {
+        color: v.$dark-success;
+        background: rgba(v.$dark-success, 0.15);
+      }
+    }
+
+    &.online mat-icon {
+      color: #ec407a;
+      background: rgba(#ec407a, 0.1);
+      
+      @include m.dark-theme {
+        color: #f48fb1;
+        background: rgba(#f48fb1, 0.15);
+      }
+    }
+
+    &.debt mat-icon {
+      color: v.$light-warning;
+      background: rgba(v.$light-warning, 0.1);
+
+      @include m.dark-theme {
+        color: v.$dark-warning;
+        background: rgba(v.$dark-warning, 0.15);
+      }
+    }
+    
+    &.tax mat-icon {
+      color: #26a69a;
+      background: rgba(#26a69a, 0.1);
+
+      @include m.dark-theme {
+        color: #80cbc4;
+        background: rgba(#80cbc4, 0.15);
+      }
+    }
+
+    .card-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-width: 0;
+      width: 100%;
+
+      .card-value {
+        font-size: 22px;
+        font-weight: 700;
+        line-height: 1.2;
+        color: v.$light-text-primary;
+        
+        @include m.dark-theme {
+          color: white;
+        }
+        
+        @include m.mobile {
+          font-size: 16px;
+        }
+      }
+
+      .card-label {
+        font-size: 12px;
+        font-weight: 500;
+        color: v.$light-text-secondary;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
+
+        @include m.dark-theme {
+          color: rgba(255, 255, 255, 0.6);
+        }
+        
+        @include m.mobile {
+          font-size: 10px;
+          letter-spacing: 0.3px;
+        }
+      }
+    }
+  }
+}
+
+// Table Card
+.table-card {
+  padding: 0;
+
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 10;
+
+    @include m.dark-theme {
+      background: rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  .table-container {
+    overflow-x: auto;
+    overflow-y: visible;
+    @include m.custom-scrollbar;
+  }
+
+  .bills-table {
+    width: 100%;
+    min-width: 700px;
+    
+    @include m.mobile {
+      min-width: 550px;
+    }
+
+    th.mat-mdc-header-cell {
+      background-color: white;
+
+      @include m.dark-theme {
+        color: white;
+        background-color: v.$dark-surface-light;
+      }
+    }
+
+    td.mat-mdc-cell {
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+
+    .clickable-row {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      
+      &:hover {
+        background-color: rgba(v.$light-primary, 0.04);
+        
+        @include m.dark-theme {
+          background-color: rgba(v.$dark-primary, 0.08);
+        }
+      }
+    }
+
+    .bill-number {
+      font-family: 'Roboto Mono', monospace;
+      font-weight: 500;
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+
+    .total-cell {
+      font-weight: 600;
+    }
+
+    mat-chip {
+      mat-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        margin-right: 4px;
+      }
+
+      &.status-paid {
+        --mdc-chip-elevated-container-color: #{rgba(v.$light-success, 0.15)};
+        --mdc-chip-label-text-color: #{v.$light-success};
+        
+        @include m.dark-theme {
+          --mdc-chip-elevated-container-color: #{rgba(v.$dark-success, 0.2)};
+          --mdc-chip-label-text-color: #{v.$dark-success};
+        }
+      }
+
+      &.status-pending {
+        --mdc-chip-elevated-container-color: #{rgba(v.$light-warning, 0.15)};
+        --mdc-chip-label-text-color: #{v.$light-warning};
+        
+        @include m.dark-theme {
+          --mdc-chip-elevated-container-color: #{rgba(v.$dark-warning, 0.2)};
+          --mdc-chip-label-text-color: #{v.$dark-warning};
+        }
+      }
+
+      &.status-partial {
+        --mdc-chip-elevated-container-color: #{rgba(v.$light-primary, 0.15)};
+        --mdc-chip-label-text-color: #{v.$light-primary};
+        
+        @include m.dark-theme {
+          --mdc-chip-elevated-container-color: #{rgba(v.$dark-primary, 0.2)};
+          --mdc-chip-label-text-color: #{v.$dark-primary};
+        }
+      }
+    }
+  }
+
+  .no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: v.$spacing-xl;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      margin-bottom: v.$spacing-md;
+      
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.4);
+      }
+    }
+  }
+}
+
+// Paginator
+mat-paginator {
+  @include m.dark-theme {
+    background-color: transparent;
+    color: white;
+  }
+}

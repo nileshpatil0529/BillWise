@@ -1,0 +1,324 @@
+<div class="settings-container">
+  <div class="page-header">
+    <div class="header-title">
+      <h1>Settings</h1>
+     </div>
+  </div>
+
+  <mat-tab-group animationDuration="200ms">
+    <!-- General Settings Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>settings</mat-icon>
+        <span>General</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-card class="settings-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>business</mat-icon>
+            <mat-card-title>Business Information</mat-card-title>
+            <mat-card-subtitle>Your business details for bills and receipts</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <form [formGroup]="generalForm">
+              <!-- Logo Upload -->
+              <div class="logo-section">
+                <label>Business Logo</label>
+                <div class="logo-upload">
+                  @if (logoPreview()) {
+                    <div class="logo-preview">
+                      <img [src]="logoPreview()" alt="Business Logo">
+                      <button mat-icon-button color="warn" (click)="removeLogo()" class="remove-logo">
+                        <mat-icon>close</mat-icon>
+                      </button>
+                    </div>
+                  } @else {
+                    <div class="logo-placeholder" (click)="logoInput.click()">
+                      <mat-icon>add_photo_alternate</mat-icon>
+                      <span>Upload Logo</span>
+                    </div>
+                  }
+                  <input type="file" #logoInput hidden accept="image/*" (change)="onLogoSelected($event)">
+                  @if (logoPreview()) {
+                    <button mat-stroked-button (click)="logoInput.click()">
+                      <mat-icon>edit</mat-icon>
+                      Change Logo
+                    </button>
+                  }
+                </div>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Business Name</mat-label>
+                  <input matInput formControlName="businessName" placeholder="Enter business name">
+                  <mat-icon matPrefix>store</mat-icon>
+                  @if (generalForm.get('businessName')?.hasError('required')) {
+                    <mat-error>Business name is required</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Business Address</mat-label>
+                  <textarea matInput formControlName="address" rows="2" placeholder="Enter address"></textarea>
+                  <mat-icon matPrefix>location_on</mat-icon>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row two-col">
+                <mat-form-field appearance="outline">
+                  <mat-label>Phone Number</mat-label>
+                  <input matInput formControlName="phone" placeholder="+91 XXXXXXXXXX">
+                  <mat-icon matPrefix>phone</mat-icon>
+                  @if (generalForm.get('phone')?.hasError('pattern')) {
+                    <mat-error>Invalid phone number</mat-error>
+                  }
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Email Address</mat-label>
+                  <input matInput formControlName="email" placeholder="business@example.com">
+                  <mat-icon matPrefix>email</mat-icon>
+                  @if (generalForm.get('email')?.hasError('email')) {
+                    <mat-error>Invalid email address</mat-error>
+                  }
+                </mat-form-field>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="section-title">
+                <mat-icon>category</mat-icon>
+                <span>Application Type</span>
+              </div>
+
+              <div class="app-type-grid">
+                @for (type of applicationTypes; track type.value) {
+                  <div 
+                    class="app-type-card" 
+                    [class.selected]="generalForm.get('applicationType')?.value === type.value"
+                    (click)="generalForm.patchValue({ applicationType: type.value })"
+                  >
+                    <mat-icon>{{ type.icon }}</mat-icon>
+                    <span>{{ type.label }}</span>
+                  </div>
+                }
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="form-row two-col">
+                <mat-form-field appearance="outline">
+                  <mat-label>Currency</mat-label>
+                  <mat-select formControlName="currencyCode">
+                    @for (curr of currencies; track curr.value) {
+                      <mat-option [value]="curr.value">{{ curr.label }}</mat-option>
+                    }
+                  </mat-select>
+                  <mat-icon matPrefix>currency_rupee</mat-icon>
+                </mat-form-field>
+
+                <div class="theme-toggle">
+                  <span class="toggle-label">
+                    <mat-icon>{{ generalForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
+                    Theme Mode
+                  </span>
+                  <mat-slide-toggle
+                    [checked]="generalForm.get('theme')?.value === 'dark'"
+                    (change)="onThemeChange($event.checked)"
+                  >
+                    {{ generalForm.get('theme')?.value === 'dark' ? 'Dark' : 'Light' }}
+                  </mat-slide-toggle>
+                </div>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="section-title">
+                <mat-icon>qr_code_scanner</mat-icon>
+                <span>Barcode Scanner</span>
+              </div>
+
+              <div class="scanner-options">
+                <mat-radio-group formControlName="scannerType" class="scanner-radio-group">
+                  @for (scanner of scannerTypes; track scanner.value) {
+                    <mat-radio-button [value]="scanner.value" [disabled]="scanner.value === 'usb'">
+                      <div class="scanner-option">
+                        <mat-icon>{{ scanner.icon }}</mat-icon>
+                        <div class="scanner-info">
+                          <span class="scanner-label">{{ scanner.label }}</span>
+                          <span class="scanner-description">{{ scanner.description }}</span>
+                        </div>
+                      </div>
+                    </mat-radio-button>
+                  }
+                </mat-radio-group>
+              </div>
+            </form>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" (click)="saveGeneralSettings()" [disabled]="saving()">
+              @if (saving()) {
+                <mat-spinner diameter="20"></mat-spinner>
+                Saving...
+              } @else {
+                <ng-container>
+                  <mat-icon>save</mat-icon>
+                  Save Changes
+                </ng-container>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Tax Settings Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>receipt_long</mat-icon>
+        <span>Tax</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-card class="settings-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>percent</mat-icon>
+            <mat-card-title>Tax Configuration</mat-card-title>
+            <mat-card-subtitle>Configure tax settings for your bills</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <form [formGroup]="taxForm">
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <span class="toggle-title">Enable Tax</span>
+                  <span class="toggle-description">Apply tax automatically to all bills</span>
+                </div>
+                <mat-slide-toggle formControlName="taxEnabled"></mat-slide-toggle>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              @if (taxForm.get('taxEnabled')?.value) {
+                <div class="form-row two-col">
+                  <mat-form-field appearance="outline">
+                    <mat-label>Tax Name</mat-label>
+                    <input matInput formControlName="taxName" placeholder="e.g., GST, VAT">
+                    <mat-icon matPrefix>label</mat-icon>
+                  </mat-form-field>
+
+                  <mat-form-field appearance="outline">
+                    <mat-label>Tax Rate</mat-label>
+                    <input matInput type="number" formControlName="taxRate" min="0" max="100">
+                    <mat-icon matPrefix>percent</mat-icon>
+                    <span matSuffix>%</span>
+                  </mat-form-field>
+                </div>
+
+                <div class="form-row">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>Tax Registration Number</mat-label>
+                    <input matInput formControlName="taxNumber" placeholder="e.g., GSTIN">
+                    <mat-icon matPrefix>tag</mat-icon>
+                    <mat-hint>Optional: Will be displayed on receipts</mat-hint>
+                  </mat-form-field>
+                </div>
+              }
+            </form>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" (click)="saveTaxSettings()" [disabled]="saving()">
+              @if (saving()) {
+                <mat-spinner diameter="20"></mat-spinner>
+                Saving...
+              } @else {
+                <ng-container>
+                  <mat-icon>save</mat-icon>
+                  Save Changes
+                </ng-container>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Receipt Settings Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>print</mat-icon>
+        <span>Receipt</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-card class="settings-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>description</mat-icon>
+            <mat-card-title>Receipt Settings</mat-card-title>
+            <mat-card-subtitle>Customize your receipt format and content</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <form [formGroup]="receiptForm">
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <span class="toggle-title">Show Logo on Receipt</span>
+                  <span class="toggle-description">Display your business logo at the top of receipts</span>
+                </div>
+                <mat-slide-toggle formControlName="showLogo"></mat-slide-toggle>
+              </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="form-row two-col">
+                <mat-form-field appearance="outline">
+                  <mat-label>Invoice Prefix</mat-label>
+                  <input matInput formControlName="invoicePrefix" placeholder="INV">
+                  <mat-icon matPrefix>tag</mat-icon>
+                </mat-form-field>
+
+                <mat-form-field appearance="outline">
+                  <mat-label>Invoice Start Number</mat-label>
+                  <input matInput type="number" formControlName="invoiceStartNumber" min="1">
+                  <mat-icon matPrefix>numbers</mat-icon>
+                </mat-form-field>
+              </div>
+
+              <div class="form-row">
+                <mat-form-field appearance="outline" class="full-width">
+                  <mat-label>Receipt Footer Message</mat-label>
+                  <input matInput formControlName="footerText" placeholder="Thank you for your business!">
+                  <mat-icon matPrefix>format_quote</mat-icon>
+                  <mat-hint>Displayed at the bottom of the receipt</mat-hint>
+                </mat-form-field>
+              </div>
+            </form>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" (click)="saveReceiptSettings()" [disabled]="saving()">
+              @if (saving()) {
+                <mat-spinner diameter="20"></mat-spinner>
+                Saving...
+              } @else {
+                <ng-container>
+                  <mat-icon>save</mat-icon>
+                  Save Changes
+                </ng-container>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </mat-tab>
+  </mat-tab-group>
+</div>

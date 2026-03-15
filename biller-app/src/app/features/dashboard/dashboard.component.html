@@ -1,0 +1,91 @@
+<mat-sidenav-container class="dashboard-container" [class.dark-theme]="settingsService.currentTheme() === 'dark'">
+  <!-- Sidebar -->
+  <mat-sidenav #sidenav
+               [mode]="isMobile() ? 'over' : 'side'"
+               [opened]="sidenavOpened()"
+               (openedChange)="sidenavOpened.set($event)"
+               class="sidenav"
+               [class.collapsed]="!sidenavOpened()">
+    <div class="sidenav-header">
+      <div class="logo-container">
+        @if (settingsService.settings().logo) {
+          <img [src]="settingsService.settings().logo" alt="Logo" class="logo-image">
+        } @else {
+          <mat-icon class="logo-icon">point_of_sale</mat-icon>
+        }
+        <span class="logo-text">{{ settingsService.settings().businessName || 'Biller' }}</span>
+      </div>
+    </div>
+
+    <mat-nav-list class="nav-list">
+      @for (item of menuItems; track item.route) {
+        <a mat-list-item
+           [routerLink]="item.route"
+           [class.active]="isActive(item.route)"
+           (click)="onMenuItemClick()"
+           [matTooltip]="item.label"
+           [matTooltipDisabled]="sidenavOpened()">
+          <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+          <span matListItemTitle>{{ item.label }}</span>
+        </a>
+      }
+    </mat-nav-list>
+
+    <div class="sidenav-footer">
+      <div class="user-info">
+        <mat-icon>account_circle</mat-icon>
+        <div class="user-details">
+          <span class="user-name">{{ authService.currentUser()?.displayName }}</span>
+          <span class="user-role">{{ authService.currentUser()?.role | titlecase }}</span>
+        </div>
+      </div>
+    </div>
+  </mat-sidenav>
+
+  <!-- Main Content -->
+  <mat-sidenav-content class="main-content">
+    <!-- Header Toolbar -->
+    <mat-toolbar class="header-toolbar" color="primary">
+      <button mat-icon-button (click)="toggleSidenav()" matTooltip="Toggle Menu">
+        <mat-icon>{{ sidenavOpened() ? 'menu_open' : 'menu' }}</mat-icon>
+      </button>
+
+      <span class="toolbar-title">{{ settingsService.settings().businessName || 'Biller' }}</span>
+
+      <span class="spacer"></span>
+
+      <!-- Theme Toggle -->
+      <button mat-icon-button (click)="toggleTheme()" [matTooltip]="settingsService.currentTheme() === 'light' ? 'Dark Mode' : 'Light Mode'">
+        <mat-icon>{{ settingsService.currentTheme() === 'light' ? 'dark_mode' : 'light_mode' }}</mat-icon>
+      </button>
+
+      <!-- User Menu -->
+      <button mat-icon-button [matMenuTriggerFor]="userMenu">
+        <mat-icon>account_circle</mat-icon>
+      </button>
+      <mat-menu #userMenu="matMenu">
+        <div class="user-menu-header">
+          <mat-icon>account_circle</mat-icon>
+          <div>
+            <div class="user-name">{{ authService.currentUser()?.displayName }}</div>
+            <div class="user-email">{{ authService.currentUser()?.email }}</div>
+          </div>
+        </div>
+        <mat-divider></mat-divider>
+        <button mat-menu-item routerLink="/dashboard/settings">
+          <mat-icon>settings</mat-icon>
+          <span>Settings</span>
+        </button>
+        <button mat-menu-item (click)="logout()">
+          <mat-icon>logout</mat-icon>
+          <span>Logout</span>
+        </button>
+      </mat-menu>
+    </mat-toolbar>
+
+    <!-- Page Content -->
+    <main class="page-content">
+      <router-outlet></router-outlet>
+    </main>
+  </mat-sidenav-content>
+</mat-sidenav-container>

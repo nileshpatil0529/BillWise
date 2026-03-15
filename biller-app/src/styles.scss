@@ -1,0 +1,778 @@
+@use '@angular/material' as mat;
+@use 'styles/variables' as v;
+@use 'styles/themes' as themes;
+@use 'styles/mixins' as m;
+
+// Include Material core styles
+@include mat.core();
+
+// Apply light theme by default
+@include mat.all-component-themes(themes.$light-theme);
+
+// Dark theme class
+.dark-theme {
+  @include mat.all-component-colors(themes.$dark-theme);
+  
+  background-color: v.$dark-background;
+  color: v.$dark-text-primary;
+}
+
+// Global Styles
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: v.$font-family;
+  font-size: v.$font-size-body;
+  line-height: 1.5;
+  background-color: v.$light-background;
+  color: v.$light-text-primary;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  // Responsive font sizing
+  @media (max-width: v.$breakpoint-sm) {
+    font-size: 13px;
+  }
+}
+
+// Mat-sidenav full width fix
+mat-sidenav-container {
+  width: 100%;
+  height: 100%;
+}
+
+mat-sidenav-content {
+  width: 100%;
+}
+
+.dark-theme {
+  background-color: v.$dark-background;
+  color: v.$dark-text-primary;
+
+  // ============================================
+  // COMPREHENSIVE DARK THEME FIXES
+  // ============================================
+
+  // Radio button labels
+  .mat-mdc-radio-button {
+    .mdc-form-field {
+      color: white;
+    }
+    
+    .mdc-label {
+      color: white;
+    }
+    
+    .mdc-radio__outer-circle {
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+    
+    &.mat-mdc-radio-checked {
+      .mdc-radio__outer-circle,
+      .mdc-radio__inner-circle {
+        border-color: v.$dark-primary;
+      }
+    }
+  }
+
+  // Checkbox labels  
+  .mat-mdc-checkbox {
+    .mdc-form-field {
+      color: white;
+    }
+    
+    .mdc-checkbox__background {
+      border-color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  // Form field labels and inputs
+  .mat-mdc-form-field {
+    .mdc-floating-label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    &.mat-focused .mdc-floating-label {
+      color: v.$dark-primary;
+    }
+    
+    .mdc-text-field__input {
+      color: white !important;
+    }
+    
+    .mat-mdc-input-element {
+      color: white !important;
+      caret-color: v.$dark-primary;
+      
+      &::placeholder {
+        color: rgba(255, 255, 255, 0.5) !important;
+      }
+    }
+    
+    // Outline styles
+    .mdc-text-field--outlined {
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+    }
+    
+    &:hover .mdc-text-field--outlined {
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+    
+    // Filled variant
+    .mdc-text-field--filled {
+      background-color: rgba(255, 255, 255, 0.05);
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.08);
+      }
+    }
+  }
+
+  // Form field prefixes/suffixes
+  .mat-mdc-form-field-icon-prefix,
+  .mat-mdc-form-field-icon-suffix,
+  .mat-mdc-form-field-text-prefix,
+  .mat-mdc-form-field-text-suffix {
+    color: rgba(255, 255, 255, 0.7);
+  }
+
+  // Select
+  .mat-mdc-select {
+    .mat-mdc-select-value {
+      color: white;
+    }
+    
+    .mat-mdc-select-arrow {
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  // Options in dropdowns
+  .mat-mdc-option {
+    color: white;
+    
+    &:hover:not(.mdc-list-item--disabled) {
+      background-color: rgba(255, 255, 255, 0.08);
+    }
+    
+    &.mdc-list-item--selected:not(.mdc-list-item--disabled) {
+      background-color: rgba(v.$dark-primary, 0.15);
+    }
+  }
+
+  // Card
+  .mat-mdc-card {
+    background-color: v.$dark-surface;
+    color: white;
+    
+    .mat-mdc-card-title {
+      color: white;
+    }
+    
+    .mat-mdc-card-subtitle {
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  // Table
+  .mat-mdc-table {
+    background-color: transparent;
+
+    .mat-mdc-header-row {
+      background-color: v.$dark-surface-light;
+    }
+
+    .mat-mdc-header-cell {
+      color: white;
+      background-color: v.$dark-surface-light;
+      border-bottom-color: v.$dark-divider;
+    }
+
+    .mat-mdc-cell {
+      color: white;
+      border-bottom-color: v.$dark-divider;
+    }
+
+    .mat-mdc-row:hover {
+      background-color: rgba(v.$dark-primary, 0.08);
+    }
+  }
+
+  // Dialog
+  .mat-mdc-dialog-container {
+    .mdc-dialog__surface {
+      background-color: v.$dark-surface;
+    }
+    
+    .mat-mdc-dialog-title {
+      color: white;
+    }
+    
+    .mat-mdc-dialog-content {
+      color: rgba(255, 255, 255, 0.87);
+    }
+  }
+
+  // Button fixes
+  .mat-mdc-button,
+  .mat-mdc-outlined-button {
+    &:not(:disabled) {
+      color: v.$dark-primary;
+    }
+  }
+
+  .mat-mdc-icon-button:not(:disabled) {
+    color: rgba(255, 255, 255, 0.87);
+  }
+
+  // Tabs
+  .mat-mdc-tab-group {
+    .mat-mdc-tab:not(.mat-mdc-tab-disabled) {
+      .mdc-tab__text-label {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      
+      &.mdc-tab--active .mdc-tab__text-label {
+        color: v.$dark-primary;
+      }
+    }
+  }
+
+  // Chips
+  .mat-mdc-chip {
+    background-color: v.$dark-surface-light;
+    
+    .mdc-evolution-chip__text-label {
+      color: white;
+    }
+  }
+
+  // Menu
+  .mat-mdc-menu-panel {
+    background-color: v.$dark-surface;
+    
+    .mat-mdc-menu-item {
+      color: white;
+      
+      mat-icon {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      
+      &:hover:not([disabled]) {
+        background-color: rgba(255, 255, 255, 0.08);
+      }
+    }
+  }
+
+  // List
+  .mat-mdc-list-item {
+    color: white;
+    
+    .mdc-list-item__primary-text {
+      color: white;
+    }
+    
+    .mdc-list-item__secondary-text {
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  // Paginator
+  .mat-mdc-paginator {
+    background-color: transparent;
+    color: white;
+    
+    .mat-mdc-paginator-page-size-label,
+    .mat-mdc-paginator-range-label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+    
+    .mat-mdc-icon-button:not(:disabled) {
+      color: white;
+    }
+  }
+
+  // Slide toggle
+  .mat-mdc-slide-toggle {
+    .mdc-form-field {
+      color: white;
+    }
+  }
+
+  // Tooltip
+  .mat-mdc-tooltip {
+    .mdc-tooltip__surface {
+      background-color: v.$dark-surface-light;
+      color: white;
+    }
+  }
+
+  // Snackbar
+  .mat-mdc-snack-bar-container {
+    .mdc-snackbar__surface {
+      background-color: v.$dark-surface-light;
+    }
+    
+    .mdc-snackbar__label {
+      color: white;
+    }
+  }
+
+  // Divider
+  .mat-divider {
+    border-color: v.$dark-divider;
+  }
+
+  // Progress spinner/bar
+  .mat-mdc-progress-spinner circle {
+    stroke: v.$dark-primary;
+  }
+
+  .mat-mdc-progress-bar {
+    --mdc-linear-progress-active-indicator-color: #{v.$dark-primary};
+  }
+
+  // Expansion panel
+  .mat-expansion-panel {
+    background-color: v.$dark-surface;
+    color: white;
+    
+    .mat-expansion-panel-header-title {
+      color: white;
+    }
+    
+    .mat-expansion-panel-header-description {
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+
+  // Input/textarea generic
+  input, textarea, select {
+    color: white !important;
+    background-color: transparent;
+    
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.5) !important;
+    }
+  }
+
+  // Labels and text
+  label {
+    color: rgba(255, 255, 255, 0.87);
+  }
+
+  // Component-specific fixes
+  .product-id {
+    color: #90CAF9 !important;
+  }
+
+  .payment-section label {
+    color: white !important;
+  }
+
+  .payment-methods {
+    .mat-mdc-radio-button {
+      .mdc-form-field, .mdc-label {
+        color: white !important;
+      }
+      
+      mat-icon {
+        color: white !important;
+      }
+    }
+  }
+
+  // Summary row labels
+  .summary-row {
+    span {
+      color: white !important;
+    }
+    
+    &.discount span {
+      color: v.$dark-success !important;
+    }
+  }
+
+  // Cart table headers
+  .cart-table {
+    th.mat-mdc-header-cell {
+      color: white !important;
+      background-color: rgba(v.$dark-primary, 0.15);
+    }
+  }
+
+  // Button group / toggle buttons
+  .mat-button-toggle-group {
+    .mat-button-toggle {
+      color: rgba(255, 255, 255, 0.7);
+      background-color: transparent;
+      
+      &.mat-button-toggle-checked {
+        color: white;
+        background-color: v.$dark-primary;
+      }
+    }
+  }
+
+  // Badge
+  .mat-badge-content {
+    background-color: v.$dark-accent;
+    color: black;
+  }
+
+  // Autocomplete
+  .mat-mdc-autocomplete-panel {
+    background-color: v.$dark-surface;
+    
+    .mat-mdc-option {
+      color: white;
+    }
+  }
+
+  // Datepicker
+  .mat-datepicker-content {
+    background-color: v.$dark-surface;
+    color: white;
+    
+    .mat-calendar-body-cell-content {
+      color: white;
+    }
+    
+    .mat-calendar-body-label {
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+}
+
+// Material Icon styles
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+// Typography
+h1 {
+  font-size: v.$font-size-h1;
+  font-weight: 500;
+  margin-bottom: v.$spacing-md;
+}
+
+h2 {
+  font-size: v.$font-size-h2;
+  font-weight: 500;
+  margin-bottom: v.$spacing-sm;
+}
+
+h3 {
+  font-size: v.$font-size-h3;
+  font-weight: 500;
+  margin-bottom: v.$spacing-sm;
+}
+
+// Common utility classes
+.flex {
+  display: flex;
+}
+
+.flex-col {
+  flex-direction: column;
+}
+
+.items-center {
+  align-items: center;
+}
+
+.justify-center {
+  justify-content: center;
+}
+
+.justify-between {
+  justify-content: space-between;
+}
+
+.justify-end {
+  justify-content: flex-end;
+}
+
+.gap-xs { gap: v.$spacing-xs; }
+.gap-sm { gap: v.$spacing-sm; }
+.gap-md { gap: v.$spacing-md; }
+.gap-lg { gap: v.$spacing-lg; }
+
+.p-xs { padding: v.$spacing-xs; }
+.p-sm { padding: v.$spacing-sm; }
+.p-md { padding: v.$spacing-md; }
+.p-lg { padding: v.$spacing-lg; }
+
+.m-xs { margin: v.$spacing-xs; }
+.m-sm { margin: v.$spacing-sm; }
+.m-md { margin: v.$spacing-md; }
+.m-lg { margin: v.$spacing-lg; }
+
+.mt-sm { margin-top: v.$spacing-sm; }
+.mt-md { margin-top: v.$spacing-md; }
+.mt-lg { margin-top: v.$spacing-lg; }
+
+.mb-sm { margin-bottom: v.$spacing-sm; }
+.mb-md { margin-bottom: v.$spacing-md; }
+.mb-lg { margin-bottom: v.$spacing-lg; }
+
+.w-full { width: 100%; }
+.h-full { height: 100%; }
+
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+
+.font-bold { font-weight: 700; }
+.font-medium { font-weight: 500; }
+
+.text-primary { 
+  color: v.$light-primary;
+  .dark-theme & { color: v.$dark-primary; }
+}
+
+.text-success { 
+  color: v.$light-success;
+  .dark-theme & { color: v.$dark-success; }
+}
+
+.text-error { 
+  color: v.$light-error;
+  .dark-theme & { color: v.$dark-error; }
+}
+
+.text-warning { 
+  color: v.$light-warning;
+  .dark-theme & { color: v.$dark-warning; }
+}
+
+.text-secondary {
+  color: v.$light-text-secondary;
+  .dark-theme & { color: v.$dark-text-secondary; }
+}
+
+// Card styles
+.card {
+  background: v.$light-surface;
+  border-radius: v.$radius-md;
+  box-shadow: v.$shadow-sm;
+  padding: v.$spacing-md;
+  
+  .dark-theme & {
+    background: v.$dark-surface;
+  }
+}
+
+.card-elevated {
+  box-shadow: v.$shadow-md;
+}
+
+// Button enhancements
+.btn-icon {
+  min-width: 40px !important;
+  padding: 0 !important;
+}
+
+// Form field full width
+.full-width {
+  width: 100%;
+}
+
+// Table enhancements
+.mat-mdc-table {
+  width: 100%;
+  
+  .mat-mdc-header-cell {
+    font-weight: 600;
+    color: v.$light-text-primary;
+    
+    .dark-theme & {
+      color: v.$dark-text-primary;
+    }
+  }
+}
+
+// Scrollbar styling
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.05);
+  
+  .dark-theme & {
+    background: rgba(255, 255, 255, 0.05);
+  }
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.3);
+  }
+  
+  .dark-theme & {
+    background: rgba(255, 255, 255, 0.2);
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+  }
+}
+
+// Responsive utilities
+@media (max-width: v.$breakpoint-md) {
+  .hide-mobile {
+    display: none !important;
+  }
+}
+
+@media (min-width: v.$breakpoint-md) {
+  .hide-desktop {
+    display: none !important;
+  }
+}
+
+// Animation classes
+.fade-in {
+  animation: fadeIn v.$transition-normal;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.slide-in {
+  animation: slideIn v.$transition-normal;
+}
+
+@keyframes slideIn {
+  from { 
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to { 
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// Highlight animation for cart items
+.highlight-row {
+  animation: highlight 1s ease-in-out;
+}
+
+@keyframes highlight {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: rgba(25, 118, 210, 0.2); }
+}
+
+// Snackbar customization
+.success-snackbar {
+  --mdc-snackbar-container-color: #{v.$light-success};
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.error-snackbar {
+  --mdc-snackbar-container-color: #{v.$light-error};
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+.warning-snackbar {
+  --mdc-snackbar-container-color: #{v.$light-warning};
+  --mdc-snackbar-supporting-text-color: white;
+}
+
+// Barcode Scanner Dialog - remove default padding
+.barcode-scanner-dialog {
+  .mat-mdc-dialog-container {
+    padding: 0 !important;
+    
+    .mdc-dialog__surface {
+      border-radius: 16px !important;
+      overflow: hidden;
+    }
+  }
+  
+  .mat-mdc-dialog-content {
+    padding: 0 !important;
+    max-height: none !important;
+  }
+  
+  .mat-mdc-dialog-actions {
+    padding: 0 !important;
+  }
+
+  @media (max-width: 480px) {
+    .mat-mdc-dialog-container {
+      .mdc-dialog__surface {
+        border-radius: 0 !important;
+        max-height: 100vh !important;
+        height: 100vh !important;
+      }
+    }
+  }
+}
+
+// Bill Detail Dialog
+.bill-detail-dialog {
+  .mat-mdc-dialog-container {
+    padding: 0 !important;
+    
+    .mdc-dialog__surface {
+      border-radius: 12px !important;
+      overflow: hidden;
+    }
+  }
+  
+  .mat-mdc-dialog-content {
+    padding: 0 !important;
+    max-height: none !important;
+  }
+  
+  .mat-mdc-dialog-actions {
+    padding: 0 !important;
+  }
+  
+  @media (max-width: 600px) {
+    margin: 0 !important;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    
+    .mat-mdc-dialog-container .mdc-dialog__surface {
+      border-radius: 0 !important;
+    }
+  }
+}

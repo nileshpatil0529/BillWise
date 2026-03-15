@@ -1,0 +1,140 @@
+@use '@angular/material' as mat;
+@use 'variables' as v;
+
+// Light Theme Palette
+$light-primary-palette: (
+  50: #E3F2FD,
+  100: #BBDEFB,
+  200: #90CAF9,
+  300: #64B5F6,
+  400: #42A5F5,
+  500: #1976D2,
+  600: #1E88E5,
+  700: #1976D2,
+  800: #1565C0,
+  900: #0D47A1,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: white,
+    600: white,
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+$light-accent-palette: (
+  50: #FFF8E1,
+  100: #FFECB3,
+  200: #FFE082,
+  300: #FFD54F,
+  400: #FFCA28,
+  500: #FFC107,
+  600: #FFB300,
+  700: #FFA000,
+  800: #FF8F00,
+  900: #FF6F00,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: rgba(0, 0, 0, 0.87),
+    600: rgba(0, 0, 0, 0.87),
+    700: rgba(0, 0, 0, 0.87),
+    800: rgba(0, 0, 0, 0.87),
+    900: rgba(0, 0, 0, 0.87),
+  )
+);
+
+// Define palettes
+$light-primary: mat.m2-define-palette($light-primary-palette, 500);
+$light-accent: mat.m2-define-palette($light-accent-palette, 500);
+$light-warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+// Light Theme
+$light-theme: mat.m2-define-light-theme((
+  color: (
+    primary: $light-primary,
+    accent: $light-accent,
+    warn: $light-warn,
+  ),
+  typography: mat.m2-define-typography-config(
+    $font-family: v.$font-family,
+  ),
+  density: 0,
+));
+
+// Dark Theme Palette
+$dark-primary-palette: (
+  50: #E3F2FD,
+  100: #BBDEFB,
+  200: #90CAF9,
+  300: #64B5F6,
+  400: #42A5F5,
+  500: #90CAF9,
+  600: #64B5F6,
+  700: #42A5F5,
+  800: #2196F3,
+  900: #1E88E5,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: rgba(0, 0, 0, 0.87),
+    600: rgba(0, 0, 0, 0.87),
+    700: white,
+    800: white,
+    900: white,
+  )
+);
+
+$dark-accent-palette: (
+  50: #FFF8E1,
+  100: #FFECB3,
+  200: #FFE082,
+  300: #FFD54F,
+  400: #FFCA28,
+  500: #FFD54F,
+  600: #FFCA28,
+  700: #FFC107,
+  800: #FFB300,
+  900: #FFA000,
+  contrast: (
+    50: rgba(0, 0, 0, 0.87),
+    100: rgba(0, 0, 0, 0.87),
+    200: rgba(0, 0, 0, 0.87),
+    300: rgba(0, 0, 0, 0.87),
+    400: rgba(0, 0, 0, 0.87),
+    500: rgba(0, 0, 0, 0.87),
+    600: rgba(0, 0, 0, 0.87),
+    700: rgba(0, 0, 0, 0.87),
+    800: rgba(0, 0, 0, 0.87),
+    900: rgba(0, 0, 0, 0.87),
+  )
+);
+
+// Define dark palettes
+$dark-primary: mat.m2-define-palette($dark-primary-palette, 500);
+$dark-accent: mat.m2-define-palette($dark-accent-palette, 500);
+$dark-warn: mat.m2-define-palette(mat.$m2-red-palette);
+
+// Dark Theme
+$dark-theme: mat.m2-define-dark-theme((
+  color: (
+    primary: $dark-primary,
+    accent: $dark-accent,
+    warn: $dark-warn,
+  ),
+  typography: mat.m2-define-typography-config(
+    $font-family: v.$font-family,
+  ),
+  density: 0,
+));

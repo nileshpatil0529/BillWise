@@ -1,0 +1,72 @@
+// Color Palette - Light Theme
+$light-primary: #1976D2;
+$light-primary-light: #63a4ff;
+$light-primary-dark: #004ba0;
+$light-accent: #FFC107;
+$light-background: #FAFAFA;
+$light-surface: #FFFFFF;
+$light-error: #F44336;
+$light-success: #4CAF50;
+$light-warning: #FF9800;
+$light-text-primary: rgba(0, 0, 0, 0.87);
+$light-text-secondary: rgba(0, 0, 0, 0.6);
+$light-divider: rgba(0, 0, 0, 0.12);
+
+// Color Palette - Dark Theme
+$dark-primary: #90CAF9;
+$dark-primary-light: #c3fdff;
+$dark-primary-dark: #5d99c6;
+$dark-accent: #FFD54F;
+$dark-background: #121212;
+$dark-surface: #1E1E1E;
+$dark-surface-light: #2D2D2D;
+$dark-error: #EF5350;
+$dark-success: #66BB6A;
+$dark-warning: #FFA726;
+$dark-text-primary: rgba(255, 255, 255, 0.87);
+$dark-text-secondary: rgba(255, 255, 255, 0.6);
+$dark-divider: rgba(255, 255, 255, 0.12);
+
+// Typography
+$font-family: 'Roboto', 'Segoe UI', sans-serif;
+$font-size-h1: 24px;
+$font-size-h2: 20px;
+$font-size-h3: 18px;
+$font-size-body: 14px;
+$font-size-caption: 12px;
+$font-size-button: 14px;
+
+// Spacing
+$spacing-xs: 4px;
+$spacing-sm: 8px;
+$spacing-md: 16px;
+$spacing-lg: 24px;
+$spacing-xl: 32px;
+
+// Border Radius
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-full: 50%;
+
+// Shadows
+$shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.12), 0 1px 2px rgba(0, 0, 0, 0.24);
+$shadow-md: 0 3px 6px rgba(0, 0, 0, 0.15), 0 2px 4px rgba(0, 0, 0, 0.12);
+$shadow-lg: 0 10px 20px rgba(0, 0, 0, 0.15), 0 3px 6px rgba(0, 0, 0, 0.10);
+
+// Transitions
+$transition-fast: 150ms ease-in-out;
+$transition-normal: 250ms ease-in-out;
+$transition-slow: 350ms ease-in-out;
+
+// Breakpoints
+$breakpoint-xs: 0;
+$breakpoint-sm: 576px;
+$breakpoint-md: 768px;
+$breakpoint-lg: 1024px;
+$breakpoint-xl: 1280px;
+
+// Sidebar
+$sidebar-width-expanded: 260px;
+$sidebar-width-collapsed: 64px;
+$header-height: 64px;

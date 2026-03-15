@@ -1,0 +1,964 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+.home-container {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+  height: calc(100vh - 64px - 32px);
+  overflow: hidden;
+  
+  @include m.mobile {
+    height: auto;
+    min-height: calc(100vh - 64px - 16px);
+    overflow: visible;
+  }
+}
+
+// Search Card
+.search-card {
+  position: relative;
+  z-index: 1000;
+  flex-shrink: 0;
+
+  .search-row {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+  }
+
+  .search-field {
+    flex: 1;
+    margin-bottom: 0;
+    
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+  }
+
+  .scan-button {
+    width: 48px;
+    height: 48px;
+    flex-shrink: 0;
+
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+  }
+
+  .search-results {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: white;
+    border-radius: 0 0 v.$radius-md v.$radius-md;
+    box-shadow: v.$shadow-lg;
+    max-height: 300px;
+    overflow-y: auto;
+    z-index: 1001;
+
+    @include m.dark-theme {
+      background: v.$dark-surface;
+    }
+
+    .search-result-item {
+      display: flex;
+      align-items: center;
+      padding: v.$spacing-md;
+      cursor: pointer;
+      border-bottom: 1px solid v.$light-divider;
+      gap: v.$spacing-md;
+
+      @include m.dark-theme {
+        border-color: v.$dark-divider;
+      }
+
+      &:hover {
+        background: rgba(v.$light-primary, 0.08);
+
+        @include m.dark-theme {
+          background: rgba(v.$dark-primary, 0.12);
+        }
+      }
+
+      .product-info {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+
+        .product-name {
+          font-weight: 500;
+          @include m.text-truncate;
+          
+          @include m.dark-theme {
+            color: white;
+          }
+        }
+
+        .product-code {
+          font-size: 12px;
+          color: v.$light-text-secondary;
+
+          @include m.dark-theme {
+            color: rgba(255, 255, 255, 0.7);
+          }
+        }
+      }
+
+      .product-price {
+        font-weight: 600;
+        color: v.$light-primary;
+        flex-shrink: 0;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+      }
+    }
+  }
+}
+
+// Content Area
+.content-area {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: v.$spacing-md;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+
+  @include m.lg-down {
+    grid-template-columns: 1fr 340px;
+  }
+
+  @include m.md-down {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr auto;
+    overflow-y: auto;
+  }
+}
+
+// Cart Card
+.cart-card {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+
+  mat-card-header {
+    padding: 9px 16px;
+    border-bottom: 1px solid v.$light-divider;
+    display: flex;
+    align-items: center;
+    flex-wrap: nowrap;
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+    
+    @include m.mobile {
+      padding: 6px 10px;
+      gap: 4px;
+    }
+
+    .spacer {
+      flex: 1;
+      min-width: 8px;
+    }
+    
+    // Header action buttons
+    > button.mat-mdc-icon-button {
+      @include m.mobile {
+        width: 36px;
+        height: 36px;
+        --mdc-icon-button-state-layer-size: 36px;
+        
+        mat-icon {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      color: v.$light-text-primary;
+      margin: 0;
+      font-size: 18px;
+      white-space: nowrap;
+      
+      @include m.dark-theme {
+        color: white;
+      }
+      
+      @include m.mobile {
+        font-size: 15px;
+        gap: 6px;
+      }
+
+      mat-icon {
+        color: v.$light-primary;
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+        
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+        
+        @include m.mobile {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+
+      ::ng-deep .mat-badge-content {
+        background-color: v.$light-accent;
+        color: black;
+        
+        @include m.mobile {
+          font-size: 10px;
+          width: 18px;
+          height: 18px;
+          line-height: 18px;
+        }
+      }
+    }
+  }
+
+  mat-card-content {
+    flex: 1;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .inline-scanner-wrapper {
+    padding: v.$spacing-md;
+    margin-bottom: v.$spacing-md;
+    border-bottom: 1px solid v.$light-divider;
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+    
+    @include m.mobile {
+      padding: v.$spacing-sm;
+      margin-bottom: v.$spacing-sm;
+    }
+  }
+
+  .empty-cart {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: v.$spacing-xl * 2;
+    color: v.$light-text-secondary;
+    min-height: 250px;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.6);
+    }
+    
+    @include m.mobile {
+      padding: v.$spacing-lg;
+      min-height: 180px;
+    }
+
+    mat-icon {
+      font-size: 80px;
+      width: 80px;
+      height: 80px;
+      margin-bottom: v.$spacing-md;
+      opacity: 0.4;
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+        opacity: 0.5;
+      }
+      
+      @include m.mobile {
+        font-size: 56px;
+        width: 56px;
+        height: 56px;
+        margin-bottom: v.$spacing-sm;
+      }
+    }
+
+    p {
+      font-size: 14px;
+      margin: 0;
+      
+      @include m.mobile {
+        font-size: 12px;
+      }
+    }
+  }
+
+  .cart-table-container {
+    height: 100%;
+    overflow: auto;
+    @include m.custom-scrollbar;
+  }
+
+  .cart-table {
+    width: 100%;
+
+    th.mat-mdc-header-cell {
+      font-weight: 600;
+      font-size: 13px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: v.$light-text-secondary;
+      background-color: rgba(v.$light-primary, 0.05);
+      padding: v.$spacing-sm v.$spacing-md;
+      white-space: nowrap;
+
+      @include m.dark-theme {
+        color: white;
+        background-color: rgba(v.$dark-primary, 0.15);
+      }
+    }
+
+    td.mat-mdc-cell {
+      padding: v.$spacing-sm v.$spacing-md;
+      vertical-align: middle;
+      
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+
+    .product-cell {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .product-name {
+        font-weight: 500;
+        color: v.$light-text-primary;
+        
+        @include m.dark-theme {
+          color: white;
+        }
+      }
+
+      .product-id {
+        font-size: 11px;
+        font-family: 'Roboto Mono', monospace;
+        color: v.$light-primary;
+        opacity: 0.9;
+
+        @include m.dark-theme {
+          color: #90CAF9;
+          opacity: 1;
+        }
+      }
+    }
+
+    .quantity-controls {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: v.$light-surface;
+      border: 1px solid v.$light-divider;
+      border-radius: 24px;
+      padding: 2px;
+      gap: 0;
+      
+      @include m.dark-theme {
+        background: v.$dark-surface-light;
+        border-color: v.$dark-divider;
+      }
+
+      .qty-btn {
+        width: 32px;
+        height: 32px;
+        min-width: 32px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        background: transparent;
+        color: v.$light-primary;
+        transition: all 0.15s ease;
+        line-height: 1;
+
+        // Override Angular Material button styles
+        &.mat-mdc-icon-button {
+          --mdc-icon-button-state-layer-size: 32px;
+          --mdc-icon-button-icon-size: 18px;
+          
+          .mat-mdc-button-touch-target {
+            width: 32px;
+            height: 32px;
+          }
+          
+          .mat-mdc-button-persistent-ripple {
+            border-radius: 50%;
+          }
+        }
+        
+        &:hover {
+          background: rgba(v.$light-primary, 0.1);
+        }
+        
+        &:active {
+          background: rgba(v.$light-primary, 0.2);
+        }
+        
+        @include m.dark-theme {
+          color: v.$dark-primary;
+          
+          &:hover {
+            background: rgba(v.$dark-primary, 0.15);
+          }
+          
+          &:active {
+            background: rgba(v.$dark-primary, 0.25);
+          }
+        }
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          line-height: 18px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          margin: 0;
+        }
+      }
+
+      .qty-value {
+        min-width: 32px;
+        padding: 0 2px;
+        text-align: center;
+        font-weight: 600;
+        font-size: 15px;
+        color: v.$light-text-primary;
+        line-height: 32px;
+        
+        @include m.dark-theme {
+          color: white;
+        }
+      }
+    }
+
+    .total-cell {
+      font-weight: 600;
+    }
+    
+    // Responsive table
+    @include m.mobile {
+      th.mat-mdc-header-cell,
+      td.mat-mdc-cell {
+        padding: v.$spacing-xs v.$spacing-sm;
+        font-size: 12px;
+      }
+      
+      th.mat-mdc-header-cell {
+        font-size: 11px;
+        letter-spacing: 0.3px;
+      }
+      
+      .product-cell {
+        .product-name {
+          font-size: 12px;
+          max-width: 100px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+        
+        .product-id {
+          font-size: 10px;
+        }
+      }
+      
+      .quantity-controls {
+        border-radius: 18px;
+        padding: 1px;
+        
+        .qty-btn {
+          width: 28px;
+          height: 28px;
+          min-width: 28px;
+          
+          &.mat-mdc-icon-button {
+            --mdc-icon-button-state-layer-size: 28px;
+            --mdc-icon-button-icon-size: 16px;
+            
+            .mat-mdc-button-touch-target {
+              width: 28px;
+              height: 28px;
+            }
+          }
+          
+          mat-icon {
+            font-size: 16px;
+            width: 16px;
+            height: 16px;
+            line-height: 16px;
+          }
+        }
+        
+        .qty-value {
+          min-width: 24px;
+          font-size: 13px;
+          line-height: 28px;
+        }
+      }
+      
+      // Action button (delete) mobile styles
+      td.mat-mdc-cell:last-child {
+        padding: v.$spacing-xs 4px;
+        
+        button.mat-mdc-icon-button {
+          width: 32px;
+          height: 32px;
+          --mdc-icon-button-state-layer-size: 32px;
+          
+          mat-icon {
+            font-size: 18px;
+            width: 18px;
+            height: 18px;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Summary Section
+.summary-section {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 0;
+  max-width: 100%;
+  @include m.custom-scrollbar;
+
+  @include m.md-down {
+    flex-direction: row;
+    flex-wrap: wrap;
+
+    > mat-card {
+      flex: 1;
+      min-width: 280px;
+    }
+  }
+  
+  @include m.mobile {
+    flex-direction: column;
+    
+    > mat-card {
+      min-width: 100%;
+    }
+  }
+}
+
+// Cards in summary
+.summary-section > mat-card {
+  flex-shrink: 0;
+  max-width: 100%;
+  overflow: visible;
+}
+
+// Business Type Card
+.business-type-card {
+  overflow: hidden;
+  
+  .business-type-form {
+    display: flex;
+    flex-direction: column;
+    gap: v.$spacing-sm;
+
+    mat-form-field {
+      width: 100%;
+    }
+  }
+}
+
+// Customer Card
+.customer-card {
+  overflow: hidden;
+  
+  mat-card-header {
+    margin-bottom: v.$spacing-sm;
+
+    mat-card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+  }
+
+  mat-card-content {
+    display: flex;
+    flex-direction: column;
+    gap: v.$spacing-sm;
+  }
+}
+
+// Bill Summary Card
+.bill-summary-card {
+  overflow: visible;
+  
+  mat-card-header {
+    padding: 9px 24px;
+    border-bottom: 1px solid v.$light-divider;
+    border-radius: v.$radius-md v.$radius-md 0 0;
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+    
+    @include m.mobile {
+      padding: 8px 16px;
+    }
+
+    mat-card-title {
+      color: v.$light-text-primary;
+      margin: 0;
+      text-align: center;
+      width: 100%;
+      font-size: 16px;
+      font-weight: 600;
+      
+      @include m.dark-theme {
+        color: white;
+      }
+      
+      @include m.mobile {
+        font-size: 14px;
+      }
+    }
+  }
+
+  mat-card-content {
+    overflow: visible;
+    
+    .summary-row {
+      display: flex;
+      justify-content: space-between;
+      padding: v.$spacing-sm 0;
+      font-size: 14px;
+      
+      @include m.mobile {
+        padding: v.$spacing-xs 0;
+        font-size: 13px;
+      }
+
+      span:first-child {
+        color: v.$light-text-secondary;
+        
+        @include m.dark-theme {
+          color: white;
+        }
+      }
+
+      span:last-child {
+        font-weight: 500;
+        color: v.$light-text-primary;
+        
+        @include m.dark-theme {
+          color: white;
+        }
+      }
+
+      &.discount span {
+        color: v.$light-success;
+        
+        @include m.dark-theme {
+          color: v.$dark-success;
+        }
+      }
+      
+      &.discount-row {
+        align-items: center;
+        
+        .discount-input {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          
+          .prefix {
+            color: v.$light-success;
+            font-weight: 500;
+            font-size: 13px;
+            white-space: nowrap;
+            
+            @include m.dark-theme {
+              color: v.$dark-success;
+            }
+          }
+          
+          input {
+            width: 70px;
+            padding: 6px 8px;
+            border: 1px solid v.$light-divider;
+            border-radius: v.$radius-sm;
+            font-size: 14px;
+            font-weight: 500;
+            text-align: right;
+            background: v.$light-surface;
+            color: v.$light-success;
+            
+            &:focus {
+              outline: none;
+              border-color: v.$light-primary;
+            }
+            
+            &::placeholder {
+              color: rgba(0, 0, 0, 0.38);
+            }
+            
+            @include m.dark-theme {
+              background: v.$dark-surface-light;
+              border-color: v.$dark-divider;
+              color: v.$dark-success;
+              
+              &:focus {
+                border-color: v.$dark-primary;
+              }
+              
+              &::placeholder {
+                color: rgba(255, 255, 255, 0.4);
+              }
+            }
+            
+            @include m.mobile {
+              width: 60px;
+              padding: 4px 6px;
+              font-size: 13px;
+            }
+          }
+        }
+      }
+
+      &.total {
+        font-size: 20px;
+        font-weight: 700;
+        padding: v.$spacing-md 0;
+        
+        @include m.mobile {
+          font-size: 17px;
+          padding: v.$spacing-sm 0;
+        }
+
+        span:first-child {
+          color: v.$light-text-primary;
+          
+          @include m.dark-theme {
+            color: white;
+          }
+        }
+
+        span:last-child {
+          color: v.$light-primary;
+          
+          @include m.dark-theme {
+            color: v.$dark-primary;
+          }
+        }
+      }
+    }
+
+    mat-divider {
+      margin: v.$spacing-sm 0;
+      
+      @include m.mobile {
+        margin: v.$spacing-xs 0;
+      }
+    }
+
+    .payment-section {
+      margin-top: v.$spacing-sm;
+      padding-top: v.$spacing-sm;
+      border-top: 1px solid v.$light-divider;
+
+      @include m.dark-theme {
+        border-color: v.$dark-divider;
+      }
+      
+      @include m.mobile {
+        margin-top: v.$spacing-xs;
+        padding-top: v.$spacing-xs;
+      }
+
+      > label {
+        font-weight: 600;
+        margin-bottom: v.$spacing-md;
+        display: block;
+        font-size: 14px;
+        color: v.$light-text-primary;
+        
+        @include m.dark-theme {
+          color: white;
+        }
+        
+        @include m.mobile {
+          font-size: 13px;
+          margin-bottom: v.$spacing-sm;
+        }
+      }
+
+      .payment-methods {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+        grid-auto-rows: auto;
+        gap: v.$spacing-md;
+        margin-bottom: v.$spacing-md;
+
+        @include m.mobile {
+          display: grid !important;
+          grid-template-columns: 1fr 1fr;
+          gap: v.$spacing-xs;
+          margin-bottom: v.$spacing-sm;
+        }
+
+        mat-radio-button {
+          display: flex !important;
+          align-items: center;
+          padding: v.$spacing-sm;
+          border-radius: v.$radius-sm;
+          transition: background-color 0.2s ease;
+          min-height: 40px;
+          
+          @include m.mobile {
+            padding: v.$spacing-xs;
+            min-height: 36px;
+          }
+
+          &:hover {
+            background: rgba(v.$light-primary, 0.05);
+            
+            @include m.dark-theme {
+              background: rgba(v.$dark-primary, 0.1);
+            }
+          }
+
+          &.mat-mdc-radio-checked {
+            background: rgba(v.$light-primary, 0.1);
+            
+            @include m.dark-theme {
+              background: rgba(v.$dark-primary, 0.15);
+            }
+          }
+
+          ::ng-deep .mdc-form-field {
+            display: flex;
+            align-items: center;
+            gap: v.$spacing-xs;
+            color: v.$light-text-primary;
+            
+            @include m.dark-theme {
+              color: white;
+            }
+            
+            @include m.mobile {
+              font-size: 12px;
+              gap: 2px;
+            }
+
+            .mdc-label {
+              display: inline-flex;
+              align-items: center;
+              gap: 4px;
+
+              mat-icon {
+                display: inline-flex;
+                align-items: center;
+                justify-content: center;
+                font-size: 18px;
+                width: 18px;
+                height: 18px;
+                line-height: 18px;
+                flex-shrink: 0;
+                color: v.$light-text-secondary;
+                
+                @include m.dark-theme {
+                  color: white;
+                }
+                
+                @include m.mobile {
+                  font-size: 16px;
+                  width: 16px;
+                  height: 16px;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+  }
+
+  mat-card-actions {
+    display: flex;
+    justify-content: space-between;
+    padding: v.$spacing-md;
+    border-top: 1px solid v.$light-divider;
+    margin: 0;
+    gap: v.$spacing-sm;
+    position: relative;
+    z-index: 1;
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-xs;
+      font-weight: 500;
+
+      &[color="primary"] {
+        padding: v.$spacing-sm v.$spacing-lg;
+      }
+    }
+    
+    @include m.mobile {
+      flex-direction: row;
+      padding: v.$spacing-sm;
+      
+      button {
+        flex: 1;
+        justify-content: center;
+        padding: v.$spacing-sm !important;
+        font-size: 13px;
+        
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+      }
+    }
+  }
+}
+
+.full-width {
+  width: 100%;
+}

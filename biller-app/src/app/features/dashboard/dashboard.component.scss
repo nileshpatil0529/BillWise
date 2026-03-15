@@ -1,0 +1,317 @@
+@use '../../../styles/variables' as v;
+@use '../../../styles/mixins' as m;
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.dashboard-container {
+  height: 100vh;
+  width: 100%;
+  display: flex;
+}
+
+// Sidenav Styles
+.sidenav {
+  width: v.$sidebar-width-expanded;
+  background: v.$light-surface;
+  border-right: 1px solid v.$light-divider;
+  display: flex;
+  flex-direction: column;
+  transition: width v.$transition-normal;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-right-color: v.$dark-divider;
+  }
+
+  &.collapsed {
+    width: v.$sidebar-width-collapsed;
+
+    .logo-text,
+    .user-details,
+    [matListItemTitle] {
+      display: none;
+    }
+
+    .logo-container {
+      justify-content: center;
+    }
+  }
+  
+  // Mobile: full width when open
+  @include m.mobile {
+    width: 100%;
+    max-width: 280px;
+  }
+}
+
+.sidenav-header {
+  padding: 0 10px;
+  min-height: v.$header-height;
+  display: flex;
+  align-items: center;
+  background: v.$light-primary;
+  color: white;
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    overflow: hidden;
+
+    .logo-image {
+      width: 40px;
+      height: 40px;
+      object-fit: contain;
+      border-radius: v.$radius-sm;
+      flex-shrink: 0;
+    }
+
+    .logo-icon {
+      font-size: 40px;
+      width: 40px;
+      height: 40px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-size: 20px;
+      font-weight: 600;
+      color: white;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+}
+
+.nav-list {
+  flex: 1;
+  padding: v.$spacing-sm;
+
+  a {
+    border-radius: v.$radius-md;
+    margin-bottom: v.$spacing-xs;
+    transition: all v.$transition-fast;
+
+    mat-icon {
+      color: v.$light-text-secondary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+    
+    span {
+      color: v.$light-text-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-primary;
+      }
+    }
+
+    &:hover {
+      background: rgba(v.$light-primary, 0.08);
+
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.12);
+      }
+    }
+
+    &.active {
+      background: rgba(v.$light-primary, 0.12);
+
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.16);
+      }
+
+      mat-icon {
+        color: v.$light-primary;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+      }
+
+      span {
+        color: v.$light-primary;
+        font-weight: 500;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+      }
+    }
+  }
+}
+
+.sidenav-footer {
+  padding: 0 16px;
+  border-top: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    border-top-color: v.$dark-divider;
+  }
+
+  .user-info {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    padding-top: v.$spacing-md;
+
+    mat-icon {
+      font-size: 36px;
+      width: 36px;
+      height: 36px;
+      color: v.$light-text-secondary;
+      flex-shrink: 0;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+
+    .user-details {
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-width: 0;
+
+      .user-name {
+        font-weight: 500;
+        color: v.$light-text-primary;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+
+        @include m.dark-theme {
+          color: v.$dark-text-primary;
+        }
+      }
+
+      .user-role {
+        font-size: 12px;
+        color: v.$light-text-secondary;
+
+        @include m.dark-theme {
+          color: v.$dark-text-secondary;
+        }
+      }
+    }
+  }
+}
+
+// Main Content
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  background: v.$light-background;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+}
+
+// Header Toolbar
+.header-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: v.$light-primary !important;
+  color: white !important;
+
+  .toolbar-title {
+    margin-left: v.$spacing-sm;
+    font-size: 18px;
+    font-weight: 500;
+    
+    @include m.mobile {
+      font-size: 16px;
+    }
+  }
+
+  .spacer {
+    flex: 1;
+  }
+  
+  // Responsive toolbar buttons
+  @include m.mobile {
+    .mat-mdc-icon-button {
+      width: 40px;
+      height: 40px;
+    }
+  }
+}
+
+// Page Content
+.page-content {
+  flex: 1;
+  padding: v.$spacing-md;
+  overflow-y: auto;
+  @include m.custom-scrollbar;
+
+  @include m.tablet {
+    padding: v.$spacing-md v.$spacing-sm;
+  }
+
+  @include m.mobile {
+    padding: v.$spacing-sm;
+  }
+}
+
+// User Menu Header
+.user-menu-header {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+  min-width: 200px;
+
+  mat-icon {
+    font-size: 40px;
+    width: 40px;
+    height: 40px;
+    color: v.$light-primary;
+
+    @include m.dark-theme {
+      color: v.$dark-primary;
+    }
+  }
+
+  .user-name {
+    font-weight: 500;
+    color: v.$light-text-primary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-primary;
+    }
+  }
+
+  .user-email {
+    font-size: 12px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}
+
+// Responsive adjustments
+@include m.mobile {
+  .sidenav {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .toolbar-title {
+    display: none;
+  }
+}
