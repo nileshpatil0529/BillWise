@@ -1,15 +1,20 @@
 import { v4 as uuidv4 } from 'uuid';
-
-// In-memory bills store
-const bills = new Map();
+import db from '../config/database.js';
 
 // Generate bill number
 const generateBillNumber = () => {
   const date = new Date();
   const prefix = 'INV';
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
-  const count = Array.from(bills.values())
-    .filter(b => b.billNumber.includes(dateStr)).length + 1;
+  
+  // Count bills for today
+  const todayStart = date.toISOString().slice(0, 10);
+  const result = db.prepare(`
+    SELECT COUNT(*) as count FROM bills 
+    WHERE billNumber LIKE ?
+  `).get(`${prefix}${dateStr}%`);
+  
+  const count = (result.count || 0) + 1;
   return `${prefix}${dateStr}${count.toString().padStart(4, '0')}`;
 };
 
@@ -24,43 +29,55 @@ export const getAllBills = async (req, res) => {
       limit = 50 
     } = req.query;
 
-    let billList = Array.from(bills.values());
+    let query = 'SELECT * FROM bills WHERE 1=1';
+    const params = [];
 
-    // Apply date filter
     if (startDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      billList = billList.filter(b => new Date(b.createdAt) >= start);
+      query += ' AND DATE(createdAt) >= DATE(?)';
+      params.push(startDate);
     }
 
     if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      billList = billList.filter(b => new Date(b.createdAt) <= end);
+      query += ' AND DATE(createdAt) <= DATE(?)';
+      params.push(endDate);
     }
 
-    // Apply payment method filter
     if (paymentMethod && paymentMethod !== 'all') {
-      billList = billList.filter(b => b.paymentMethod === paymentMethod);
+      query += ' AND paymentMethod = ?';
+      params.push(paymentMethod);
     }
 
-    // Apply payment status filter
     if (paymentStatus && paymentStatus !== 'all') {
-      billList = billList.filter(b => b.paymentStatus === paymentStatus);
+      query += ' AND paymentStatus = ?';
+      params.push(paymentStatus);
     }
 
-    // Sort by date descending
-    billList.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    // Get total count
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+    const totalResult = db.prepare(countQuery).get(...params);
+    const total = totalResult.count;
 
-    // Pagination
-    const total = billList.length;
-    const startIndex = (page - 1) * limit;
-    const paginatedBills = billList.slice(startIndex, startIndex + parseInt(limit));
+    // Add sorting and pagination
+    query += ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
+    const offset = (page - 1) * limit;
+    params.push(parseInt(limit), offset);
+
+    const bills = db.prepare(query).all(...params);
+
+    // Get items for each bill
+    const billsWithItems = bills.map(bill => {
+      const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(bill.billId);
+      return {
+        ...bill,
+        items,
+        businessTypeData: bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {}
+      };
+    });
 
     res.json({
       success: true,
       data: {
-        bills: paginatedBills,
+        bills: billsWithItems,
         total,
         page: parseInt(page),
         totalPages: Math.ceil(total / limit)
@@ -78,7 +95,7 @@ export const getAllBills = async (req, res) => {
 export const getBillById = async (req, res) => {
   try {
     const { id } = req.params;
-    const bill = bills.get(id);
+    const bill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
 
     if (!bill) {
       return res.status(404).json({
@@ -87,9 +104,16 @@ export const getBillById = async (req, res) => {
       });
     }
 
+    // Get items for this bill
+    const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+
     res.json({
       success: true,
-      data: bill
+      data: {
+        ...bill,
+        items,
+        businessTypeData: bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {}
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -105,6 +129,7 @@ export const createBill = async (req, res) => {
     
     const billId = uuidv4();
     const billNumber = generateBillNumber();
+    const now = new Date().toISOString();
 
     // Calculate totals
     let subtotal = 0;
@@ -126,44 +151,83 @@ export const createBill = async (req, res) => {
     
     // Calculate tax on discounted amount (only if tax is enabled)
     const taxableAmount = subtotal - discountTotal;
-    const taxEnabled = billData.taxEnabled !== false; // Default to true if not specified
+    const taxEnabled = billData.taxEnabled !== false;
     
     if (taxEnabled) {
-      // Use tax rate from request (from settings)
       const taxRate = billData.taxRate || 0;
       taxTotal = (taxableAmount * taxRate) / 100;
     }
 
     const grandTotal = subtotal - discountTotal + taxTotal;
+    const amountPaid = billData.paymentMethod === 'debt' 
+      ? (parseFloat(billData.amountPaid) || 0) 
+      : (parseFloat(billData.amountPaid) || grandTotal);
 
-    const newBill = {
-      billId,
-      billNumber,
-      items,
-      subtotal,
-      discountTotal,
-      taxTotal,
-      grandTotal,
-      paymentMethod: billData.paymentMethod || 'cash',
-      paymentStatus: billData.paymentStatus || 'paid',
-      amountPaid: billData.paymentMethod === 'debt' 
-        ? (parseFloat(billData.amountPaid) || 0) 
-        : (parseFloat(billData.amountPaid) || grandTotal),
-      change: (parseFloat(billData.amountPaid) || grandTotal) - grandTotal,
-      customerName: billData.customerName || '',
-      customerPhone: billData.customerPhone || '',
-      businessTypeData: billData.businessTypeData || {},
-      notes: billData.notes || '',
-      createdBy: req.user?.uid || 'system',
-      createdAt: new Date().toISOString()
-    };
+    // Use transaction for inserting bill and items
+    const insertBillAndItems = db.transaction(() => {
+      // Insert bill
+      db.prepare(`
+        INSERT INTO bills (billId, billNumber, subtotal, discountTotal, taxTotal, grandTotal, paymentMethod, paymentStatus, amountPaid, change, customerName, customerPhone, businessTypeData, notes, createdBy, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
+        billId,
+        billNumber,
+        subtotal,
+        discountTotal,
+        taxTotal,
+        grandTotal,
+        billData.paymentMethod || 'cash',
+        billData.paymentStatus || 'paid',
+        amountPaid,
+        amountPaid - grandTotal,
+        billData.customerName || '',
+        billData.customerPhone || '',
+        JSON.stringify(billData.businessTypeData || {}),
+        billData.notes || '',
+        req.user?.uid || 'system',
+        now,
+        now
+      );
 
-    bills.set(billId, newBill);
+      // Insert items
+      const insertItem = db.prepare(`
+        INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      for (const item of items) {
+        insertItem.run(
+          billId,
+          item.productId || '',
+          item.name,
+          item.quantity,
+          item.unitPrice,
+          item.itemTotal,
+          item.finalTotal
+        );
+
+        // Update product stock if productId exists
+        if (item.productId) {
+          db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+            .run(item.quantity, item.productId);
+        }
+      }
+    });
+
+    insertBillAndItems();
+
+    // Fetch created bill with items
+    const createdBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(billId);
+    const billItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(billId);
 
     res.status(201).json({
       success: true,
       message: 'Bill created successfully',
-      data: newBill
+      data: {
+        ...createdBill,
+        items: billItems,
+        businessTypeData: JSON.parse(createdBill.businessTypeData || '{}')
+      }
     });
   } catch (error) {
     console.error('Create bill error:', error);
@@ -179,7 +243,7 @@ export const updateBill = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const bill = bills.get(id);
+    const bill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
     
     if (!bill) {
       return res.status(404).json({
@@ -190,26 +254,26 @@ export const updateBill = async (req, res) => {
 
     // Only allow updating certain fields
     const allowedUpdates = ['paymentStatus', 'amountPaid', 'notes', 'customerName', 'customerPhone'];
-    const filteredUpdates = {};
-    
+    const now = new Date().toISOString();
+
     for (const key of allowedUpdates) {
       if (updates[key] !== undefined) {
-        filteredUpdates[key] = updates[key];
+        db.prepare(`UPDATE bills SET ${key} = ?, updatedAt = ? WHERE billId = ?`)
+          .run(updates[key], now, id);
       }
     }
 
-    const updatedBill = {
-      ...bill,
-      ...filteredUpdates,
-      updatedAt: new Date().toISOString()
-    };
-
-    bills.set(id, updatedBill);
+    const updatedBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
+    const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
 
     res.json({
       success: true,
       message: 'Bill updated successfully',
-      data: updatedBill
+      data: {
+        ...updatedBill,
+        items,
+        businessTypeData: updatedBill.businessTypeData ? JSON.parse(updatedBill.businessTypeData) : {}
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -223,25 +287,31 @@ export const getReport = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    let billList = Array.from(bills.values());
+    let query = 'SELECT * FROM bills WHERE 1=1';
+    const params = [];
 
-    // Apply date filter
     if (startDate) {
-      const start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
-      billList = billList.filter(b => new Date(b.createdAt) >= start);
+      query += ' AND DATE(createdAt) >= DATE(?)';
+      params.push(startDate);
     }
 
     if (endDate) {
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-      billList = billList.filter(b => new Date(b.createdAt) <= end);
+      query += ' AND DATE(createdAt) <= DATE(?)';
+      params.push(endDate);
     }
+
+    const bills = db.prepare(query).all(...params);
+
+    // Get items for each bill
+    const billsWithItems = bills.map(bill => {
+      const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(bill.billId);
+      return { ...bill, items };
+    });
 
     // Calculate summary
     const summary = {
       totalSales: 0,
-      totalBills: billList.length,
+      totalBills: billsWithItems.length,
       cashSales: 0,
       cardSales: 0,
       onlineSales: 0,
@@ -258,12 +328,12 @@ export const getReport = async (req, res) => {
       debt: 0
     };
 
-    billList.forEach(bill => {
+    billsWithItems.forEach(bill => {
       summary.totalSales += bill.grandTotal;
       summary.totalDiscount += bill.discountTotal;
       summary.totalTax += bill.taxTotal;
 
-      paymentMethodCounts[bill.paymentMethod]++;
+      paymentMethodCounts[bill.paymentMethod] = (paymentMethodCounts[bill.paymentMethod] || 0) + 1;
 
       switch (bill.paymentMethod) {
         case 'cash':
@@ -295,7 +365,7 @@ export const getReport = async (req, res) => {
       date.setDate(date.getDate() - i);
       const dateStr = date.toISOString().slice(0, 10);
       
-      const daySales = billList
+      const daySales = billsWithItems
         .filter(b => b.createdAt.slice(0, 10) === dateStr)
         .reduce((sum, b) => sum + b.grandTotal, 0);
       
@@ -307,7 +377,7 @@ export const getReport = async (req, res) => {
 
     // Top selling products
     const productSales = {};
-    billList.forEach(bill => {
+    billsWithItems.forEach(bill => {
       bill.items.forEach(item => {
         if (!productSales[item.productId]) {
           productSales[item.productId] = {

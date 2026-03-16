@@ -3,6 +3,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 
 import config from './config/config.js';
+import './config/database.js'; // Initialize SQLite database
 import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import billRoutes from './routes/billRoutes.js';

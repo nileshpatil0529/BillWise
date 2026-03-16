@@ -9,3 +9,13 @@ node_modules/
 # Logs
 *.log
 npm-debug.log*
+
+# Database files
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+
+# Backups (don't commit to git, store separately)
+backups/
+

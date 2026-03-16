@@ -1,29 +1,4 @@
-// In-memory settings store
-let settings = {
-  businessName: 'My Business',
-  logo: '',
-  address: '',
-  phone: '',
-  email: '',
-  taxNumber: '',
-  currency: '₹',
-  currencyCode: 'INR',
-  applicationType: 'general',
-  theme: 'light',
-  scannerType: 'none',
-  taxEnabled: true,
-  taxRates: [
-    { name: 'GST 5%', rate: 5 },
-    { name: 'GST 12%', rate: 12 },
-    { name: 'GST 18%', rate: 18 }
-  ],
-  invoicePrefix: 'INV',
-  invoiceStartNumber: 1,
-  footerText: 'Thank you for your business!',
-  lowStockAlertEnabled: true,
-  lowStockThreshold: 10,
-  updatedAt: new Date().toISOString()
-};
+import db from '../config/database.js';
 
 // Application type configurations
 const applicationTypes = {
@@ -61,11 +36,29 @@ const applicationTypes = {
 
 export const getSettings = async (req, res) => {
   try {
+    const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+    
+    if (!settings) {
+      return res.status(404).json({
+        success: false,
+        message: 'Settings not found'
+      });
+    }
+
+    // Parse JSON fields
+    const parsedSettings = {
+      ...settings,
+      taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
+      taxEnabled: Boolean(settings.taxEnabled),
+      lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)
+    };
+
     res.json({
       success: true,
-      data: settings
+      data: parsedSettings
     });
   } catch (error) {
+    console.error('Get settings error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch settings'
@@ -76,19 +69,60 @@ export const getSettings = async (req, res) => {
 export const updateSettings = async (req, res) => {
   try {
     const updates = req.body;
+    const now = new Date().toISOString();
 
-    settings = {
+    // Build dynamic update query
+    const allowedFields = [
+      'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber',
+      'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
+      'taxEnabled', 'taxRates', 'invoicePrefix', 'invoiceStartNumber',
+      'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
+    ];
+
+    const setClauses = [];
+    const values = [];
+
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        setClauses.push(`${field} = ?`);
+        
+        // Handle special conversions
+        if (field === 'taxRates') {
+          values.push(JSON.stringify(updates[field]));
+        } else if (field === 'taxEnabled' || field === 'lowStockAlertEnabled') {
+          values.push(updates[field] ? 1 : 0);
+        } else {
+          values.push(updates[field]);
+        }
+      }
+    }
+
+    if (setClauses.length > 0) {
+      setClauses.push('updatedAt = ?');
+      values.push(now);
+      values.push(1); // for WHERE id = 1
+
+      const query = `UPDATE settings SET ${setClauses.join(', ')} WHERE id = ?`;
+      db.prepare(query).run(...values);
+    }
+
+    // Fetch updated settings
+    const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+    
+    const parsedSettings = {
       ...settings,
-      ...updates,
-      updatedAt: new Date().toISOString()
+      taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
+      taxEnabled: Boolean(settings.taxEnabled),
+      lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)
     };
 
     res.json({
       success: true,
       message: 'Settings updated successfully',
-      data: settings
+      data: parsedSettings
     });
   } catch (error) {
+    console.error('Update settings error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update settings'
@@ -119,14 +153,14 @@ export const uploadLogo = async (req, res) => {
       });
     }
 
-    // In production, upload to Firebase Storage
-    // For demo, we'll use base64
+    // Convert to base64
     const base64 = req.file.buffer.toString('base64');
     const mimeType = req.file.mimetype;
     const logoUrl = `data:${mimeType};base64,${base64}`;
 
-    settings.logo = logoUrl;
-    settings.updatedAt = new Date().toISOString();
+    const now = new Date().toISOString();
+    db.prepare('UPDATE settings SET logo = ?, updatedAt = ? WHERE id = 1')
+      .run(logoUrl, now);
 
     res.json({
       success: true,
@@ -134,6 +168,7 @@ export const uploadLogo = async (req, res) => {
       data: { logo: logoUrl }
     });
   } catch (error) {
+    console.error('Upload logo error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to upload logo'

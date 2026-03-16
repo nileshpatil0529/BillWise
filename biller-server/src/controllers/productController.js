@@ -1,33 +1,10 @@
-import { v4 as uuidv4 } from 'uuid';
 import * as XLSX from 'xlsx';
-
-// In-memory product store for demo
-const products = new Map();
-
-// Initialize some demo products with barcodes for testing
-const demoProducts = [
-  { productId: 'PRD001', name: 'Rice (1kg)', category: 'Groceries', unitPrice: 50, costPrice: 40, stockQuantity: 100, status: 'active', barcode: '8901234567890' },
-  { productId: 'PRD002', name: 'Wheat Flour (1kg)', category: 'Groceries', unitPrice: 45, costPrice: 35, stockQuantity: 80, status: 'active', barcode: '8901234567906' },
-  { productId: 'PRD003', name: 'Sugar (1kg)', category: 'Groceries', unitPrice: 42, costPrice: 38, stockQuantity: 60, status: 'active', barcode: '8901234567913' },
-  { productId: 'PRD004', name: 'Cooking Oil (1L)', category: 'Groceries', unitPrice: 120, costPrice: 100, stockQuantity: 50, status: 'active', barcode: '8901234567920' },
-  { productId: 'PRD005', name: 'Salt (1kg)', category: 'Groceries', unitPrice: 20, costPrice: 15, stockQuantity: 200, status: 'active', barcode: '8901234567937' }
-];
-
-demoProducts.forEach(p => {
-  products.set(p.productId, {
-    ...p,
-    description: '',
-    lowStockAlert: 10,
-    imageUrl: '',
-    barcode: p.barcode || '',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
-  });
-});
+import db from '../config/database.js';
 
 // Generate unique product ID
 const generateProductId = () => {
-  const count = products.size + 1;
+  const result = db.prepare('SELECT COUNT(*) as count FROM products').get();
+  const count = result.count + 1;
   return `PRD${count.toString().padStart(6, '0')}`;
 };
 
@@ -35,39 +12,50 @@ export const getAllProducts = async (req, res) => {
   try {
     const { category, status, search, page = 1, limit = 50 } = req.query;
     
-    let productList = Array.from(products.values());
+    let query = 'SELECT * FROM products WHERE 1=1';
+    const params = [];
 
-    // Apply filters
     if (category) {
-      productList = productList.filter(p => p.category === category);
+      query += ' AND category = ?';
+      params.push(category);
     }
     
     if (status) {
-      productList = productList.filter(p => p.status === status);
+      query += ' AND status = ?';
+      params.push(status);
     }
     
     if (search) {
-      const searchLower = search.toLowerCase();
-      productList = productList.filter(p => 
-        p.name.toLowerCase().includes(searchLower) ||
-        p.productId.toLowerCase().includes(searchLower) ||
-        p.category?.toLowerCase().includes(searchLower) ||
-        p.barcode?.toLowerCase().includes(searchLower)
-      );
+      query += ' AND (name LIKE ? OR productId LIKE ? OR category LIKE ? OR barcode LIKE ?)';
+      const searchPattern = `%${search}%`;
+      params.push(searchPattern, searchPattern, searchPattern, searchPattern);
     }
 
-    // Pagination
-    const startIndex = (page - 1) * limit;
-    const endIndex = startIndex + parseInt(limit);
-    const paginatedProducts = productList.slice(startIndex, endIndex);
+    // Get total count
+    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+    const totalResult = db.prepare(countQuery).get(...params);
+    const total = totalResult.count;
+
+    // Add pagination
+    const offset = (page - 1) * limit;
+    query += ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
+    params.push(parseInt(limit), offset);
+
+    const products = db.prepare(query).all(...params);
+
+    // Parse metadata JSON for each product
+    const productsWithMetadata = products.map(p => ({
+      ...p,
+      metadata: p.metadata ? JSON.parse(p.metadata) : {}
+    }));
 
     res.json({
       success: true,
       data: {
-        products: paginatedProducts,
-        total: productList.length,
+        products: productsWithMetadata,
+        total,
         page: parseInt(page),
-        totalPages: Math.ceil(productList.length / limit)
+        totalPages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
@@ -82,7 +70,7 @@ export const getAllProducts = async (req, res) => {
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
-    const product = products.get(id);
+    const product = db.prepare('SELECT * FROM products WHERE productId = ?').get(id);
 
     if (!product) {
       return res.status(404).json({
@@ -93,7 +81,10 @@ export const getProductById = async (req, res) => {
 
     res.json({
       success: true,
-      data: product
+      data: {
+        ...product,
+        metadata: product.metadata ? JSON.parse(product.metadata) : {}
+      }
     });
   } catch (error) {
     res.status(500).json({
@@ -112,53 +103,63 @@ export const createProduct = async (req, res) => {
 
     // Check for existing product with same name or barcode
     let existingProduct = null;
-    for (const [id, p] of products) {
-      if ((productName && p.name.toLowerCase() === productName.toLowerCase()) ||
-          (productBarcode && p.barcode && p.barcode === productBarcode)) {
-        existingProduct = { id, product: p };
-        break;
-      }
+    
+    if (productName) {
+      existingProduct = db.prepare('SELECT * FROM products WHERE LOWER(name) = LOWER(?)').get(productName);
+    }
+    
+    if (!existingProduct && productBarcode) {
+      existingProduct = db.prepare('SELECT * FROM products WHERE barcode = ?').get(productBarcode);
     }
 
     if (existingProduct) {
       // Update existing product's stock quantity
-      existingProduct.product.stockQuantity += stockToAdd;
-      existingProduct.product.updatedAt = new Date().toISOString();
+      const newStock = existingProduct.stockQuantity + stockToAdd;
+      const now = new Date().toISOString();
       
-      // Optionally update other fields if they were provided
-      if (productBarcode && !existingProduct.product.barcode) {
-        existingProduct.product.barcode = productBarcode;
+      db.prepare('UPDATE products SET stockQuantity = ?, updatedAt = ? WHERE productId = ?')
+        .run(newStock, now, existingProduct.productId);
+      
+      // Update barcode if provided and not set
+      if (productBarcode && !existingProduct.barcode) {
+        db.prepare('UPDATE products SET barcode = ? WHERE productId = ?')
+          .run(productBarcode, existingProduct.productId);
       }
-      
-      products.set(existingProduct.id, existingProduct.product);
+
+      const updatedProduct = db.prepare('SELECT * FROM products WHERE productId = ?')
+        .get(existingProduct.productId);
 
       res.status(200).json({
         success: true,
-        message: `Product already exists. Stock updated by ${stockToAdd}. New total: ${existingProduct.product.stockQuantity}`,
-        data: existingProduct.product,
+        message: `Product already exists. Stock updated by ${stockToAdd}. New total: ${newStock}`,
+        data: updatedProduct,
         updated: true
       });
     } else {
       const productId = productData.productId || generateProductId();
+      const now = new Date().toISOString();
       
-      const newProduct = {
+      db.prepare(`
+        INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `).run(
         productId,
-        name: productName,
-        category: productData.category || 'General',
-        description: productData.description || '',
-        barcode: productBarcode,
-        unitPrice: parseFloat(productData.unitPrice) || 0,
-        costPrice: parseFloat(productData.costPrice) || 0,
-        stockQuantity: stockToAdd,
-        lowStockAlert: parseInt(productData.lowStockAlert) || 10,
-        imageUrl: productData.imageUrl || '',
-        status: productData.status || 'active',
-        metadata: productData.metadata || {},
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
+        productName,
+        productData.category || 'General',
+        productData.description || '',
+        productBarcode,
+        parseFloat(productData.unitPrice) || 0,
+        parseFloat(productData.costPrice) || 0,
+        stockToAdd,
+        parseInt(productData.lowStockAlert) || 10,
+        productData.imageUrl || '',
+        productData.status || 'active',
+        JSON.stringify(productData.metadata || {}),
+        now,
+        now
+      );
 
-      products.set(productId, newProduct);
+      const newProduct = db.prepare('SELECT * FROM products WHERE productId = ?').get(productId);
 
       res.status(201).json({
         success: true,
@@ -180,7 +181,7 @@ export const updateProduct = async (req, res) => {
     const { id } = req.params;
     const updates = req.body;
 
-    const product = products.get(id);
+    const product = db.prepare('SELECT * FROM products WHERE productId = ?').get(id);
     
     if (!product) {
       return res.status(404).json({
@@ -189,14 +190,40 @@ export const updateProduct = async (req, res) => {
       });
     }
 
-    const updatedProduct = {
-      ...product,
-      ...updates,
-      productId: id, // Prevent ID change
-      updatedAt: new Date().toISOString()
-    };
+    const now = new Date().toISOString();
+    
+    db.prepare(`
+      UPDATE products SET
+        name = COALESCE(?, name),
+        category = COALESCE(?, category),
+        description = COALESCE(?, description),
+        barcode = COALESCE(?, barcode),
+        unitPrice = COALESCE(?, unitPrice),
+        costPrice = COALESCE(?, costPrice),
+        stockQuantity = COALESCE(?, stockQuantity),
+        lowStockAlert = COALESCE(?, lowStockAlert),
+        imageUrl = COALESCE(?, imageUrl),
+        status = COALESCE(?, status),
+        metadata = COALESCE(?, metadata),
+        updatedAt = ?
+      WHERE productId = ?
+    `).run(
+      updates.name,
+      updates.category,
+      updates.description,
+      updates.barcode,
+      updates.unitPrice !== undefined ? parseFloat(updates.unitPrice) : null,
+      updates.costPrice !== undefined ? parseFloat(updates.costPrice) : null,
+      updates.stockQuantity !== undefined ? parseInt(updates.stockQuantity) : null,
+      updates.lowStockAlert !== undefined ? parseInt(updates.lowStockAlert) : null,
+      updates.imageUrl,
+      updates.status,
+      updates.metadata ? JSON.stringify(updates.metadata) : null,
+      now,
+      id
+    );
 
-    products.set(id, updatedProduct);
+    const updatedProduct = db.prepare('SELECT * FROM products WHERE productId = ?').get(id);
 
     res.json({
       success: true,
@@ -204,6 +231,7 @@ export const updateProduct = async (req, res) => {
       data: updatedProduct
     });
   } catch (error) {
+    console.error('Update product error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update product'
@@ -215,14 +243,16 @@ export const deleteProduct = async (req, res) => {
   try {
     const { id } = req.params;
     
-    if (!products.has(id)) {
+    const product = db.prepare('SELECT * FROM products WHERE productId = ?').get(id);
+    
+    if (!product) {
       return res.status(404).json({
         success: false,
         message: 'Product not found'
       });
     }
 
-    products.delete(id);
+    db.prepare('DELETE FROM products WHERE productId = ?').run(id);
 
     res.json({
       success: true,
@@ -247,16 +277,13 @@ export const searchProducts = async (req, res) => {
       });
     }
 
-    const searchLower = q.toLowerCase();
-    const results = Array.from(products.values())
-      .filter(p => 
-        p.status === 'active' && (
-          p.name.toLowerCase().includes(searchLower) ||
-          p.productId.toLowerCase().includes(searchLower) ||
-          p.barcode?.toLowerCase().includes(searchLower)
-        )
-      )
-      .slice(0, 10);
+    const searchPattern = `%${q}%`;
+    const results = db.prepare(`
+      SELECT * FROM products 
+      WHERE status = 'active' 
+        AND (name LIKE ? OR productId LIKE ? OR barcode LIKE ?)
+      LIMIT 10
+    `).all(searchPattern, searchPattern, searchPattern);
 
     res.json({
       success: true,
@@ -287,55 +314,58 @@ export const importProducts = async (req, res) => {
     let imported = 0;
     let errors = [];
 
-    for (const row of data) {
-      try {
-        const productId = row.productId || row.ProductId || row['Product ID'] || generateProductId();
-        
-        const productName = row.name || row.Name || row['Product Name'] || '';
-        const productBarcode = row.barcode || row.Barcode || row['Barcode'] || '';
-        const stockToAdd = parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
+    const insertProduct = db.prepare(`
+      INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+    `);
 
-        // Check for existing product with same name or barcode
-        let existingProduct = null;
-        for (const [id, p] of products) {
-          if ((productName && p.name.toLowerCase() === productName.toLowerCase()) ||
-              (productBarcode && p.barcode && p.barcode === productBarcode)) {
-            existingProduct = { id, product: p };
-            break;
+    const updateStock = db.prepare('UPDATE products SET stockQuantity = stockQuantity + ?, updatedAt = ? WHERE productId = ?');
+
+    const transaction = db.transaction((rows) => {
+      for (const row of rows) {
+        try {
+          const productName = row.name || row.Name || row['Product Name'] || '';
+          const productBarcode = row.barcode || row.Barcode || row['Barcode'] || '';
+          const stockToAdd = parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
+          const now = new Date().toISOString();
+
+          // Check for existing product
+          let existingProduct = null;
+          if (productName) {
+            existingProduct = db.prepare('SELECT * FROM products WHERE LOWER(name) = LOWER(?)').get(productName);
           }
-        }
+          if (!existingProduct && productBarcode) {
+            existingProduct = db.prepare('SELECT * FROM products WHERE barcode = ?').get(productBarcode);
+          }
 
-        if (existingProduct) {
-          // Update existing product's stock quantity
-          existingProduct.product.stockQuantity += stockToAdd;
-          existingProduct.product.updatedAt = new Date().toISOString();
-          products.set(existingProduct.id, existingProduct.product);
-          imported++;
-        } else {
-          const product = {
-            productId,
-            name: productName,
-            barcode: productBarcode,
-            category: row.category || row.Category || 'General',
-            description: row.description || row.Description || '',
-            unitPrice: parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
-            costPrice: parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
-            stockQuantity: stockToAdd,
-            lowStockAlert: parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
-            status: row.status || row.Status || 'active',
-            createdAt: new Date().toISOString(),
-            updatedAt: new Date().toISOString()
-          };
-
-          if (product.name) {
-            products.set(productId, product);
+          if (existingProduct) {
+            updateStock.run(stockToAdd, now, existingProduct.productId);
+            imported++;
+          } else if (productName) {
+            const productId = row.productId || row.ProductId || row['Product ID'] || generateProductId();
+            
+            insertProduct.run(
+              productId,
+              productName,
+              row.category || row.Category || 'General',
+              row.description || row.Description || '',
+              productBarcode,
+              parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
+              parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
+              stockToAdd,
+              parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              now,
+              now
+            );
             imported++;
           }
+        } catch (err) {
+          errors.push({ row, error: err.message });
         }
-      } catch (err) {
-        errors.push({ row, error: err.message });
       }
-    }
+    });
+
+    transaction(data);
 
     res.json({
       success: true,
@@ -353,7 +383,9 @@ export const importProducts = async (req, res) => {
 
 export const exportProducts = async (req, res) => {
   try {
-    const productList = Array.from(products.values()).map(p => ({
+    const products = db.prepare('SELECT * FROM products').all();
+    
+    const productList = products.map(p => ({
       'Product ID': p.productId,
       'Product Name': p.name,
       'Barcode': p.barcode || '',
@@ -386,11 +418,11 @@ export const exportProducts = async (req, res) => {
 
 export const getCategories = async (req, res) => {
   try {
-    const categories = [...new Set(Array.from(products.values()).map(p => p.category))];
+    const categories = db.prepare('SELECT DISTINCT category FROM products').all();
     
     res.json({
       success: true,
-      data: categories
+      data: categories.map(c => c.category)
     });
   } catch (error) {
     res.status(500).json({

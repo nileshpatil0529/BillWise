@@ -1,20 +1,7 @@
 import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
 import config from '../config/config.js';
-import { db } from '../config/firebase.js';
-
-// In-memory user store for demo (replace with Firebase in production)
-const users = new Map();
-
-// Initialize default admin
-users.set(config.admin.email, {
-  uid: 'admin-001',
-  email: config.admin.email,
-  password: config.admin.password,
-  displayName: 'Administrator',
-  role: 'admin',
-  isActive: true,
-  createdAt: new Date().toISOString()
-});
+import db from '../config/database.js';
 
 export const login = async (req, res) => {
   try {
@@ -27,23 +14,8 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check user in memory store first (for demo)
-    let user = users.get(email);
-
-    // If not in memory, try Firebase
-    if (!user && db) {
-      try {
-        const usersRef = db.collection('users');
-        const snapshot = await usersRef.where('email', '==', email).get();
-        
-        if (!snapshot.empty) {
-          const doc = snapshot.docs[0];
-          user = { uid: doc.id, ...doc.data() };
-        }
-      } catch (error) {
-        // Firebase not configured, using memory store
-      }
-    }
+    // Get user from SQLite
+    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
 
     if (!user) {
       return res.status(401).json({
@@ -52,8 +24,17 @@ export const login = async (req, res) => {
       });
     }
 
-    // Simple password check (in production, use bcrypt)
-    if (user.password !== password) {
+    // Check password (support both plain and hashed passwords for migration)
+    let passwordValid = false;
+    if (user.password.startsWith('$2')) {
+      // Bcrypt hashed password
+      passwordValid = await bcrypt.compare(password, user.password);
+    } else {
+      // Plain text password (legacy/demo)
+      passwordValid = user.password === password;
+    }
+
+    if (!passwordValid) {
       return res.status(401).json({
         success: false,
         message: 'Invalid email or password'
@@ -80,7 +61,8 @@ export const login = async (req, res) => {
     );
 
     // Update last login
-    user.lastLogin = new Date().toISOString();
+    db.prepare('UPDATE users SET lastLogin = ? WHERE uid = ?')
+      .run(new Date().toISOString(), user.uid);
 
     res.json({
       success: true,
@@ -106,7 +88,6 @@ export const login = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    // In a real app, you might want to blacklist the token
     res.json({
       success: true,
       message: 'Logout successful'
@@ -132,13 +113,23 @@ export const refreshToken = async (req, res) => {
 
     const decoded = jwt.verify(token, config.jwt.secret, { ignoreExpiration: true });
     
+    // Verify user still exists and is active
+    const user = db.prepare('SELECT * FROM users WHERE uid = ?').get(decoded.uid);
+    
+    if (!user || !user.isActive) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not found or inactive'
+      });
+    }
+
     // Generate new token
     const newToken = jwt.sign(
       {
-        uid: decoded.uid,
-        email: decoded.email,
-        role: decoded.role,
-        displayName: decoded.displayName
+        uid: user.uid,
+        email: user.email,
+        role: user.role,
+        displayName: user.displayName
       },
       config.jwt.secret,
       { expiresIn: config.jwt.expiresIn }
@@ -159,7 +150,7 @@ export const refreshToken = async (req, res) => {
 export const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
-    const { email } = req.user;
+    const { uid } = req.user;
 
     if (!currentPassword || !newPassword) {
       return res.status(400).json({
@@ -168,24 +159,43 @@ export const changePassword = async (req, res) => {
       });
     }
 
-    const user = users.get(email);
+    const user = db.prepare('SELECT * FROM users WHERE uid = ?').get(uid);
     
-    if (!user || user.password !== currentPassword) {
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+
+    // Check current password
+    let passwordValid = false;
+    if (user.password.startsWith('$2')) {
+      passwordValid = await bcrypt.compare(currentPassword, user.password);
+    } else {
+      passwordValid = user.password === currentPassword;
+    }
+
+    if (!passwordValid) {
       return res.status(401).json({
         success: false,
         message: 'Current password is incorrect'
       });
     }
 
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
     // Update password
-    user.password = newPassword;
-    users.set(email, user);
+    db.prepare('UPDATE users SET password = ?, updatedAt = ? WHERE uid = ?')
+      .run(hashedPassword, new Date().toISOString(), uid);
 
     res.json({
       success: true,
       message: 'Password changed successfully'
     });
   } catch (error) {
+    console.error('Change password error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to change password'
@@ -212,4 +222,48 @@ export const getProfile = async (req, res) => {
   }
 };
 
-export default { login, logout, refreshToken, changePassword, getProfile };
+// Register new user (admin only)
+export const register = async (req, res) => {
+  try {
+    const { email, password, displayName, role } = req.body;
+
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Email and password are required'
+      });
+    }
+
+    // Check if user exists
+    const existingUser = db.prepare('SELECT uid FROM users WHERE email = ?').get(email);
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        message: 'User with this email already exists'
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+    const uid = `user-${Date.now()}`;
+
+    db.prepare(`
+      INSERT INTO users (uid, email, password, displayName, role, isActive)
+      VALUES (?, ?, ?, ?, ?, 1)
+    `).run(uid, email, hashedPassword, displayName || email.split('@')[0], role || 'user');
+
+    res.status(201).json({
+      success: true,
+      message: 'User registered successfully',
+      data: { uid, email, displayName }
+    });
+  } catch (error) {
+    console.error('Register error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to register user'
+    });
+  }
+};
+
+export default { login, logout, refreshToken, changePassword, getProfile, register };
