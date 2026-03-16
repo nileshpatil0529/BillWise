@@ -278,6 +278,17 @@ mat-sidenav-content {
         background-color: rgba(255, 255, 255, 0.08);
       }
     }
+
+    .user-menu-header {
+      .user-name,
+      .user-email {
+        color: white;
+      }
+
+      mat-icon {
+        color: v.$dark-primary;
+      }
+    }
   }
 
   // List
@@ -457,6 +468,40 @@ mat-sidenav-content {
     .mat-calendar-body-label {
       color: rgba(255, 255, 255, 0.7);
     }
+  }
+}
+
+// Body dark theme for overlay components (mat-menu, dialogs, etc.)
+body.dark-theme {
+  .mat-mdc-menu-panel {
+    background-color: v.$dark-surface;
+    
+    .mat-mdc-menu-item {
+      color: white;
+      
+      mat-icon {
+        color: rgba(255, 255, 255, 0.7);
+      }
+      
+      &:hover:not([disabled]) {
+        background-color: rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .user-menu-header {
+      .user-name,
+      .user-email {
+        color: white;
+      }
+
+      mat-icon {
+        color: v.$dark-primary;
+      }
+    }
+  }
+
+  .mat-divider {
+    border-color: v.$dark-divider;
   }
 }
 
