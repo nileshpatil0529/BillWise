@@ -12,36 +12,91 @@ export const getAllProducts = async (req, res) => {
   try {
     const { category, status, search, page = 1, limit = 50 } = req.query;
     
-    let query = 'SELECT * FROM products WHERE 1=1';
-    const params = [];
+    let products = [];
+    let total = 0;
+    const offset = (page - 1) * parseInt(limit);
 
-    if (category) {
-      query += ' AND category = ?';
-      params.push(category);
+    // If search is provided, use optimized search
+    if (search && search.trim().length >= 2) {
+      const query = search.trim();
+      
+      // Try FTS5 first for speed
+      try {
+        const ftsQuery = query.replace(/[^\w\s]/g, '') + '*';
+        let ftsSearch = `
+          SELECT p.* FROM products p
+          INNER JOIN products_fts fts ON p.rowid = fts.rowid
+          WHERE products_fts MATCH ?
+        `;
+        const ftsParams = [ftsQuery];
+
+        if (category) {
+          ftsSearch += ' AND p.category = ?';
+          ftsParams.push(category);
+        }
+        if (status) {
+          ftsSearch += ' AND p.status = ?';
+          ftsParams.push(status);
+        }
+        
+        // Get count
+        const countResult = db.prepare(ftsSearch.replace('SELECT p.*', 'SELECT COUNT(*) as count')).get(...ftsParams);
+        total = countResult.count;
+
+        // Get paginated results
+        ftsSearch += ' ORDER BY rank LIMIT ? OFFSET ?';
+        ftsParams.push(parseInt(limit), offset);
+        products = db.prepare(ftsSearch).all(...ftsParams);
+      } catch (ftsError) {
+        // Fallback to LIKE search
+        const searchPattern = `%${query}%`;
+        let likeSearch = `
+          SELECT * FROM products 
+          WHERE (name LIKE ? OR productId LIKE ? OR barcode LIKE ? OR category LIKE ?)
+        `;
+        const likeParams = [searchPattern, searchPattern, searchPattern, searchPattern];
+
+        if (category) {
+          likeSearch += ' AND category = ?';
+          likeParams.push(category);
+        }
+        if (status) {
+          likeSearch += ' AND status = ?';
+          likeParams.push(status);
+        }
+
+        const countResult = db.prepare(likeSearch.replace('SELECT *', 'SELECT COUNT(*) as count')).get(...likeParams);
+        total = countResult.count;
+
+        likeSearch += ' ORDER BY name LIMIT ? OFFSET ?';
+        likeParams.push(parseInt(limit), offset);
+        products = db.prepare(likeSearch).all(...likeParams);
+      }
+    } else {
+      // No search - simple filtered query
+      let query = 'SELECT * FROM products WHERE 1=1';
+      const params = [];
+
+      if (category) {
+        query += ' AND category = ?';
+        params.push(category);
+      }
+      
+      if (status) {
+        query += ' AND status = ?';
+        params.push(status);
+      }
+
+      // Get total count
+      const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
+      const totalResult = db.prepare(countQuery).get(...params);
+      total = totalResult.count;
+
+      // Add pagination
+      query += ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
+      params.push(parseInt(limit), offset);
+      products = db.prepare(query).all(...params);
     }
-    
-    if (status) {
-      query += ' AND status = ?';
-      params.push(status);
-    }
-    
-    if (search) {
-      query += ' AND (name LIKE ? OR productId LIKE ? OR category LIKE ? OR barcode LIKE ?)';
-      const searchPattern = `%${search}%`;
-      params.push(searchPattern, searchPattern, searchPattern, searchPattern);
-    }
-
-    // Get total count
-    const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
-    const totalResult = db.prepare(countQuery).get(...params);
-    const total = totalResult.count;
-
-    // Add pagination
-    const offset = (page - 1) * limit;
-    query += ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
-    params.push(parseInt(limit), offset);
-
-    const products = db.prepare(query).all(...params);
 
     // Parse metadata JSON for each product
     const productsWithMetadata = products.map(p => ({
@@ -55,7 +110,7 @@ export const getAllProducts = async (req, res) => {
         products: productsWithMetadata,
         total,
         page: parseInt(page),
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
@@ -270,26 +325,86 @@ export const searchProducts = async (req, res) => {
   try {
     const { q } = req.query;
     
-    if (!q) {
+    if (!q || q.trim().length === 0) {
       return res.json({
         success: true,
         data: []
       });
     }
 
-    const searchPattern = `%${q}%`;
-    const results = db.prepare(`
+    const query = q.trim();
+    let results = [];
+
+    // Strategy 1: Exact barcode match (fastest - uses index, O(1))
+    const exactBarcode = db.prepare(`
       SELECT * FROM products 
-      WHERE status = 'active' 
-        AND (name LIKE ? OR productId LIKE ? OR barcode LIKE ?)
-      LIMIT 10
-    `).all(searchPattern, searchPattern, searchPattern);
+      WHERE status = 'active' AND barcode = ?
+    `).get(query);
+    
+    if (exactBarcode) {
+      return res.json({
+        success: true,
+        data: [exactBarcode]
+      });
+    }
+
+    // Strategy 2: Exact productId match (fast - primary key)
+    const exactProductId = db.prepare(`
+      SELECT * FROM products 
+      WHERE status = 'active' AND productId = ?
+    `).get(query);
+    
+    if (exactProductId) {
+      return res.json({
+        success: true,
+        data: [exactProductId]
+      });
+    }
+
+    // Strategy 3: FTS5 full-text search (fast - inverted index)
+    // Use prefix search for partial matching
+    try {
+      const ftsQuery = query.replace(/[^\w\s]/g, '') + '*'; // Add wildcard for prefix search
+      results = db.prepare(`
+        SELECT p.* FROM products p
+        INNER JOIN products_fts fts ON p.rowid = fts.rowid
+        WHERE p.status = 'active' 
+          AND products_fts MATCH ?
+        ORDER BY rank
+        LIMIT 15
+      `).all(ftsQuery);
+    } catch (ftsError) {
+      // FTS might fail on special characters, fall back to LIKE
+      results = [];
+    }
+
+    // Strategy 4: Fallback to LIKE if FTS returns nothing (handles special chars, partial matches)
+    if (results.length === 0) {
+      const searchPattern = `%${query}%`;
+      results = db.prepare(`
+        SELECT * FROM products 
+        WHERE status = 'active' 
+          AND (name LIKE ? OR productId LIKE ? OR barcode LIKE ? OR category LIKE ?)
+        ORDER BY 
+          CASE 
+            WHEN barcode LIKE ? THEN 1
+            WHEN productId LIKE ? THEN 2
+            WHEN name LIKE ? THEN 3
+            ELSE 4
+          END
+        LIMIT 15
+      `).all(
+        searchPattern, searchPattern, searchPattern, searchPattern,
+        searchPattern, searchPattern, `${query}%`
+      );
+    }
 
     res.json({
       success: true,
       data: results
     });
   } catch (error) {
+    console.error('Search error:', error);
     res.status(500).json({
       success: false,
       message: 'Search failed'

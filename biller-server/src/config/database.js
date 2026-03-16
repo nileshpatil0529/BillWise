@@ -63,6 +63,60 @@ const initializeDatabase = () => {
   // Create index for barcode lookup
   db.exec(`CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_products_productId ON products(productId)`);
+
+  // Create FTS5 virtual table for fast full-text search
+  // FTS5 uses inverted index - O(1) lookup instead of O(n) table scan
+  db.exec(`
+    CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
+      productId,
+      name,
+      barcode,
+      category,
+      content='products',
+      content_rowid='rowid'
+    )
+  `);
+
+  // Triggers to keep FTS index in sync with products table
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS products_ai AFTER INSERT ON products BEGIN
+      INSERT INTO products_fts(rowid, productId, name, barcode, category)
+      VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.barcode, NEW.category);
+    END
+  `);
+
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS products_ad AFTER DELETE ON products BEGIN
+      INSERT INTO products_fts(products_fts, rowid, productId, name, barcode, category)
+      VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.barcode, OLD.category);
+    END
+  `);
+
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS products_au AFTER UPDATE ON products BEGIN
+      INSERT INTO products_fts(products_fts, rowid, productId, name, barcode, category)
+      VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.barcode, OLD.category);
+      INSERT INTO products_fts(rowid, productId, name, barcode, category)
+      VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.barcode, NEW.category);
+    END
+  `);
+
+  // Rebuild FTS index if needed (for existing data)
+  try {
+    const ftsCount = db.prepare('SELECT COUNT(*) as count FROM products_fts').get();
+    const productsCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
+    if (ftsCount.count !== productsCount.count) {
+      console.log('🔄 Rebuilding FTS index...');
+      db.exec(`INSERT INTO products_fts(products_fts) VALUES('rebuild')`);
+      console.log('✅ FTS index rebuilt');
+    }
+  } catch (e) {
+    // FTS table might be new, rebuild it
+    db.exec(`INSERT INTO products_fts(products_fts) VALUES('rebuild')`);
+  }
 
   // Bills table
   db.exec(`

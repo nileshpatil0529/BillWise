@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -17,6 +17,7 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
 import { ProductService } from '../../../core/services/product.service';
 import { SettingsService } from '../../../core/services/settings.service';
@@ -50,7 +51,7 @@ import { ProductDialogComponent } from './product-dialog/product-dialog.componen
   templateUrl: './products.component.html',
   styleUrl: './products.component.scss'
 })
-export class ProductsComponent implements OnInit {
+export class ProductsComponent implements OnInit, OnDestroy {
   @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
 
@@ -60,6 +61,14 @@ export class ProductsComponent implements OnInit {
   searchQuery = signal('');
   selectedCategory = signal('');
 
+  // Server-side pagination
+  pageIndex = signal(0);
+  pageSize = signal(10);
+  totalProducts = signal(0);
+
+  private searchSubject = new Subject<string>();
+  private destroy$ = new Subject<void>();
+
   constructor(
     public productService: ProductService,
     public settingsService: SettingsService,
@@ -68,12 +77,29 @@ export class ProductsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    this.loadProducts();
+    // Load categories and initial products
     this.productService.getCategories().subscribe();
+    this.loadProducts();
+    
+    // Setup search with debounce
+    this.searchSubject.pipe(
+      debounceTime(300),
+      distinctUntilChanged(),
+      takeUntil(this.destroy$)
+    ).subscribe(query => {
+      this.searchQuery.set(query);
+      this.pageIndex.set(0); // Reset to first page on search
+      this.loadProducts();
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   ngAfterViewInit(): void {
-    this.dataSource.paginator = this.paginator;
+    // Don't set client-side paginator - we use server-side pagination
     this.dataSource.sort = this.sort;
   }
 
@@ -81,11 +107,14 @@ export class ProductsComponent implements OnInit {
     this.loading.set(true);
     this.productService.getProducts({
       category: this.selectedCategory() || undefined,
-      search: this.searchQuery() || undefined
+      search: this.searchQuery() || undefined,
+      page: this.pageIndex() + 1, // API uses 1-based page
+      limit: this.pageSize()
     }).subscribe({
       next: (response) => {
         if (response.success) {
           this.dataSource.data = response.data.products;
+          this.totalProducts.set(response.data.total);
         }
         this.loading.set(false);
       },
@@ -96,13 +125,20 @@ export class ProductsComponent implements OnInit {
     });
   }
 
+  onPageChange(event: any): void {
+    this.pageIndex.set(event.pageIndex);
+    this.pageSize.set(event.pageSize);
+    this.loadProducts();
+  }
+
   applyFilter(event: Event): void {
     const filterValue = (event.target as HTMLInputElement).value;
-    this.dataSource.filter = filterValue.trim().toLowerCase();
+    this.searchSubject.next(filterValue.trim());
+  }
 
-    if (this.dataSource.paginator) {
-      this.dataSource.paginator.firstPage();
-    }
+  onCategoryChange(): void {
+    this.pageIndex.set(0); // Reset to first page on category change
+    this.loadProducts();
   }
 
   openAddDialog(): void {

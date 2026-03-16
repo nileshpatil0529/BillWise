@@ -93,9 +93,8 @@ export class BillsComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
+    // setDatePreset already calls loadBills() and loadReport() internally
     this.setDatePreset('today');
-    this.loadBills();
-    this.loadReport();
   }
 
   ngAfterViewInit(): void {

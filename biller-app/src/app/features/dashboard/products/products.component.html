@@ -44,7 +44,7 @@
 
       <mat-form-field appearance="outline" class="category-field">
         <mat-label>Category</mat-label>
-        <mat-select [value]="selectedCategory()" (selectionChange)="selectedCategory.set($event.value); loadProducts()">
+        <mat-select [value]="selectedCategory()" (selectionChange)="selectedCategory.set($event.value); onCategoryChange()">
           <mat-option value="">All Categories</mat-option>
           @for (category of productService.categories(); track category) {
             <mat-option [value]="category">{{ category }}</mat-option>
@@ -162,7 +162,11 @@
       </table>
     </div>
 
-    <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]"
+    <mat-paginator [length]="totalProducts()"
+                   [pageIndex]="pageIndex()"
+                   [pageSize]="pageSize()"
+                   [pageSizeOptions]="[10, 25, 50, 100]"
+                   (page)="onPageChange($event)"
                    showFirstLastButtons
                    aria-label="Select page of products">
     </mat-paginator>

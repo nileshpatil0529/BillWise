@@ -102,10 +102,7 @@ export class HomeComponent implements OnInit {
   }
 
   ngOnInit(): void {
-    // Load all products on page visit
-    this.loadProducts();
-    
-    // Setup search with debounce
+    // Setup search with debounce - products loaded on search only
     this.searchSubject.pipe(
       debounceTime(300)
     ).subscribe(query => {
@@ -115,10 +112,6 @@ export class HomeComponent implements OnInit {
         this.searchResults.set([]);
       }
     });
-  }
-
-  loadProducts(): void {
-    this.productService.getProducts({ status: 'active', limit: 500 }).subscribe();
   }
 
   onSearchInput(event: Event): void {
