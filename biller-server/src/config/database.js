@@ -177,6 +177,7 @@ const initializeDatabase = () => {
       scannerType TEXT DEFAULT 'none',
       taxEnabled INTEGER DEFAULT 1,
       taxRates TEXT DEFAULT '[{"name":"GST 5%","rate":5},{"name":"GST 12%","rate":12},{"name":"GST 18%","rate":18}]',
+      discountEnabled INTEGER DEFAULT 1,
       invoicePrefix TEXT DEFAULT 'INV',
       invoiceStartNumber INTEGER DEFAULT 1,
       footerText TEXT DEFAULT 'Thank you for your business!',
@@ -192,6 +193,18 @@ const initializeDatabase = () => {
     db.prepare(`
       INSERT INTO settings (id) VALUES (1)
     `).run();
+  }
+
+  // Migration: Add discountEnabled column if it doesn't exist
+  try {
+    const columns = db.prepare('PRAGMA table_info(settings)').all();
+    const hasDiscountEnabled = columns.some(col => col.name === 'discountEnabled');
+    if (!hasDiscountEnabled) {
+      db.exec('ALTER TABLE settings ADD COLUMN discountEnabled INTEGER DEFAULT 1');
+      console.log('✅ Migration: Added discountEnabled column');
+    }
+  } catch (e) {
+    // Column might already exist
   }
 
   // Insert default admin user if not exists

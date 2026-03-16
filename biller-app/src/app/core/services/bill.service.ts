@@ -21,7 +21,14 @@ export class BillService {
     this.cartItems().reduce((sum, item) => sum + (item.unitPrice * item.quantity), 0)
   );
   
-  cartDiscount = computed(() => this.billDiscount());
+  cartDiscount = computed(() => {
+    // Check if discount is enabled in settings
+    const settings = this.settingsService.settings();
+    if (!settings.discountEnabled) {
+      return 0;
+    }
+    return this.billDiscount();
+  });
   
   cartTax = computed(() => {
     // Check if tax is enabled in settings
@@ -31,7 +38,7 @@ export class BillService {
     }
     
     const subtotal = this.cartSubtotal();
-    const discount = this.billDiscount();
+    const discount = this.cartDiscount();
     const taxableAmount = subtotal - discount;
     const items = this.cartItems();
     if (items.length === 0) return 0;

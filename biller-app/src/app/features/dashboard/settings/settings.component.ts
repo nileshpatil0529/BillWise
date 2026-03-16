@@ -93,7 +93,8 @@ export class SettingsComponent implements OnInit {
       taxEnabled: [true],
       taxName: ['GST', Validators.required],
       taxRate: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
-      taxNumber: ['']
+      taxNumber: [''],
+      discountEnabled: [true]
     });
 
     this.receiptForm = this.fb.group({
@@ -123,7 +124,8 @@ export class SettingsComponent implements OnInit {
       taxEnabled: settings.taxEnabled ?? settings.taxRates?.length > 0,
       taxName: taxRate.name,
       taxRate: taxRate.rate,
-      taxNumber: settings.taxNumber
+      taxNumber: settings.taxNumber,
+      discountEnabled: settings.discountEnabled ?? true
     });
 
     this.receiptForm.patchValue({
@@ -222,7 +224,8 @@ export class SettingsComponent implements OnInit {
       taxEnabled: formValue.taxEnabled,
       taxRates: formValue.taxEnabled 
         ? [{ name: formValue.taxName, rate: formValue.taxRate }]
-        : []
+        : [],
+      discountEnabled: formValue.discountEnabled
     };
 
     this.settingsService.updateSettings(settings).subscribe({

@@ -27,6 +27,7 @@ export interface Settings {
   scannerType: ScannerType;
   taxEnabled: boolean;
   taxRates: TaxRate[];
+  discountEnabled: boolean;
   invoicePrefix: string;
   invoiceStartNumber: number;
   footerText: string;

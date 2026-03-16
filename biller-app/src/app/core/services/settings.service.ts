@@ -27,6 +27,7 @@ export class SettingsService {
     scannerType: 'none',
     taxEnabled: true,
     taxRates: [],
+    discountEnabled: true,
     invoicePrefix: 'INV',
     invoiceStartNumber: 1,
     footerText: 'Thank you for your business!',

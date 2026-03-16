@@ -163,17 +163,19 @@
             <span>Subtotal</span>
             <span>{{ formatCurrency(billService.cartSubtotal()) }}</span>
           </div>
-          <div class="summary-row discount-row">
-            <span>Discount</span>
-            <div class="discount-input">
-              <span class="prefix">- {{ settingsService.settings().currency }}</span>
-              <input type="number" 
-                     [value]="billService.billDiscount()" 
-                     (input)="billService.billDiscount.set(+$any($event.target).value)"
-                     min="0"
-                     placeholder="0">
+          @if (settingsService.settings().discountEnabled) {
+            <div class="summary-row discount-row">
+              <span>Discount</span>
+              <div class="discount-input">
+                <span class="prefix">- {{ settingsService.settings().currency }}</span>
+                <input type="number" 
+                       [value]="billService.billDiscount()" 
+                       (input)="billService.billDiscount.set(+$any($event.target).value)"
+                       min="0"
+                       placeholder="0">
+              </div>
             </div>
-          </div>
+          }
           @if (settingsService.settings().taxEnabled) {
             <div class="summary-row">
               <span>Tax</span>
