@@ -144,6 +144,23 @@ const initializeDatabase = () => {
   // Create indexes for bills
   db.exec(`CREATE INDEX IF NOT EXISTS idx_bills_createdAt ON bills(createdAt)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_bills_paymentStatus ON bills(paymentStatus)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bills_customerPhone ON bills(customerPhone)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bills_paymentMethod ON bills(paymentMethod)`);
+
+  // Borrowers table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS borrowers (
+      borrowerId TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      phone TEXT UNIQUE NOT NULL,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Create indexes for borrowers
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_borrowers_phone ON borrowers(phone)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_borrowers_name ON borrowers(name)`);
 
   // Bill items table
   db.exec(`
@@ -202,6 +219,11 @@ const initializeDatabase = () => {
     if (!hasDiscountEnabled) {
       db.exec('ALTER TABLE settings ADD COLUMN discountEnabled INTEGER DEFAULT 1');
       console.log('✅ Migration: Added discountEnabled column');
+    }
+    const hasDebtEnabled = columns.some(col => col.name === 'debtEnabled');
+    if (!hasDebtEnabled) {
+      db.exec('ALTER TABLE settings ADD COLUMN debtEnabled INTEGER DEFAULT 0');
+      console.log('✅ Migration: Added debtEnabled column');
     }
   } catch (e) {
     // Column might already exist

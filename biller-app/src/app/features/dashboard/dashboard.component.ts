@@ -1,4 +1,4 @@
-import { Component, signal, OnInit, ViewChild } from '@angular/core';
+import { Component, signal, computed, OnInit, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
@@ -44,12 +44,20 @@ export class DashboardComponent implements OnInit {
   sidenavOpened = signal(true);
   isMobile = signal(false);
 
-  menuItems: MenuItem[] = [
+  private baseMenuItems: MenuItem[] = [
     { icon: 'home', label: 'Home', route: '/dashboard/home' },
     { icon: 'inventory_2', label: 'Products', route: '/dashboard/products' },
-    { icon: 'receipt_long', label: 'Bills & Reports', route: '/dashboard/bills' },
-    { icon: 'settings', label: 'Settings', route: '/dashboard/settings' }
+    { icon: 'receipt_long', label: 'Bills & Reports', route: '/dashboard/bills' }
   ];
+
+  menuItems = computed(() => {
+    const items = [...this.baseMenuItems];
+    if (this.settingsService.settings().debtEnabled) {
+      items.push({ icon: 'account_balance_wallet', label: 'Borrowers', route: '/dashboard/borrowers' });
+    }
+    items.push({ icon: 'settings', label: 'Settings', route: '/dashboard/settings' });
+    return items;
+  });
 
   constructor(
     public authService: AuthService,

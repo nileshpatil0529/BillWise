@@ -166,13 +166,15 @@
           <mat-card-actions align="end">
             <button mat-flat-button color="primary" (click)="saveGeneralSettings()" [disabled]="saving()">
               @if (saving()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                Saving...
+                <span class="button-content">
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Saving...
+                </span>
               } @else {
-                <ng-container>
+                <span class="button-content">
                   <mat-icon>save</mat-icon>
                   Save Changes
-                </ng-container>
+                </span>
               }
             </button>
           </mat-card-actions>
@@ -242,19 +244,31 @@
                 </div>
                 <mat-slide-toggle formControlName="discountEnabled"></mat-slide-toggle>
               </div>
+
+              <mat-divider></mat-divider>
+
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <span class="toggle-title">Enable Debt</span>
+                  <span class="toggle-description">Allow debt payment method and manage borrowers</span>
+                </div>
+                <mat-slide-toggle formControlName="debtEnabled"></mat-slide-toggle>
+              </div>
             </form>
           </mat-card-content>
 
           <mat-card-actions align="end">
             <button mat-flat-button color="primary" (click)="saveTaxSettings()" [disabled]="saving()">
               @if (saving()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                Saving...
+                <span class="button-content">
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Saving...
+                </span>
               } @else {
-                <ng-container>
+                <span class="button-content">
                   <mat-icon>save</mat-icon>
                   Save Changes
-                </ng-container>
+                </span>
               }
             </button>
           </mat-card-actions>
@@ -317,13 +331,15 @@
           <mat-card-actions align="end">
             <button mat-flat-button color="primary" (click)="saveReceiptSettings()" [disabled]="saving()">
               @if (saving()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                Saving...
+                <span class="button-content">
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Saving...
+                </span>
               } @else {
-                <ng-container>
+                <span class="button-content">
                   <mat-icon>save</mat-icon>
                   Save Changes
-                </ng-container>
+                </span>
               }
             </button>
           </mat-card-actions>

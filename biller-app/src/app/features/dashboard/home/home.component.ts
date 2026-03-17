@@ -10,7 +10,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatSelectModule } from '@angular/material/select';
 import { MatRadioModule } from '@angular/material/radio';
 import { MatDividerModule } from '@angular/material/divider';
-import { MatAutocompleteModule } from '@angular/material/autocomplete';
+import { MatAutocompleteModule, MatAutocompleteSelectedEvent } from '@angular/material/autocomplete';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -22,7 +22,9 @@ import { ProductService } from '../../../core/services/product.service';
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { BeepService } from '../../../core/services/beep.service';
+import { BorrowerService } from '../../../core/services/borrower.service';
 import { Product, CartItem } from '../../../core/models/product.model';
+import { Borrower } from '../../../core/models/borrower.model';
 import { BarcodeScannerDialogComponent, ScannerDialogData } from './barcode-scanner-dialog/barcode-scanner-dialog.component';
 import { InlineScannerComponent } from './inline-scanner/inline-scanner.component';
 
@@ -69,6 +71,10 @@ export class HomeComponent implements OnInit {
   customerName = signal('');
   customerPhone = signal('');
 
+  // Borrower search
+  borrowerSuggestions = signal<Borrower[]>([]);
+  private borrowerSearchSubject = new Subject<string>();
+
   // Business type specific fields
   businessTypeForm: FormGroup;
 
@@ -83,7 +89,8 @@ export class HomeComponent implements OnInit {
     private snackBar: MatSnackBar,
     private fb: FormBuilder,
     private dialog: MatDialog,
-    private beepService: BeepService
+    private beepService: BeepService,
+    private borrowerService: BorrowerService
   ) {
     this.businessTypeForm = this.fb.group({
       // Hotel fields
@@ -112,6 +119,63 @@ export class HomeComponent implements OnInit {
         this.searchResults.set([]);
       }
     });
+
+    // Setup borrower search with debounce
+    this.borrowerSearchSubject.pipe(
+      debounceTime(300)
+    ).subscribe(query => {
+      if (query && query.length >= 2 && this.paymentMethod() === 'debt') {
+        this.searchBorrowers(query);
+      } else {
+        this.borrowerSuggestions.set([]);
+      }
+    });
+  }
+
+  private searchBorrowers(query: string): void {
+    this.borrowerService.searchBorrowers(query).subscribe({
+      next: (response) => {
+        this.borrowerSuggestions.set(response.data || []);
+      },
+      error: () => {
+        this.borrowerSuggestions.set([]);
+      }
+    });
+  }
+
+  onCustomerNameInput(value: string): void {
+    this.customerName.set(value);
+    this.borrowerSearchSubject.next(value);
+  }
+
+  onCustomerPhoneInput(value: string): void {
+    this.customerPhone.set(value);
+    this.borrowerSearchSubject.next(value);
+  }
+
+  onBorrowerSelected(event: MatAutocompleteSelectedEvent): void {
+    const borrower = this.borrowerSuggestions().find(b => b.name === event.option.value);
+    if (borrower) {
+      this.customerName.set(borrower.name);
+      this.customerPhone.set(borrower.phone);
+      this.borrowerSuggestions.set([]);
+    }
+  }
+
+  onBorrowerPhoneSelected(event: MatAutocompleteSelectedEvent): void {
+    const borrower = this.borrowerSuggestions().find(b => b.phone === event.option.value);
+    if (borrower) {
+      this.customerName.set(borrower.name);
+      this.customerPhone.set(borrower.phone);
+      this.borrowerSuggestions.set([]);
+    }
+  }
+
+  onPaymentMethodChange(value: 'cash' | 'card' | 'online' | 'debt'): void {
+    this.paymentMethod.set(value);
+    if (value !== 'debt') {
+      this.borrowerSuggestions.set([]);
+    }
   }
 
   onSearchInput(event: Event): void {
@@ -214,6 +278,24 @@ export class HomeComponent implements OnInit {
         panelClass: ['warning-snackbar']
       });
       return;
+    }
+
+    // Validate customer info for debt payment
+    if (this.paymentMethod() === 'debt') {
+      if (!this.customerName().trim()) {
+        this.snackBar.open('Customer name is required for debt payment', 'Close', { 
+          duration: 3000,
+          panelClass: ['warning-snackbar']
+        });
+        return;
+      }
+      if (!this.customerPhone().trim()) {
+        this.snackBar.open('Phone number is required for debt payment', 'Close', { 
+          duration: 3000,
+          panelClass: ['warning-snackbar']
+        });
+        return;
+      }
     }
 
     const billData = {

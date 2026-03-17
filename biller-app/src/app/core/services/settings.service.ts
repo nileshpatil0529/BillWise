@@ -28,6 +28,7 @@ export class SettingsService {
     taxEnabled: true,
     taxRates: [],
     discountEnabled: true,
+    debtEnabled: false,
     invoicePrefix: 'INV',
     invoiceStartNumber: 1,
     footerText: 'Thank you for your business!',

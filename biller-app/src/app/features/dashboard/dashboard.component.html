@@ -18,7 +18,7 @@
     </div>
 
     <mat-nav-list class="nav-list">
-      @for (item of menuItems; track item.route) {
+      @for (item of menuItems(); track item.route) {
         <a mat-list-item
            [routerLink]="item.route"
            [class.active]="isActive(item.route)"

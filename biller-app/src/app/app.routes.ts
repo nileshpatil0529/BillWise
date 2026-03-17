@@ -37,6 +37,10 @@ export const routes: Routes = [
       {
         path: 'settings',
         loadComponent: () => import('./features/dashboard/settings/settings.component').then(m => m.SettingsComponent)
+      },
+      {
+        path: 'borrowers',
+        loadComponent: () => import('./features/dashboard/borrowers/borrowers.component').then(m => m.BorrowersComponent)
       }
     ]
   },

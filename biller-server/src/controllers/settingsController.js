@@ -51,6 +51,7 @@ export const getSettings = async (req, res) => {
       taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
       taxEnabled: Boolean(settings.taxEnabled),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
+      debtEnabled: Boolean(settings.debtEnabled ?? 0),
       lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)
     };
 
@@ -76,7 +77,7 @@ export const updateSettings = async (req, res) => {
     const allowedFields = [
       'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber',
       'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
-      'taxEnabled', 'taxRates', 'discountEnabled', 'invoicePrefix', 'invoiceStartNumber',
+      'taxEnabled', 'taxRates', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
       'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
     ];
 
@@ -90,7 +91,7 @@ export const updateSettings = async (req, res) => {
         // Handle special conversions
         if (field === 'taxRates') {
           values.push(JSON.stringify(updates[field]));
-        } else if (field === 'taxEnabled' || field === 'discountEnabled' || field === 'lowStockAlertEnabled') {
+        } else if (field === 'taxEnabled' || field === 'discountEnabled' || field === 'debtEnabled' || field === 'lowStockAlertEnabled') {
           values.push(updates[field] ? 1 : 0);
         } else {
           values.push(updates[field]);
@@ -115,6 +116,7 @@ export const updateSettings = async (req, res) => {
       taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
       taxEnabled: Boolean(settings.taxEnabled),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
+      debtEnabled: Boolean(settings.debtEnabled ?? 0),
       lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)
     };
 

@@ -28,6 +28,7 @@ export interface Settings {
   taxEnabled: boolean;
   taxRates: TaxRate[];
   discountEnabled: boolean;
+  debtEnabled: boolean;
   invoicePrefix: string;
   invoiceStartNumber: number;
   footerText: string;

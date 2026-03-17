@@ -44,25 +44,21 @@
           }
         </mat-form-field>
 
-        <div class="form-options">
-          <mat-checkbox formControlName="rememberMe" color="primary">
-            Remember me
-          </mat-checkbox>
-        </div>
-
         <button mat-raised-button 
                 color="primary" 
                 type="submit" 
                 class="login-button"
                 [disabled]="loading()">
           @if (loading()) {
-            <mat-spinner diameter="20"></mat-spinner>
-            Signing In...
+            <span class="button-content">
+              <mat-spinner diameter="20"></mat-spinner>
+              Signing In...
+            </span>
           } @else {
-            <ng-container>
+            <span class="button-content">
               <mat-icon>login</mat-icon>
               Sign In
-            </ng-container>
+            </span>
           }
         </button>
       </form>

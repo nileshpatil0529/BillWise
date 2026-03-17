@@ -617,6 +617,25 @@
     flex-direction: column;
     gap: v.$spacing-sm;
   }
+
+  .borrower-option {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+
+    .borrower-name {
+      font-weight: 500;
+    }
+
+    .borrower-phone {
+      color: v.$light-text-secondary;
+      font-size: 12px;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+  }
 }
 
 // Bill Summary Card

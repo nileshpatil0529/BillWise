@@ -122,26 +122,18 @@
       width: 100%;
     }
 
-    .form-options {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: v.$spacing-md;
-
-      mat-checkbox {
-        font-size: 14px;
-      }
-    }
-
     .login-button {
       width: 100%;
       height: 48px;
       font-size: 16px;
       font-weight: 500;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: v.$spacing-sm;
+
+      .button-content {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: v.$spacing-sm;
+      }
 
       mat-icon {
         font-size: 20px;

@@ -1,0 +1,192 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+:host {
+  display: block;
+}
+
+.borrowers-container {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-md;
+}
+
+// Page Header
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: v.$spacing-md;
+
+  .header-title {
+    h1 {
+      margin-bottom: v.$spacing-xs;
+      
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+
+    .subtitle {
+      color: v.$light-text-secondary;
+      margin: 0;
+
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+  }
+
+  .header-actions {
+    button {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-xs;
+    }
+  }
+  
+  @include m.mobile {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
+
+// Search Card
+.search-card {
+  padding: v.$spacing-md;
+
+  .search-field {
+    width: 100%;
+    margin-bottom: 0;
+
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+  }
+}
+
+// Table Card
+.table-card {
+  padding: 0;
+  position: relative;
+
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 10;
+
+    @include m.dark-theme {
+      background: rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  .table-container {
+    overflow-x: auto;
+    overflow-y: visible;
+    @include m.custom-scrollbar;
+  }
+
+  .borrowers-table {
+    width: 100%;
+    min-width: 500px;
+
+    th.mat-mdc-header-cell {
+      background-color: white;
+
+      @include m.dark-theme {
+        color: white;
+        background-color: v.$dark-surface-light;
+      }
+    }
+
+    td.mat-mdc-cell {
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+
+    .clickable-row {
+      cursor: pointer;
+      transition: background-color 0.15s ease;
+      
+      &:hover {
+        background-color: rgba(v.$light-primary, 0.04);
+        
+        @include m.dark-theme {
+          background-color: rgba(v.$dark-primary, 0.08);
+        }
+      }
+    }
+
+    .borrower-name {
+      font-weight: 500;
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+
+    mat-chip {
+      &.status-paid {
+        --mdc-chip-elevated-container-color: #{rgba(v.$light-success, 0.15)};
+        --mdc-chip-label-text-color: #{v.$light-success};
+        
+        @include m.dark-theme {
+          --mdc-chip-elevated-container-color: #{rgba(v.$dark-success, 0.2)};
+          --mdc-chip-label-text-color: #{v.$dark-success};
+        }
+      }
+
+      &.status-pending {
+        --mdc-chip-elevated-container-color: #{rgba(v.$light-warning, 0.15)};
+        --mdc-chip-label-text-color: #{v.$light-warning};
+        
+        @include m.dark-theme {
+          --mdc-chip-elevated-container-color: #{rgba(v.$dark-warning, 0.2)};
+          --mdc-chip-label-text-color: #{v.$dark-warning};
+        }
+      }
+    }
+  }
+
+  .no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: v.$spacing-xl;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      margin-bottom: v.$spacing-md;
+      
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.4);
+      }
+    }
+  }
+}
+
+// Paginator
+mat-paginator {
+  @include m.dark-theme {
+    background-color: transparent;
+    color: white;
+  }
+}

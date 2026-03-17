@@ -8,6 +8,7 @@ import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import billRoutes from './routes/billRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
+import borrowerRoutes from './routes/borrowerRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Load environment variables
@@ -45,6 +46,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/bills', billRoutes);
 app.use('/api/settings', settingsRoutes);
+app.use('/api/borrowers', borrowerRoutes);
 
 // Error handling
 app.use(notFound);
