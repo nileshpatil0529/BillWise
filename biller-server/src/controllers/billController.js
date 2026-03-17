@@ -33,12 +33,12 @@ export const getAllBills = async (req, res) => {
     const params = [];
 
     if (startDate) {
-      query += ' AND DATE(createdAt) >= DATE(?)';
+      query += ' AND createdAt >= ?';
       params.push(startDate);
     }
 
     if (endDate) {
-      query += ' AND DATE(createdAt) <= DATE(?)';
+      query += ' AND createdAt <= ?';
       params.push(endDate);
     }
 
@@ -291,12 +291,12 @@ export const getReport = async (req, res) => {
     const params = [];
 
     if (startDate) {
-      query += ' AND DATE(createdAt) >= DATE(?)';
+      query += ' AND createdAt >= ?';
       params.push(startDate);
     }
 
     if (endDate) {
-      query += ' AND DATE(createdAt) <= DATE(?)';
+      query += ' AND createdAt <= ?';
       params.push(endDate);
     }
 

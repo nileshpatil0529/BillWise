@@ -13,16 +13,16 @@ import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 
-import { BorrowerService } from '../../../../core/services/borrower.service';
+import { CustomerService } from '../../../../core/services/customer.service';
 import { SettingsService } from '../../../../core/services/settings.service';
-import { BorrowerWithDebts, BorrowerDebt } from '../../../../core/models/borrower.model';
+import { CustomerWithDebts, CustomerDebt } from '../../../../core/models/customer.model';
 
-export interface BorrowerDetailDialogData {
-  borrowerId: string;
+export interface CustomerDetailDialogData {
+  customerId: string;
 }
 
 @Component({
-  selector: 'app-borrower-detail-dialog',
+  selector: 'app-customer-detail-dialog',
   standalone: true,
   imports: [
     CommonModule,
@@ -43,21 +43,21 @@ export interface BorrowerDetailDialogData {
     @if (loading()) {
       <div class="loading-container">
         <mat-spinner diameter="40"></mat-spinner>
-        <p>Loading borrower details...</p>
+        <p>Loading customer details...</p>
       </div>
-    } @else if (borrower()) {
+    } @else if (customer()) {
       <div class="dialog-header">
-        <div class="borrower-info">
-          <h2 class="borrower-name">{{ borrower()!.name }}</h2>
-          <span class="borrower-phone">
+        <div class="customer-info">
+          <h2 class="customer-name">{{ customer()!.name }}</h2>
+          <span class="customer-phone">
             <mat-icon>phone</mat-icon>
-            {{ borrower()!.phone }}
+            {{ customer()!.phone }}
           </span>
         </div>
         <div class="total-debt-container">
           <span class="debt-label">Total Debt</span>
-          <mat-chip [class]="borrower()!.totalDebt > 0 ? 'status-pending' : 'status-paid'">
-            {{ formatCurrency(borrower()!.totalDebt) }}
+          <mat-chip [class]="customer()!.totalDebt > 0 ? 'status-pending' : 'status-paid'">
+            {{ formatCurrency(customer()!.totalDebt) }}
           </mat-chip>
         </div>
       </div>
@@ -67,13 +67,13 @@ export interface BorrowerDetailDialogData {
       <mat-dialog-content>
         <h3>Unpaid Bills</h3>
 
-        @if (borrower()!.debts.length === 0) {
+        @if (customer()!.debts.length === 0) {
           <div class="empty-state">
             <mat-icon>check_circle</mat-icon>
             <p>No unpaid bills</p>
           </div>
         } @else {
-          <table mat-table [dataSource]="borrower()!.debts" class="debts-table">
+          <table mat-table [dataSource]="customer()!.debts" class="debts-table">
             <!-- Remaining Column -->
             <ng-container matColumnDef="remaining">
               <th mat-header-cell *matHeaderCellDef>Remaining</th>
@@ -117,13 +117,13 @@ export interface BorrowerDetailDialogData {
       </mat-dialog-content>
 
       <mat-dialog-actions>
-        @if (borrower()!.debts.length > 0) {
+        @if (customer()!.debts.length > 0) {
           <button mat-raised-button color="primary" 
                   (click)="payAllDebts()" 
                   [disabled]="paying()"
                   matTooltip="Pay all remaining debts">
             <mat-icon>payments</mat-icon>
-            Pay All ({{ formatCurrency(borrower()!.totalDebt) }})
+            Pay All ({{ formatCurrency(customer()!.totalDebt) }})
           </button>
         }
         <span class="spacer"></span>
@@ -147,21 +147,21 @@ export interface BorrowerDetailDialogData {
       flex-wrap: wrap;
     }
 
-    .borrower-info {
+    .customer-info {
       display: flex;
       flex-direction: column;
       gap: 4px;
       min-width: 0;
       flex: 1;
 
-      .borrower-name {
+      .customer-name {
         margin: 0;
         font-size: 20px;
         font-weight: 500;
         word-break: break-word;
       }
 
-      .borrower-phone {
+      .customer-phone {
         display: flex;
         align-items: center;
         gap: 4px;
@@ -289,7 +289,7 @@ export interface BorrowerDetailDialogData {
         padding: 12px 16px;
       }
 
-      .borrower-info .borrower-name {
+      .customer-info .customer-name {
         font-size: 18px;
       }
 
@@ -307,12 +307,12 @@ export interface BorrowerDetailDialogData {
     }
   `]
 })
-export class BorrowerDetailDialogComponent implements OnInit {
-  private borrowerService = inject(BorrowerService);
+export class CustomerDetailDialogComponent implements OnInit {
+  private customerService = inject(CustomerService);
   private settingsService = inject(SettingsService);
   private snackBar = inject(MatSnackBar);
 
-  borrower = signal<BorrowerWithDebts | null>(null);
+  customer = signal<CustomerWithDebts | null>(null);
   loading = signal(true);
   paying = signal(false);
   paymentAmounts: Map<string, number> = new Map();
@@ -320,20 +320,20 @@ export class BorrowerDetailDialogComponent implements OnInit {
   displayedColumns = ['remaining', 'date', 'pay'];
 
   constructor(
-    private dialogRef: MatDialogRef<BorrowerDetailDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: BorrowerDetailDialogData
+    private dialogRef: MatDialogRef<CustomerDetailDialogComponent>,
+    @Inject(MAT_DIALOG_DATA) public data: CustomerDetailDialogData
   ) {}
 
   ngOnInit(): void {
-    this.loadBorrower();
+    this.loadCustomer();
   }
 
-  loadBorrower(): void {
+  loadCustomer(): void {
     this.loading.set(true);
-    this.borrowerService.getBorrowerById(this.data.borrowerId).subscribe({
+    this.customerService.getCustomerById(this.data.customerId).subscribe({
       next: (response) => {
         if (response.success) {
-          this.borrower.set(response.data);
+          this.customer.set(response.data);
           // Initialize payment amounts
           response.data.debts.forEach(debt => {
             this.paymentAmounts.set(debt.billId, debt.remainingAmount);
@@ -360,7 +360,7 @@ export class BorrowerDetailDialogComponent implements OnInit {
     this.paymentAmounts.set(billId, amount);
   }
 
-  payDebt(debt: BorrowerDebt): void {
+  payDebt(debt: CustomerDebt): void {
     const amount = this.paymentAmounts.get(debt.billId) || 0;
     
     if (amount <= 0) {
@@ -374,10 +374,10 @@ export class BorrowerDetailDialogComponent implements OnInit {
     }
 
     this.paying.set(true);
-    this.borrowerService.payDebt(this.data.borrowerId, debt.billId, amount).subscribe({
+    this.customerService.payDebt(this.data.customerId, debt.billId, amount).subscribe({
       next: (response) => {
         this.snackBar.open(response.message, 'Close', { duration: 3000 });
-        this.loadBorrower();
+        this.loadCustomer();
         this.paying.set(false);
       },
       error: (error) => {
@@ -388,20 +388,20 @@ export class BorrowerDetailDialogComponent implements OnInit {
   }
 
   payAllDebts(): void {
-    const borrowerData = this.borrower();
-    if (!borrowerData || borrowerData.debts.length === 0) return;
+    const customerData = this.customer();
+    if (!customerData || customerData.debts.length === 0) return;
 
     this.paying.set(true);
     let completed = 0;
-    const total = borrowerData.debts.length;
+    const total = customerData.debts.length;
 
-    borrowerData.debts.forEach(debt => {
-      this.borrowerService.payDebt(this.data.borrowerId, debt.billId, debt.remainingAmount).subscribe({
+    customerData.debts.forEach(debt => {
+      this.customerService.payDebt(this.data.customerId, debt.billId, debt.remainingAmount).subscribe({
         next: () => {
           completed++;
           if (completed === total) {
             this.snackBar.open('All debts paid successfully!', 'Close', { duration: 3000 });
-            this.loadBorrower();
+            this.loadCustomer();
             this.paying.set(false);
           }
         },
@@ -409,7 +409,7 @@ export class BorrowerDetailDialogComponent implements OnInit {
           completed++;
           this.snackBar.open(error.error?.message || 'Failed to process some payments', 'Close', { duration: 3000 });
           if (completed === total) {
-            this.loadBorrower();
+            this.loadCustomer();
             this.paying.set(false);
           }
         }

@@ -1,33 +1,33 @@
 import db from '../config/database.js';
 import { v4 as uuidv4 } from 'uuid';
 
-// Get all borrowers
-export const getBorrowers = async (req, res) => {
+// Get all customers
+export const getCustomers = async (req, res) => {
   try {
-    const borrowers = db.prepare(`
+    const customers = db.prepare(`
       SELECT b.*, 
         COALESCE(SUM(CASE WHEN bills.paymentStatus != 'paid' THEN bills.grandTotal - bills.amountPaid ELSE 0 END), 0) as totalDebt
-      FROM borrowers b
+      FROM customers b
       LEFT JOIN bills ON bills.customerPhone = b.phone AND bills.paymentMethod = 'debt'
-      GROUP BY b.borrowerId
+      GROUP BY b.customerId
       ORDER BY b.name ASC
     `).all();
 
     res.json({
       success: true,
-      data: borrowers
+      data: customers
     });
   } catch (error) {
-    console.error('Get borrowers error:', error);
+    console.error('Get customers error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch borrowers'
+      message: 'Failed to fetch customers'
     });
   }
 };
 
-// Search borrowers by name or phone
-export const searchBorrowers = async (req, res) => {
+// Search customers by name or phone
+export const searchCustomers = async (req, res) => {
   try {
     const { q } = req.query;
     
@@ -35,78 +35,78 @@ export const searchBorrowers = async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const borrowers = db.prepare(`
+    const customers = db.prepare(`
       SELECT b.*, 
         COALESCE(SUM(CASE WHEN bills.paymentStatus != 'paid' THEN bills.grandTotal - bills.amountPaid ELSE 0 END), 0) as totalDebt
-      FROM borrowers b
+      FROM customers b
       LEFT JOIN bills ON bills.customerPhone = b.phone AND bills.paymentMethod = 'debt'
       WHERE b.name LIKE ? OR b.phone LIKE ?
-      GROUP BY b.borrowerId
+      GROUP BY b.customerId
       ORDER BY b.name ASC
       LIMIT 10
     `).all(`%${q}%`, `%${q}%`);
 
     res.json({
       success: true,
-      data: borrowers
+      data: customers
     });
   } catch (error) {
-    console.error('Search borrowers error:', error);
+    console.error('Search customers error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to search borrowers'
+      message: 'Failed to search customers'
     });
   }
 };
 
-// Get borrower by ID with debt details
-export const getBorrowerById = async (req, res) => {
+// Get customer by ID with debt details
+export const getCustomerById = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const borrower = db.prepare(`
+    const customer = db.prepare(`
       SELECT b.*, 
         COALESCE(SUM(CASE WHEN bills.paymentStatus != 'paid' THEN bills.grandTotal - bills.amountPaid ELSE 0 END), 0) as totalDebt
-      FROM borrowers b
+      FROM customers b
       LEFT JOIN bills ON bills.customerPhone = b.phone AND bills.paymentMethod = 'debt'
-      WHERE b.borrowerId = ?
-      GROUP BY b.borrowerId
+      WHERE b.customerId = ?
+      GROUP BY b.customerId
     `).get(id);
 
-    if (!borrower) {
+    if (!customer) {
       return res.status(404).json({
         success: false,
-        message: 'Borrower not found'
+        message: 'customer not found'
       });
     }
 
-    // Get all debt bills for this borrower
+    // Get all debt bills for this customer
     const debts = db.prepare(`
       SELECT billId, billNumber, grandTotal as amount, amountPaid as paidAmount, 
         (grandTotal - amountPaid) as remainingAmount, createdAt
       FROM bills
       WHERE customerPhone = ? AND paymentMethod = 'debt' AND paymentStatus != 'paid'
       ORDER BY createdAt DESC
-    `).all(borrower.phone);
+    `).all(customer.phone);
 
     res.json({
       success: true,
       data: {
-        ...borrower,
+        ...customer,
         debts
       }
     });
   } catch (error) {
-    console.error('Get borrower error:', error);
+    console.error('Get customer error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to fetch borrower'
+      message: 'Failed to fetch customer'
     });
   }
 };
 
-// Create a new borrower
-export const createBorrower = async (req, res) => {
+// Create a new customer
+export const createCustomer = async (req, res) => {
   try {
     const { name, phone } = req.body;
 
@@ -118,106 +118,106 @@ export const createBorrower = async (req, res) => {
     }
 
     // Check if phone number already exists
-    const existing = db.prepare('SELECT * FROM borrowers WHERE phone = ?').get(phone);
+    const existing = db.prepare('SELECT * FROM customers WHERE phone = ?').get(phone);
     if (existing) {
       return res.status(400).json({
         success: false,
-        message: 'A borrower with this phone number already exists'
+        message: 'A customer with this phone number already exists'
       });
     }
 
-    const borrowerId = `BOR-${uuidv4().slice(0, 8).toUpperCase()}`;
+    const customerId = `CUST-${uuidv4().slice(0, 8).toUpperCase()}`;
     const now = new Date().toISOString();
 
     db.prepare(`
-      INSERT INTO borrowers (borrowerId, name, phone, createdAt, updatedAt)
+      INSERT INTO customers (customerId, name, phone, createdAt, updatedAt)
       VALUES (?, ?, ?, ?, ?)
-    `).run(borrowerId, name, phone, now, now);
+    `).run(customerId, name, phone, now, now);
 
-    const newBorrower = db.prepare('SELECT * FROM borrowers WHERE borrowerId = ?').get(borrowerId);
+    const newcustomer = db.prepare('SELECT * FROM customers WHERE customerId = ?').get(customerId);
 
     res.status(201).json({
       success: true,
-      message: 'Borrower created successfully',
-      data: { ...newBorrower, totalDebt: 0 }
+      message: 'customer created successfully',
+      data: { ...newcustomer, totalDebt: 0 }
     });
   } catch (error) {
-    console.error('Create borrower error:', error);
+    console.error('Create customer error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to create borrower'
+      message: 'Failed to create customer'
     });
   }
 };
 
-// Update a borrower
-export const updateBorrower = async (req, res) => {
+// Update a customer
+export const updateCustomer = async (req, res) => {
   try {
     const { id } = req.params;
     const { name, phone } = req.body;
 
-    const existing = db.prepare('SELECT * FROM borrowers WHERE borrowerId = ?').get(id);
+    const existing = db.prepare('SELECT * FROM customers WHERE customerId = ?').get(id);
     if (!existing) {
       return res.status(404).json({
         success: false,
-        message: 'Borrower not found'
+        message: 'customer not found'
       });
     }
 
-    // Check if phone number already exists for another borrower
+    // Check if phone number already exists for another customer
     if (phone && phone !== existing.phone) {
-      const phoneExists = db.prepare('SELECT * FROM borrowers WHERE phone = ? AND borrowerId != ?').get(phone, id);
+      const phoneExists = db.prepare('SELECT * FROM customers WHERE phone = ? AND customerId != ?').get(phone, id);
       if (phoneExists) {
         return res.status(400).json({
           success: false,
-          message: 'A borrower with this phone number already exists'
+          message: 'A customer with this phone number already exists'
         });
       }
     }
 
     const now = new Date().toISOString();
     db.prepare(`
-      UPDATE borrowers SET name = ?, phone = ?, updatedAt = ?
-      WHERE borrowerId = ?
+      UPDATE customers SET name = ?, phone = ?, updatedAt = ?
+      WHERE customerId = ?
     `).run(name || existing.name, phone || existing.phone, now, id);
 
-    const updatedBorrower = db.prepare(`
+    const updatedcustomer = db.prepare(`
       SELECT b.*, 
         COALESCE(SUM(CASE WHEN bills.paymentStatus != 'paid' THEN bills.grandTotal - bills.amountPaid ELSE 0 END), 0) as totalDebt
-      FROM borrowers b
+      FROM customers b
       LEFT JOIN bills ON bills.customerPhone = b.phone AND bills.paymentMethod = 'debt'
-      WHERE b.borrowerId = ?
-      GROUP BY b.borrowerId
+      WHERE b.customerId = ?
+      GROUP BY b.customerId
     `).get(id);
 
     res.json({
       success: true,
-      message: 'Borrower updated successfully',
-      data: updatedBorrower
+      message: 'customer updated successfully',
+      data: updatedcustomer
     });
   } catch (error) {
-    console.error('Update borrower error:', error);
+    console.error('Update customer error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to update borrower'
+      message: 'Failed to update customer'
     });
   }
 };
 
-// Delete a borrower
-export const deleteBorrower = async (req, res) => {
+// Delete a customer
+export const deleteCustomer = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const existing = db.prepare('SELECT * FROM borrowers WHERE borrowerId = ?').get(id);
+    const existing = db.prepare('SELECT * FROM customers WHERE customerId = ?').get(id);
     if (!existing) {
       return res.status(404).json({
         success: false,
-        message: 'Borrower not found'
+        message: 'customer not found'
       });
     }
 
-    // Check if borrower has unpaid debts
+    // Check if customer has unpaid debts
     const unpaidDebts = db.prepare(`
       SELECT COUNT(*) as count FROM bills 
       WHERE customerPhone = ? AND paymentMethod = 'debt' AND paymentStatus != 'paid'
@@ -226,21 +226,21 @@ export const deleteBorrower = async (req, res) => {
     if (unpaidDebts.count > 0) {
       return res.status(400).json({
         success: false,
-        message: 'Cannot delete borrower with unpaid debts'
+        message: 'Cannot delete customer with unpaid debts'
       });
     }
 
-    db.prepare('DELETE FROM borrowers WHERE borrowerId = ?').run(id);
+    db.prepare('DELETE FROM customers WHERE customerId = ?').run(id);
 
     res.json({
       success: true,
-      message: 'Borrower deleted successfully'
+      message: 'customer deleted successfully'
     });
   } catch (error) {
-    console.error('Delete borrower error:', error);
+    console.error('Delete customer error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to delete borrower'
+      message: 'Failed to delete customer'
     });
   }
 };
@@ -258,19 +258,19 @@ export const payDebt = async (req, res) => {
       });
     }
 
-    const borrower = db.prepare('SELECT * FROM borrowers WHERE borrowerId = ?').get(id);
-    if (!borrower) {
+    const customer = db.prepare('SELECT * FROM customers WHERE customerId = ?').get(id);
+    if (!customer) {
       return res.status(404).json({
         success: false,
-        message: 'Borrower not found'
+        message: 'customer not found'
       });
     }
 
-    const bill = db.prepare('SELECT * FROM bills WHERE billId = ? AND customerPhone = ?').get(billId, borrower.phone);
+    const bill = db.prepare('SELECT * FROM bills WHERE billId = ? AND customerPhone = ?').get(billId, customer.phone);
     if (!bill) {
       return res.status(404).json({
         success: false,
-        message: 'Bill not found for this borrower'
+        message: 'Bill not found for this customer'
       });
     }
 

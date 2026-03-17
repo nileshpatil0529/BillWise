@@ -1,5 +1,5 @@
-export interface Borrower {
-  borrowerId: string;
+export interface Customer {
+  customerId: string;
   name: string;
   phone: string;
   totalDebt: number;
@@ -7,7 +7,7 @@ export interface Borrower {
   updatedAt?: string;
 }
 
-export interface BorrowerDebt {
+export interface CustomerDebt {
   billId: string;
   billNumber: string;
   amount: number;
@@ -16,17 +16,17 @@ export interface BorrowerDebt {
   createdAt: string;
 }
 
-export interface BorrowerWithDebts extends Borrower {
-  debts: BorrowerDebt[];
+export interface CustomerWithDebts extends Customer {
+  debts: CustomerDebt[];
 }
 
-export interface BorrowerResponse {
+export interface CustomerResponse {
   success: boolean;
-  data: Borrower[];
+  data: Customer[];
   total?: number;
 }
 
-export interface BorrowerDetailResponse {
+export interface CustomerDetailResponse {
   success: boolean;
-  data: BorrowerWithDebts;
+  data: CustomerWithDebts;
 }

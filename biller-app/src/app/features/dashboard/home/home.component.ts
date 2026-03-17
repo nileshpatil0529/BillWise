@@ -22,9 +22,9 @@ import { ProductService } from '../../../core/services/product.service';
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { BeepService } from '../../../core/services/beep.service';
-import { BorrowerService } from '../../../core/services/borrower.service';
+import { CustomerService } from '../../../core/services/customer.service';
 import { Product, CartItem } from '../../../core/models/product.model';
-import { Borrower } from '../../../core/models/borrower.model';
+import { Customer } from '../../../core/models/customer.model';
 import { BarcodeScannerDialogComponent, ScannerDialogData } from './barcode-scanner-dialog/barcode-scanner-dialog.component';
 import { InlineScannerComponent } from './inline-scanner/inline-scanner.component';
 
@@ -71,9 +71,21 @@ export class HomeComponent implements OnInit {
   customerName = signal('');
   customerPhone = signal('');
 
-  // Borrower search
-  borrowerSuggestions = signal<Borrower[]>([]);
-  private borrowerSearchSubject = new Subject<string>();
+  // Computed signal to check if Save Bill button should be disabled
+  isSaveBillDisabled = computed(() => {
+    if (this.billService.cartItems().length === 0) {
+      return true;
+    }
+    // If payment method is debt, customer info is required
+    if (this.paymentMethod() === 'debt') {
+      return !this.customerName().trim() || !this.customerPhone().trim();
+    }
+    return false;
+  });
+
+  // customer search
+  customerSuggestions = signal<Customer[]>([]);
+  private customerSearchSubject = new Subject<string>();
 
   // Business type specific fields
   businessTypeForm: FormGroup;
@@ -90,7 +102,7 @@ export class HomeComponent implements OnInit {
     private fb: FormBuilder,
     private dialog: MatDialog,
     private beepService: BeepService,
-    private borrowerService: BorrowerService
+    private customerService: CustomerService
   ) {
     this.businessTypeForm = this.fb.group({
       // Hotel fields
@@ -120,61 +132,61 @@ export class HomeComponent implements OnInit {
       }
     });
 
-    // Setup borrower search with debounce
-    this.borrowerSearchSubject.pipe(
+    // Setup customer search with debounce
+    this.customerSearchSubject.pipe(
       debounceTime(300)
     ).subscribe(query => {
       if (query && query.length >= 2 && this.paymentMethod() === 'debt') {
-        this.searchBorrowers(query);
+        this.searchCustomers(query);
       } else {
-        this.borrowerSuggestions.set([]);
+        this.customerSuggestions.set([]);
       }
     });
   }
 
-  private searchBorrowers(query: string): void {
-    this.borrowerService.searchBorrowers(query).subscribe({
+  private searchCustomers(query: string): void {
+    this.customerService.searchCustomers(query).subscribe({
       next: (response) => {
-        this.borrowerSuggestions.set(response.data || []);
+        this.customerSuggestions.set(response.data || []);
       },
       error: () => {
-        this.borrowerSuggestions.set([]);
+        this.customerSuggestions.set([]);
       }
     });
   }
 
   onCustomerNameInput(value: string): void {
     this.customerName.set(value);
-    this.borrowerSearchSubject.next(value);
+    this.customerSearchSubject.next(value);
   }
 
   onCustomerPhoneInput(value: string): void {
     this.customerPhone.set(value);
-    this.borrowerSearchSubject.next(value);
+    this.customerSearchSubject.next(value);
   }
 
-  onBorrowerSelected(event: MatAutocompleteSelectedEvent): void {
-    const borrower = this.borrowerSuggestions().find(b => b.name === event.option.value);
-    if (borrower) {
-      this.customerName.set(borrower.name);
-      this.customerPhone.set(borrower.phone);
-      this.borrowerSuggestions.set([]);
+  oncustomerSelected(event: MatAutocompleteSelectedEvent): void {
+    const customer = this.customerSuggestions().find(b => b.name === event.option.value);
+    if (customer) {
+      this.customerName.set(customer.name);
+      this.customerPhone.set(customer.phone);
+      this.customerSuggestions.set([]);
     }
   }
 
-  onBorrowerPhoneSelected(event: MatAutocompleteSelectedEvent): void {
-    const borrower = this.borrowerSuggestions().find(b => b.phone === event.option.value);
-    if (borrower) {
-      this.customerName.set(borrower.name);
-      this.customerPhone.set(borrower.phone);
-      this.borrowerSuggestions.set([]);
+  oncustomerPhoneSelected(event: MatAutocompleteSelectedEvent): void {
+    const customer = this.customerSuggestions().find(b => b.phone === event.option.value);
+    if (customer) {
+      this.customerName.set(customer.name);
+      this.customerPhone.set(customer.phone);
+      this.customerSuggestions.set([]);
     }
   }
 
   onPaymentMethodChange(value: 'cash' | 'card' | 'online' | 'debt'): void {
     this.paymentMethod.set(value);
     if (value !== 'debt') {
-      this.borrowerSuggestions.set([]);
+      this.customerSuggestions.set([]);
     }
   }
 

@@ -147,10 +147,10 @@ const initializeDatabase = () => {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_bills_customerPhone ON bills(customerPhone)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_bills_paymentMethod ON bills(paymentMethod)`);
 
-  // Borrowers table
+  // Customers table
   db.exec(`
-    CREATE TABLE IF NOT EXISTS borrowers (
-      borrowerId TEXT PRIMARY KEY,
+    CREATE TABLE IF NOT EXISTS customers (
+      customerId TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       phone TEXT UNIQUE NOT NULL,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
@@ -158,9 +158,9 @@ const initializeDatabase = () => {
     )
   `);
 
-  // Create indexes for borrowers
-  db.exec(`CREATE INDEX IF NOT EXISTS idx_borrowers_phone ON borrowers(phone)`);
-  db.exec(`CREATE INDEX IF NOT EXISTS idx_borrowers_name ON borrowers(name)`);
+  // Create indexes for customers
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_customers_phone ON customers(phone)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_customers_name ON customers(name)`);
 
   // Bill items table
   db.exec(`

@@ -106,28 +106,32 @@ export class BillsComponent implements OnInit {
     this.selectedPreset.set(preset);
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
 
     switch (preset) {
       case 'today':
         this.startDate.set(today);
-        this.endDate.set(new Date());
+        this.endDate.set(endOfToday);
         break;
       case 'yesterday':
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
+        const endOfYesterday = new Date(yesterday);
+        endOfYesterday.setHours(23, 59, 59, 999);
         this.startDate.set(yesterday);
-        this.endDate.set(today);
+        this.endDate.set(endOfYesterday);
         break;
       case 'week':
         const weekStart = new Date(today);
         weekStart.setDate(weekStart.getDate() - 7);
         this.startDate.set(weekStart);
-        this.endDate.set(new Date());
+        this.endDate.set(endOfToday);
         break;
       case 'month':
         const monthStart = new Date(today.getFullYear(), today.getMonth(), 1);
         this.startDate.set(monthStart);
-        this.endDate.set(new Date());
+        this.endDate.set(endOfToday);
         break;
     }
 

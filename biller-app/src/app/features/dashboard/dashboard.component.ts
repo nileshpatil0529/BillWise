@@ -53,7 +53,7 @@ export class DashboardComponent implements OnInit {
   menuItems = computed(() => {
     const items = [...this.baseMenuItems];
     if (this.settingsService.settings().debtEnabled) {
-      items.push({ icon: 'account_balance_wallet', label: 'Borrowers', route: '/dashboard/borrowers' });
+      items.push({ icon: 'account_balance_wallet', label: 'Customers', route: '/dashboard/customers' });
     }
     items.push({ icon: 'settings', label: 'Settings', route: '/dashboard/settings' });
     return items;

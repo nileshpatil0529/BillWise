@@ -39,8 +39,8 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/settings/settings.component').then(m => m.SettingsComponent)
       },
       {
-        path: 'borrowers',
-        loadComponent: () => import('./features/dashboard/borrowers/borrowers.component').then(m => m.BorrowersComponent)
+        path: 'customers',
+        loadComponent: () => import('./features/dashboard/customers/customers.component').then(m => m.CustomersComponent)
       }
     ]
   },
