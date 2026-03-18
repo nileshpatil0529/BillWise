@@ -1,0 +1,51 @@
+<h2 mat-dialog-title>
+  <mat-icon>print</mat-icon>
+  Print Barcode
+</h2>
+
+<mat-dialog-content>
+  <div class="product-info">
+    <p><strong>Product:</strong> {{ data.product.name }}</p>
+    <p><strong>Barcode:</strong> {{ data.product.barcode || 'N/A' }}</p>
+  </div>
+
+  <form [formGroup]="printForm">
+    <mat-form-field appearance="outline">
+      <mat-label>Number of Barcodes</mat-label>
+      <input matInput 
+             type="number" 
+             formControlName="quantity"
+             min="1"
+             max="100"
+             placeholder="Enter quantity">
+      <mat-icon matPrefix>format_list_numbered</mat-icon>
+      @if (printForm.get('quantity')?.hasError('required')) {
+        <mat-error>Quantity is required</mat-error>
+      }
+      @if (printForm.get('quantity')?.hasError('min')) {
+        <mat-error>Quantity must be at least 1</mat-error>
+      }
+      @if (printForm.get('quantity')?.hasError('max')) {
+        <mat-error>Maximum 100 barcodes at once</mat-error>
+      }
+    </mat-form-field>
+  </form>
+
+  @if (!data.product.barcode) {
+    <div class="warning-message">
+      <mat-icon>warning</mat-icon>
+      <span>This product doesn't have a barcode assigned.</span>
+    </div>
+  }
+</mat-dialog-content>
+
+<mat-dialog-actions align="end">
+  <button mat-button (click)="onCancel()">Cancel</button>
+  <button mat-raised-button 
+          color="primary" 
+          (click)="onPrint()"
+          [disabled]="printForm.invalid || !data.product.barcode">
+    <mat-icon>print</mat-icon>
+    Print
+  </button>
+</mat-dialog-actions>

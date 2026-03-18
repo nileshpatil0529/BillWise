@@ -9,7 +9,8 @@ import {
   searchProducts,
   importProducts,
   exportProducts,
-  getCategories
+  getCategories,
+  printBarcode
 } from '../controllers/productController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -25,6 +26,7 @@ router.get('/search', searchProducts);
 router.get('/categories', getCategories);
 router.get('/export', exportProducts);
 router.post('/import', upload.single('file'), importProducts);
+router.post('/print-barcode', printBarcode);
 router.get('/:id', getProductById);
 router.post('/', createProduct);
 router.put('/:id', updateProduct);

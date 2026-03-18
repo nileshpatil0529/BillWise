@@ -1,4 +1,6 @@
 import * as XLSX from 'xlsx';
+import bwipjs from 'bwip-js';
+import { ThermalPrinter, PrinterTypes } from 'node-thermal-printer';
 import db from '../config/database.js';
 
 // Generate unique product ID
@@ -547,6 +549,136 @@ export const getCategories = async (req, res) => {
   }
 };
 
+export const printBarcode = async (req, res) => {
+  try {
+    const { barcode, quantity = 1 } = req.body;
+
+    if (!barcode) {
+      return res.status(400).json({
+        success: false,
+        message: 'Barcode is required'
+      });
+    }
+
+    if (quantity < 1 || quantity > 100) {
+      return res.status(400).json({
+        success: false,
+        message: 'Quantity must be between 1 and 100'
+      });
+    }
+
+    // Get product details for additional information
+    const product = db.prepare('SELECT * FROM products WHERE barcode = ?').get(barcode);
+
+    if (!product) {
+      return res.status(404).json({
+        success: false,
+        message: 'Product not found with this barcode'
+      });
+    }
+
+    // Initialize thermal printer
+    // You may need to configure the printer interface based on your setup
+    // Common interfaces: 'tcp://192.168.1.100' for network printer
+    //                   '\\\\.\\COM3' for Windows serial printer
+    //                   '/dev/usb/lp0' for Linux USB printer
+    const printer = new ThermalPrinter({
+      type: PrinterTypes.EPSON,  // Or PrinterTypes.STAR
+      interface: process.env.PRINTER_INTERFACE || 'tcp://localhost:9100',
+      characterSet: 'PC437_USA',
+      removeSpecialCharacters: false,
+      lineCharacter: '-',
+      options: {
+        timeout: 5000
+      }
+    });
+
+    // Check if printer is connected
+    let isPrinterConnected = false;
+    try {
+      isPrinterConnected = await printer.isPrinterConnected();
+    } catch (error) {
+      console.error('Printer connection check failed:', error.message);
+    }
+
+    if (!isPrinterConnected) {
+      return res.status(503).json({
+        success: false,
+        message: 'Thermal printer not connected. Please check printer connection and configure PRINTER_INTERFACE in .env file.'
+      });
+    }
+
+    // Generate and print barcodes
+    for (let i = 0; i < quantity; i++) {
+      try {
+        // Generate barcode image using bwip-js
+        const barcodeBuffer = await bwipjs.toBuffer({
+          bcid: 'code128',       // Barcode type
+          text: barcode,          // Text to encode
+          scale: 3,               // 3x scaling factor
+          height: 10,             // Bar height, in millimeters
+          includetext: true,      // Show human-readable text
+          textxalign: 'center',   // Center the text
+        });
+
+        printer.alignCenter();
+        
+        // Print product name
+        printer.bold(true);
+        printer.println(product.name.substring(0, 32)); // Limit to 32 chars for 58mm printer
+        printer.bold(false);
+        
+        // Print barcode image
+        await printer.printImage(barcodeBuffer);
+        
+        // Print price
+        printer.setTextSize(0, 0);
+        printer.println(`Price: ${product.unitPrice.toFixed(2)}`);
+        
+        // Add spacing between labels
+        printer.newLine();
+        printer.drawLine();
+        printer.newLine();
+
+        // Cut paper after each label (or after all labels, depending on preference)
+        if (i === quantity - 1) {
+          printer.cut();
+        }
+
+      } catch (barcodeError) {
+        console.error(`Error generating barcode ${i + 1}:`, barcodeError);
+        throw new Error(`Failed to generate barcode: ${barcodeError.message}`);
+      }
+    }
+
+    try {
+      await printer.execute();
+      console.log(`Successfully printed ${quantity} barcode(s) for product: ${product.name}`);
+    } catch (printError) {
+      console.error('Print execution failed:', printError);
+      throw new Error(`Failed to send to printer: ${printError.message}`);
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully printed ${quantity} barcode(s)`,
+      data: {
+        barcode,
+        quantity,
+        productName: product.name
+      }
+    });
+
+  } catch (error) {
+    console.error('Print barcode error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to print barcode',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   getAllProducts,
   getProductById,
@@ -556,5 +688,6 @@ export default {
   searchProducts,
   importProducts,
   exportProducts,
-  getCategories
+  getCategories,
+  printBarcode
 };

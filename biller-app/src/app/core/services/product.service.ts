@@ -91,4 +91,11 @@ export class ProductService {
       responseType: 'blob'
     });
   }
+
+  printBarcode(barcode: string, quantity: number): Observable<any> {
+    return this.http.post(`${this.API_URL}/print-barcode`, {
+      barcode,
+      quantity
+    });
+  }
 }

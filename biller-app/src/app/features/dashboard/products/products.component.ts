@@ -23,6 +23,7 @@ import { ProductService } from '../../../core/services/product.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { Product } from '../../../core/models/product.model';
 import { ProductDialogComponent } from './product-dialog/product-dialog.component';
+import { BarcodePrintDialogComponent } from './barcode-print-dialog/barcode-print-dialog.component';
 
 @Component({
   selector: 'app-products',
@@ -256,5 +257,35 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
   formatCurrency(amount: number): string {
     return this.settingsService.formatCurrency(amount);
+  }
+
+  openPrintBarcodeDialog(product: Product): void {
+    const dialogRef = this.dialog.open(BarcodePrintDialogComponent, {
+      width: '500px',
+      data: { product }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result && product.barcode) {
+        this.loading.set(true);
+        this.productService.printBarcode(product.barcode, result.quantity).subscribe({
+          next: (response: any) => {
+            this.loading.set(false);
+            if (response.success) {
+              this.snackBar.open(
+                `Sent ${result.quantity} barcode(s) to printer successfully`,
+                'Close',
+                { duration: 3000, panelClass: ['success-snackbar'] }
+              );
+            }
+          },
+          error: (error: any) => {
+            this.loading.set(false);
+            const message = error.error?.message || 'Failed to print barcode';
+            this.snackBar.open(message, 'Close', { duration: 5000 });
+          }
+        });
+      }
+    });
   }
 }

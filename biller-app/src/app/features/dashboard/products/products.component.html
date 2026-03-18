@@ -138,6 +138,10 @@
                 <mat-icon>edit</mat-icon>
                 <span>Edit</span>
               </button>
+              <button mat-menu-item (click)="openPrintBarcodeDialog(product)">
+                <mat-icon>print</mat-icon>
+                <span>Print Barcode</span>
+              </button>
               <button mat-menu-item (click)="deleteProduct(product)" class="delete-action">
                 <mat-icon>delete</mat-icon>
                 <span>Delete</span>
