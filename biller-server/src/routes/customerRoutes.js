@@ -7,7 +7,8 @@ import {
   createCustomer,
   updateCustomer,
   deleteCustomer,
-  payDebt
+  payDebt,
+  getCustomerBills
 } from '../controllers/customerController.js';
 
 const router = express.Router();
@@ -20,6 +21,9 @@ router.get('/', getCustomers);
 
 // GET /api/customers/search - Search customers
 router.get('/search', searchCustomers);
+
+// GET /api/customers/:id/bills - Get all bills for a customer
+router.get('/:id/bills', getCustomerBills);
 
 // GET /api/customers/:id - Get customer by ID with debt details
 router.get('/:id', getCustomerById);

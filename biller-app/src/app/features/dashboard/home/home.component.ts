@@ -70,6 +70,8 @@ export class HomeComponent implements OnInit {
   paymentMethod = signal<'cash' | 'card' | 'online' | 'debt'>('online');
   customerName = signal('');
   customerPhone = signal('');
+  showAddCustomerButton = signal(false);
+  private addCustomerTimeout: any = null;
 
   // Computed signal to check if Save Bill button should be disabled
   isSaveBillDisabled = computed(() => {
@@ -145,12 +147,38 @@ export class HomeComponent implements OnInit {
   }
 
   private searchCustomers(query: string): void {
+    // Clear any existing timeout
+    if (this.addCustomerTimeout) {
+      clearTimeout(this.addCustomerTimeout);
+      this.addCustomerTimeout = null;
+    }
+    this.showAddCustomerButton.set(false);
+
     this.customerService.searchCustomers(query).subscribe({
       next: (response) => {
         this.customerSuggestions.set(response.data || []);
+        
+        // If no results and payment method is debt, show Add Customer button after 1 second
+        if ((!response.data || response.data.length === 0) && 
+            this.paymentMethod() === 'debt' && 
+            this.customerName().trim() && 
+            this.customerPhone().trim()) {
+          this.addCustomerTimeout = setTimeout(() => {
+            this.showAddCustomerButton.set(true);
+          }, 1000);
+        }
       },
       error: () => {
         this.customerSuggestions.set([]);
+        
+        // Show Add Customer button after 1 second on error too if all conditions are met
+        if (this.paymentMethod() === 'debt' && 
+            this.customerName().trim() && 
+            this.customerPhone().trim()) {
+          this.addCustomerTimeout = setTimeout(() => {
+            this.showAddCustomerButton.set(true);
+          }, 1000);
+        }
       }
     });
   }
@@ -158,11 +186,21 @@ export class HomeComponent implements OnInit {
   onCustomerNameInput(value: string): void {
     this.customerName.set(value);
     this.customerSearchSubject.next(value);
+    this.showAddCustomerButton.set(false);
+    if (this.addCustomerTimeout) {
+      clearTimeout(this.addCustomerTimeout);
+      this.addCustomerTimeout = null;
+    }
   }
 
   onCustomerPhoneInput(value: string): void {
     this.customerPhone.set(value);
     this.customerSearchSubject.next(value);
+    this.showAddCustomerButton.set(false);
+    if (this.addCustomerTimeout) {
+      clearTimeout(this.addCustomerTimeout);
+      this.addCustomerTimeout = null;
+    }
   }
 
   oncustomerSelected(event: MatAutocompleteSelectedEvent): void {
@@ -181,6 +219,29 @@ export class HomeComponent implements OnInit {
       this.customerPhone.set(customer.phone);
       this.customerSuggestions.set([]);
     }
+  }
+
+  addCustomer(): void {
+    const name = this.customerName().trim();
+    const phone = this.customerPhone().trim();
+
+    if (!name || !phone) {
+      this.snackBar.open('Please enter both customer name and phone number', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.customerService.createCustomer({ name, phone }).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.snackBar.open('Customer added successfully', 'Close', { duration: 3000 });
+          this.showAddCustomerButton.set(false);
+          this.customerSuggestions.set([]);
+        }
+      },
+      error: (error) => {
+        this.snackBar.open(error.error?.message || 'Failed to add customer', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onPaymentMethodChange(value: 'cash' | 'card' | 'online' | 'debt'): void {

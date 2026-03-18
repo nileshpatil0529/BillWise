@@ -58,4 +58,10 @@ export class CustomerService {
       amount
     });
   }
+
+  getCustomerBills(customerId: string, page: number = 1, limit: number = 100): Observable<any> {
+    return this.http.get<any>(`${this.API_URL}/${customerId}/bills`, {
+      params: { page: page.toString(), limit: limit.toString() }
+    });
+  }
 }

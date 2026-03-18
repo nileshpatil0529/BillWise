@@ -953,6 +953,16 @@
             }
           }
         }
+
+        .add-customer-btn {
+          width: 100%;
+          margin-top: v.$spacing-xs;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: v.$spacing-xs;
+          font-weight: 500;
+        }
       }
     }
 

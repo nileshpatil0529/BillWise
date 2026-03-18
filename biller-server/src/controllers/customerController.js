@@ -296,3 +296,82 @@ export const payDebt = async (req, res) => {
     });
   }
 };
+
+// Get all bills for a customer with pagination and efficient fetching
+export const getCustomerBills = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 100 } = req.query;
+
+    // Get customer to retrieve phone
+    const customer = db.prepare('SELECT * FROM customers WHERE customerId = ?').get(id);
+    
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // Get total count for pagination
+    const countResult = db.prepare(`
+      SELECT COUNT(*) as count FROM bills 
+      WHERE customerPhone = ?
+    `).get(customer.phone);
+    
+    const total = countResult.count;
+
+    // Fetch bills with items efficiently using pagination
+    const offset = (page - 1) * limit;
+    const bills = db.prepare(`
+      SELECT * FROM bills 
+      WHERE customerPhone = ?
+      ORDER BY createdAt DESC
+      LIMIT ? OFFSET ?
+    `).all(customer.phone, parseInt(limit), offset);
+
+    // Get items for each bill in a single batch query
+    const billIds = bills.map(b => b.billId);
+    let billsWithItems = [];
+    
+    if (billIds.length > 0) {
+      // Fetch all items for these bills at once
+      const placeholders = billIds.map(() => '?').join(',');
+      const allItems = db.prepare(`
+        SELECT * FROM bill_items WHERE billId IN (${placeholders})
+      `).all(...billIds);
+      
+      // Group items by billId
+      const itemsByBill = allItems.reduce((acc, item) => {
+        if (!acc[item.billId]) acc[item.billId] = [];
+        acc[item.billId].push(item);
+        return acc;
+      }, {});
+      
+      // Combine bills with their items
+      billsWithItems = bills.map(bill => ({
+        ...bill,
+        items: itemsByBill[bill.billId] || [],
+        businessTypeData: bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {}
+      }));
+    }
+
+    res.json({
+      success: true,
+      data: {
+        bills: billsWithItems,
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        totalPages: Math.ceil(total / limit),
+        hasMore: page * limit < total
+      }
+    });
+  } catch (error) {
+    console.error('Get customer bills error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch customer bills'
+    });
+  }
+};

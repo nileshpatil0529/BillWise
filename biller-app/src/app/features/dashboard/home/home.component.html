@@ -257,6 +257,13 @@
                   }
                 </mat-autocomplete>
               </mat-form-field>
+              
+              @if (showAddCustomerButton() && paymentMethod() === 'debt') {
+                <button mat-raised-button color="accent" (click)="addCustomer()" class="add-customer-btn">
+                  <mat-icon>person_add</mat-icon>
+                  Add Customer
+                </button>
+              }
             </div>
           </div>
         </mat-card-content>
