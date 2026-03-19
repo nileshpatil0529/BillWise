@@ -439,8 +439,10 @@ export const printBill = async (req, res) => {
       });
     }
 
-    // Get bill items
-    const billItems = JSON.parse(bill.items || '[]');
+    // Get bill items from bill_items table
+    const billItems = db.prepare(`
+      SELECT * FROM bill_items WHERE billId = ?
+    `).all(billId);
     
     console.log(`Bill ${bill.billNumber} has ${billItems.length} items`);
     console.log('Items:', JSON.stringify(billItems, null, 2));
