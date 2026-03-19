@@ -441,6 +441,9 @@ export const printBill = async (req, res) => {
 
     // Get bill items
     const billItems = JSON.parse(bill.items || '[]');
+    
+    console.log(`Bill ${bill.billNumber} has ${billItems.length} items`);
+    console.log('Items:', JSON.stringify(billItems, null, 2));
 
     // Get business settings
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
@@ -498,19 +501,23 @@ export const printBill = async (req, res) => {
     receiptText += '--------------------------------\n';
     
     // Items list
-    billItems.forEach(item => {
-      const name = item.name.substring(0, 16).padEnd(16);
-      const qty = item.quantity.toString().padStart(3);
-      const price = item.unitPrice.toFixed(2).padStart(6);
-      const total = item.finalTotal.toFixed(2).padStart(6);
-      receiptText += name + qty + price + total + '\n';
-      
-      // Show discount if any
-      if (item.discountAmount > 0) {
-        const discountText = '  Discount: -' + item.discountAmount.toFixed(2);
-        receiptText += discountText + '\n';
-      }
-    });
+    if (billItems && billItems.length > 0) {
+      billItems.forEach(item => {
+        const name = (item.name || 'Unknown').substring(0, 16).padEnd(16);
+        const qty = (item.quantity || 0).toString().padStart(3);
+        const price = (item.unitPrice || 0).toFixed(2).padStart(6);
+        const total = (item.finalTotal || item.itemTotal || 0).toFixed(2).padStart(6);
+        receiptText += name + qty + price + total + '\n';
+        
+        // Show discount if any
+        if (item.discountAmount && item.discountAmount > 0) {
+          const discountText = '  Discount: -' + item.discountAmount.toFixed(2);
+          receiptText += discountText + '\n';
+        }
+      });
+    } else {
+      receiptText += '    No items found\n';
+    }
     
     receiptText += '--------------------------------\n';
     
