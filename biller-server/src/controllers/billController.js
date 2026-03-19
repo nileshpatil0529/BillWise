@@ -1,4 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
 import db from '../config/database.js';
 
 // Generate bill number
@@ -414,10 +415,196 @@ export const getReport = async (req, res) => {
   }
 };
 
+// Print bill to thermal printer
+export const printBill = async (req, res) => {
+  try {
+    const { billId } = req.body;
+
+    if (!billId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bill ID is required'
+      });
+    }
+
+    // Get bill details with all information
+    const bill = db.prepare(`
+      SELECT * FROM bills WHERE billId = ?
+    `).get(billId);
+
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found'
+      });
+    }
+
+    // Get bill items
+    const billItems = JSON.parse(bill.items || '[]');
+
+    // Get business settings
+    const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+
+    // Get printer path from environment
+    const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
+    
+    console.log(`Printing bill to: ${printerPath}`);
+
+    // ESC/POS commands for receipt printing
+    const ESC = '\x1B';
+    const GS = '\x1D';
+    
+    let receiptText = '';
+    
+    // Initialize printer
+    receiptText += ESC + '@'; // Initialize
+    
+    // Header - Business Name (Center, Double Height)
+    receiptText += ESC + 'a' + '\x01'; // Center align
+    receiptText += GS + '!' + '\x11'; // Double height & width
+    receiptText += (settings?.businessName || 'BILLWISE') + '\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
+    
+    // Business Details (Center)
+    if (settings?.address) {
+      receiptText += settings.address + '\n';
+    }
+    if (settings?.phone) {
+      receiptText += 'Tel: ' + settings.phone + '\n';
+    }
+    if (settings?.taxNumber) {
+      receiptText += 'GSTIN: ' + settings.taxNumber + '\n';
+    }
+    
+    // Divider line
+    receiptText += '--------------------------------\n';
+    
+    // Bill details (Left align)
+    receiptText += ESC + 'a' + '\x00'; // Left align
+    receiptText += 'Bill #: ' + bill.billNumber + '\n';
+    receiptText += 'Date: ' + new Date(bill.createdAt).toLocaleString() + '\n';
+    
+    if (bill.customerName) {
+      receiptText += 'Customer: ' + bill.customerName + '\n';
+    }
+    if (bill.customerPhone) {
+      receiptText += 'Phone: ' + bill.customerPhone + '\n';
+    }
+    
+    receiptText += '--------------------------------\n';
+    
+    // Items header
+    receiptText += 'Item            Qty   Price Total\n';
+    receiptText += '--------------------------------\n';
+    
+    // Items list
+    billItems.forEach(item => {
+      const name = item.name.substring(0, 16).padEnd(16);
+      const qty = item.quantity.toString().padStart(3);
+      const price = item.unitPrice.toFixed(2).padStart(6);
+      const total = item.finalTotal.toFixed(2).padStart(6);
+      receiptText += name + qty + price + total + '\n';
+      
+      // Show discount if any
+      if (item.discountAmount > 0) {
+        const discountText = '  Discount: -' + item.discountAmount.toFixed(2);
+        receiptText += discountText + '\n';
+      }
+    });
+    
+    receiptText += '--------------------------------\n';
+    
+    // Totals (Right align for amounts)
+    receiptText += ESC + 'a' + '\x00'; // Left align
+    
+    const subtotal = bill.subtotal.toFixed(2);
+    receiptText += 'Subtotal:' + subtotal.padStart(24) + '\n';
+    
+    if (bill.discountTotal > 0) {
+      const discount = bill.discountTotal.toFixed(2);
+      receiptText += 'Discount:' + ('-' + discount).padStart(24) + '\n';
+    }
+    
+    if (bill.taxTotal > 0) {
+      const tax = bill.taxTotal.toFixed(2);
+      const taxRate = settings?.taxRates?.[0]?.rate || 0;
+      receiptText += `Tax (${taxRate}%):` + tax.padStart(24 - `Tax (${taxRate}%):`.length + 9) + '\n';
+    }
+    
+    receiptText += '================================\n';
+    
+    // Grand Total (Bold, Double height)
+    receiptText += GS + '!' + '\x11'; // Double height & width
+    const grandTotal = bill.grandTotal.toFixed(2);
+    receiptText += 'TOTAL: Rs ' + grandTotal + '\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
+    
+    receiptText += '================================\n';
+    
+    // Payment details
+    receiptText += 'Payment: ' + bill.paymentMethod.toUpperCase() + '\n';
+    receiptText += 'Status: ' + bill.paymentStatus.toUpperCase() + '\n';
+    
+    if (bill.paymentMethod === 'cash') {
+      receiptText += 'Paid: Rs ' + bill.amountPaid.toFixed(2) + '\n';
+      if (bill.change > 0) {
+        receiptText += 'Change: Rs ' + bill.change.toFixed(2) + '\n';
+      }
+    }
+    
+    if (bill.notes) {
+      receiptText += '\nNote: ' + bill.notes + '\n';
+    }
+    
+    receiptText += '--------------------------------\n';
+    
+    // Footer (Center)
+    receiptText += ESC + 'a' + '\x01'; // Center align
+    receiptText += '\nThank you for your business!\n';
+    receiptText += 'Visit again!\n\n';
+    
+    // Cut paper
+    receiptText += GS + 'V' + '\x41' + '\x03'; // Cut
+    
+    const buffer = Buffer.from(receiptText, 'ascii');
+
+    // Write to printer
+    fs.appendFile(printerPath, buffer, (err) => {
+      if (err) {
+        console.error('Print error:', err);
+        return res.status(500).json({
+          success: false,
+          message: `Failed to print: ${err.message}. Check PRINTER_INTERFACE in .env file.`
+        });
+      }
+
+      console.log(`Successfully sent bill ${bill.billNumber} to printer`);
+      
+      res.json({
+        success: true,
+        message: `Bill ${bill.billNumber} sent to printer successfully`,
+        data: {
+          billId: bill.billId,
+          billNumber: bill.billNumber
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('Print bill error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to print bill',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   getAllBills,
   getBillById,
   createBill,
   updateBill,
-  getReport
+  getReport,
+  printBill
 };

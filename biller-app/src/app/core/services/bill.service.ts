@@ -180,4 +180,8 @@ export class BillService {
 
     return this.http.get<{ success: boolean; data: ReportData }>(`${this.API_URL}/report`, { params });
   }
+
+  printBill(billId: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/print`, { billId });
+  }
 }

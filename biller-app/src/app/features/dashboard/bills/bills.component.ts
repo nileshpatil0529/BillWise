@@ -189,8 +189,24 @@ export class BillsComponent implements OnInit {
   }
 
   printBill(bill: Bill): void {
-    // Placeholder for print functionality
-    this.snackBar.open('Print functionality coming soon', 'Close', { duration: 3000 });
+    this.loading.set(true);
+    this.billService.printBill(bill.billId).subscribe({
+      next: (response: any) => {
+        this.loading.set(false);
+        if (response.success) {
+          this.snackBar.open(
+            `Bill ${bill.billNumber} sent to printer successfully`,
+            'Close',
+            { duration: 3000, panelClass: ['success-snackbar'] }
+          );
+        }
+      },
+      error: (error: any) => {
+        this.loading.set(false);
+        const message = error.error?.message || 'Failed to print bill';
+        this.snackBar.open(message, 'Close', { duration: 5000 });
+      }
+    });
   }
 
   downloadReport(): void {

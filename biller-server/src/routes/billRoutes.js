@@ -4,7 +4,8 @@ import {
   getBillById,
   createBill,
   updateBill,
-  getReport
+  getReport,
+  printBill
 } from '../controllers/billController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -19,5 +20,6 @@ router.get('/report', getReport);
 router.get('/:id', getBillById);
 router.post('/', createBill);
 router.put('/:id', updateBill);
+router.post('/print', printBill);
 
 export default router;
