@@ -579,23 +579,66 @@ export const printBarcode = async (req, res) => {
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
     
-    console.log(`Printing to: ${printerPath}`);
+    console.log(`Printing ${quantity} QR label(s) to: ${printerPath}`);
 
-    // TSPL commands for barcode label printing
-    // Label format: 58mm x 40mm sticker with product info and barcode
-    const tsplCommand = 
-      `SIZE 58 mm, 40 mm\r\n` +        // Label size
-      `GAP 3 mm, 0\r\n` +              // Gap between labels
-      `DIRECTION 1\r\n` + 
-      `CLS\r\n` +                       // Clear buffer
-      `BOX 10,10,440,300,3\r\n` +      // Border box
-      `TEXT 30,25,"3",0,1,1,"${product.name.substring(0, 20)}"\r\n` +  // Product name
-      `TEXT 30,60,"2",0,1,1,"Price: Rs ${product.unitPrice.toFixed(2)}"\r\n` +  // Price
-      `BARCODE 30,110,"128",80,1,0,2,2,"${barcode}"\r\n` +  // CODE128 barcode
-      `TEXT 30,210,"1",0,1,1,"${barcode}"\r\n` +  // Barcode text
-      `PRINT ${quantity},1\r\n`;        // Print specified quantity
-
-    const buffer = Buffer.from(tsplCommand, 'ascii');
+    // ESC/POS commands for QR code label printing
+    const ESC = '\x1B';
+    const GS = '\x1D';
+    
+    let labelText = '';
+    
+    // Loop to print multiple labels based on quantity
+    for (let i = 0; i < quantity; i++) {
+      // Initialize printer
+      labelText += ESC + '@'; // Initialize
+      
+      // Center alignment
+      labelText += ESC + 'a' + '\x01'; // Center align
+      
+      // QR Code printing
+      // Store QR code data
+      const qrData = barcode;
+      const qrDataLength = qrData.length;
+      
+      // QR Code: Model (GS ( k pL pH cn fn n)
+      labelText += GS + '(' + 'k' + '\x04' + '\x00' + '\x31' + '\x41' + '\x32' + '\x00'; // Model 2
+      
+      // QR Code: Size (GS ( k pL pH cn fn n)
+      labelText += GS + '(' + 'k' + '\x03' + '\x00' + '\x31' + '\x43' + '\x08'; // Size 8
+      
+      // QR Code: Error correction (GS ( k pL pH cn fn n)
+      labelText += GS + '(' + 'k' + '\x03' + '\x00' + '\x31' + '\x45' + '\x30'; // Level L
+      
+      // QR Code: Store data
+      const pL = (qrDataLength + 3) % 256;
+      const pH = Math.floor((qrDataLength + 3) / 256);
+      labelText += GS + '(' + 'k' + String.fromCharCode(pL) + String.fromCharCode(pH) + '\x31' + '\x50' + '\x30' + qrData;
+      
+      // QR Code: Print
+      labelText += GS + '(' + 'k' + '\x03' + '\x00' + '\x31' + '\x51' + '\x30';
+      
+      labelText += '\n\n';
+      
+      // Product name (centered, truncate if too long)
+      const productName = product.name.substring(0, 32);
+      labelText += productName + '\n';
+      
+      // Price (centered)
+      labelText += 'Price: Rs ' + Math.round(product.unitPrice) + '\n';
+      
+      // Divider
+      labelText += '--------------------------------\n\n';
+      
+      // Add some space before next label
+      if (i < quantity - 1) {
+        labelText += '\n';
+      }
+    }
+    
+    // Cut paper after all labels
+    labelText += GS + 'V' + '\x41' + '\x03'; // Cut
+    
+    const buffer = Buffer.from(labelText, 'ascii');
 
     // Write to printer
     fs.appendFile(printerPath, buffer, (err) => {
@@ -607,11 +650,11 @@ export const printBarcode = async (req, res) => {
         });
       }
 
-      console.log(`Successfully sent ${quantity} barcode(s) to printer for product: ${product.name}`);
+      console.log(`Successfully sent ${quantity} QR label(s) to printer for product: ${product.name}`);
       
       res.json({
         success: true,
-        message: `Successfully printed ${quantity} barcode(s)`,
+        message: `Successfully printed ${quantity} QR label(s)`,
         data: {
           barcode,
           quantity,

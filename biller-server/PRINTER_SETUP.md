@@ -1,14 +1,14 @@
 # Thermal Printer Setup Guide
 
-This guide will help you set up and configure TSPL thermal printers for barcode printing in BillWise.
+This guide will help you set up and configure ESC/POS thermal printers for printing in BillWise.
 
 ## Supported Printers
 
-The application uses TSPL (TSC Printer Language) commands and supports:
-- **TSC** label printers (TTP-244, TTP-345, etc.)
-- **Zebra** printers with TSPL mode
-- Most label printers that support TSPL commands
-- 58mm thermal printer labels
+The application uses ESC/POS commands and supports:
+- **EPSON** TM series (TM-T20, TM-T82, TM-T88, etc.)
+- **Star Micronics** TSP series
+- Most 58mm (2 inch) thermal receipt printers
+- Any ESC/POS compatible thermal printer
 
 ## Prerequisites
 
@@ -69,31 +69,32 @@ PRINTER_INTERFACE=/dev/cu.usbserial
 
 ## How It Works
 
-The application uses **TSPL commands** to print barcode labels. TSPL provides precise control over label printing with:
-- Exact positioning (X, Y coordinates)
-- Multiple barcode types (CODE128, EAN13, QR, etc.)
-- Text formatting and box drawing
-- Label size configuration
+The application uses **ESC/POS commands** for thermal printing:
 
-Example TSPL command:
-```
-SIZE 58 mm, 40 mm
-GAP 3 mm, 0
-CLS
-BOX 10,10,440,300,3
-TEXT 30,25,"3",0,1,1,"Product Name"
-BARCODE 30,110,"128",80,1,0,2,2,"1234567890"
-PRINT 1,1
-```
+### Bill Printing
+- Business header with company details
+- Bill number and date
+- Customer information
+- Itemized list with quantities and prices
+- Subtotal, discount, tax breakdown
+- Grand total (bold)
+- Payment details
+- Thank you message
+
+### Product Label Printing (QR Code)
+- QR code centered (generated from barcode number)
+- Product name below QR code
+- Price below product name
+- Divider line
+- Supports printing multiple labels at once
 
 ## Label Format
 
-The barcode label includes:
-- **Border box** for professional appearance
-- **Product name** (up to 20 characters)
-- **Price** in Rupees
-- **CODE128 barcode** with human-readable text
-- Label size: 58mm × 40mm
+The product QR label includes:
+- **QR Code** (center) - encodes the product barcode
+- **Product name** (centered, up to 32 characters)
+- **Price** in Rupees (centered, rounded)
+- **Divider** for separation
 
 ## Troubleshooting
 
@@ -119,18 +120,15 @@ The barcode label includes:
    sudo chmod 666 /dev/usb/lp0
    ```
 
-### Label Not Printing Correctly
-1. **Wrong Label Size**
-   - Adjust SIZE in productController.js
-   - Default is 58mm × 40mm
+### QR Code Not Printing
+1. **Printer Compatibility**
+   - Ensure printer supports QR code printing
+   - Most modern ESC/POS printers support QR codes
+   - Check printer manual for QR support
 
-2. **Barcode Too Large**
-   - Reduce barcode height or scale in TSPL command
-   - Adjust coordinates if elements overlap
-
-3. **Text Cut Off**
-   - Product names are limited to 20 characters
-   - Adjust TEXT position or font size
+2. **Barcode Too Long**
+   - QR codes can handle long data
+   - If issues, try shorter barcodes
 
 ### Common Error Messages
 
@@ -142,56 +140,26 @@ The barcode label includes:
 
 ## Usage
 
+### Print Bills
+1. Go to **Bills** page
+2. Click the **Print** button for any bill
+3. Receipt will print with all bill details
+
+### Print Product Labels
 1. Go to **Products** page
-2. Click the **actions menu (⋮)** for any product  
+2. Click **actions menu (⋮)** for any product
 3. Select **"Print Barcode"**
 4. Enter the number of labels (1-100)
 5. Click **"Print"**
 
-The printer will produce labels with:
+The printer will produce QR code labels with:
+- QR code (scannable)
 - Product name
 - Price
-- CODE128 barcode
-
-## Custom Label Format
-
-Edit `printBarcode` in `biller-server/src/controllers/productController.js`:
-
-```javascript
-const tsplCommand = 
-  `SIZE 58 mm, 40 mm\r\n` +
-  `GAP 3 mm, 0\r\n` +
-  `DIRECTION 1\r\n` +
-  `CLS\r\n` +
-  `BOX 10,10,440,300,3\r\n` +
-  // Add your custom fields here
-  `TEXT 30,25,"3",0,1,1,"${product.name}"\r\n` +
-  `TEXT 30,60,"2",0,1,1,"Stock: ${product.stockQuantity}"\r\n` +  // New field
-  `BARCODE 30,110,"128",80,1,0,2,2,"${barcode}"\r\n` +
-  `PRINT ${quantity},1\r\n`;
-```
-
-## TSPL Command Reference
-
-### Common Commands
-- `SIZE width, height` - Set label size
-- `GAP gap, offset` - Set gap between labels  
-- `CLS` - Clear buffer
-- `BOX x1,y1,x2,y2,thickness` - Draw rectangle
-- `TEXT x,y,font,rotation,x_mul,y_mul,"text"` - Print text
-- `BARCODE x,y,type,height,readable,rotation,narrow,wide,"data"` - Print barcode
-- `PRINT quantity,copies` - Print labels
-
-### Barcode Types
-- `"128"` - CODE128 (alphanumeric)
-- `"EAN13"` - EAN-13 (13 digits)
-- `"QRCODE"` - QR Code (2D)
-- `"39"` - CODE39
 
 ## Resources
 
-- [TSPL Programming Manual](https://www.tscprinters.com/EN/Download/Programming-Manual)
-- [TSC Printer Utilities](https://www.tscprinters.com/EN/Download/Software)
+- [ESC/POS Command Reference](https://reference.epson-biz.com/modules/ref_escpos/)
 
 ## Support
 
@@ -199,4 +167,4 @@ For issues:
 1. Verify PRINTER_INTERFACE in .env
 2. Test printer with manufacturer's tools
 3. Check server logs for detailed errors
-4. Ensure barcode exists for the product
+4. Ensure printer supports ESC/POS commands
