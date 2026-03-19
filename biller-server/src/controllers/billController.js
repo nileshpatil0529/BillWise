@@ -499,21 +499,21 @@ export const printBill = async (req, res) => {
     receiptText += '--------------------------------\n';
     
     // Items header
-    receiptText += 'Item            Qty   Price Total\n';
+    receiptText += 'Item         Qty  Price  Total\n';
     receiptText += '--------------------------------\n';
     
     // Items list
     if (billItems && billItems.length > 0) {
       billItems.forEach(item => {
-        const name = (item.name || 'Unknown').substring(0, 16).padEnd(16);
+        const name = (item.name || 'Unknown').substring(0, 13).padEnd(13);
         const qty = (item.quantity || 0).toString().padStart(3);
-        const price = (item.unitPrice || 0).toFixed(2).padStart(6);
-        const total = (item.finalTotal || item.itemTotal || 0).toFixed(2).padStart(6);
+        const price = Math.round(item.unitPrice || 0).toString().padStart(6);
+        const total = Math.round(item.finalTotal || item.itemTotal || 0).toString().padStart(7);
         receiptText += name + qty + price + total + '\n';
         
         // Show discount if any
         if (item.discountAmount && item.discountAmount > 0) {
-          const discountText = '  Discount: -' + item.discountAmount.toFixed(2);
+          const discountText = '  Discount: -' + Math.round(item.discountAmount);
           receiptText += discountText + '\n';
         }
       });
@@ -526,16 +526,16 @@ export const printBill = async (req, res) => {
     // Totals (Right align for amounts)
     receiptText += ESC + 'a' + '\x00'; // Left align
     
-    const subtotal = bill.subtotal.toFixed(2);
+    const subtotal = Math.round(bill.subtotal).toString();
     receiptText += 'Subtotal:' + subtotal.padStart(24) + '\n';
     
     if (bill.discountTotal > 0) {
-      const discount = bill.discountTotal.toFixed(2);
+      const discount = Math.round(bill.discountTotal).toString();
       receiptText += 'Discount:' + ('-' + discount).padStart(24) + '\n';
     }
     
     if (bill.taxTotal > 0) {
-      const tax = bill.taxTotal.toFixed(2);
+      const tax = Math.round(bill.taxTotal).toString();
       const taxRate = settings?.taxRates?.[0]?.rate || 0;
       receiptText += `Tax (${taxRate}%):` + tax.padStart(24 - `Tax (${taxRate}%):`.length + 9) + '\n';
     }
@@ -544,7 +544,7 @@ export const printBill = async (req, res) => {
     
     // Grand Total (Bold, Double height)
     receiptText += GS + '!' + '\x11'; // Double height & width
-    const grandTotal = bill.grandTotal.toFixed(2);
+    const grandTotal = Math.round(bill.grandTotal).toString();
     receiptText += 'TOTAL: Rs ' + grandTotal + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
     
@@ -555,9 +555,9 @@ export const printBill = async (req, res) => {
     receiptText += 'Status: ' + bill.paymentStatus.toUpperCase() + '\n';
     
     if (bill.paymentMethod === 'cash') {
-      receiptText += 'Paid: Rs ' + bill.amountPaid.toFixed(2) + '\n';
+      receiptText += 'Paid: Rs ' + Math.round(bill.amountPaid) + '\n';
       if (bill.change > 0) {
-        receiptText += 'Change: Rs ' + bill.change.toFixed(2) + '\n';
+        receiptText += 'Change: Rs ' + Math.round(bill.change) + '\n';
       }
     }
     
