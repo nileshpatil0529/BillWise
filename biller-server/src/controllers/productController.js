@@ -578,18 +578,20 @@ export const printBarcode = async (req, res) => {
     }
 
     // Initialize thermal printer
-    // You may need to configure the printer interface based on your setup
-    // Common interfaces: 'tcp://192.168.1.100' for network printer
-    //                   '\\\\.\\COM3' for Windows serial printer
-    //                   '/dev/usb/lp0' for Linux USB printer
+    // Configure for Windows COM port (e.g., COM4)
+    const printerInterface = process.env.PRINTER_INTERFACE || 'tcp://localhost:9100';
+    
+    console.log(`Attempting to connect to printer: ${printerInterface}`);
+    
     const printer = new ThermalPrinter({
-      type: PrinterTypes.EPSON,  // Or PrinterTypes.STAR
-      interface: process.env.PRINTER_INTERFACE || 'tcp://localhost:9100',
+      type: PrinterTypes.EPSON,  // Most POS printers are EPSON compatible
+      interface: printerInterface,
       characterSet: 'PC437_USA',
       removeSpecialCharacters: false,
       lineCharacter: '-',
+      width: 32,  // 32 characters for 58mm printer
       options: {
-        timeout: 5000
+        timeout: 10000  // Increased timeout for Windows COM ports
       }
     });
 
@@ -597,8 +599,14 @@ export const printBarcode = async (req, res) => {
     let isPrinterConnected = false;
     try {
       isPrinterConnected = await printer.isPrinterConnected();
+      console.log(`Printer connection status: ${isPrinterConnected}`);
     } catch (error) {
       console.error('Printer connection check failed:', error.message);
+      console.error('Full error:', error);
+      return res.status(503).json({
+        success: false,
+        message: `Printer connection failed: ${error.message}. Please verify COM port in Device Manager and check .env configuration.`
+      });
     }
 
     if (!isPrinterConnected) {
