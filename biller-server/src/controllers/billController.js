@@ -527,26 +527,27 @@ export const printBill = async (req, res) => {
     receiptText += ESC + 'a' + '\x00'; // Left align
     
     const subtotal = Math.round(bill.subtotal).toString();
-    receiptText += 'Subtotal:' + subtotal.padStart(24) + '\n';
+    receiptText += 'Subtotal:' + subtotal.padStart(23) + '\n';
     
     if (bill.discountTotal > 0) {
       const discount = Math.round(bill.discountTotal).toString();
-      receiptText += 'Discount:' + ('-' + discount).padStart(24) + '\n';
+      receiptText += 'Discount:' + ('-' + discount).padStart(23) + '\n';
     }
     
     if (bill.taxTotal > 0) {
       const tax = Math.round(bill.taxTotal).toString();
       const taxRate = settings?.taxRates?.[0]?.rate || 0;
-      receiptText += `Tax (${taxRate}%):` + tax.padStart(24 - `Tax (${taxRate}%):`.length + 9) + '\n';
+      const taxLabel = `Tax (${taxRate}%):`;
+      receiptText += taxLabel + tax.padStart(32 - taxLabel.length) + '\n';
     }
     
     receiptText += '================================\n';
     
-    // Grand Total (Bold, Double height)
-    receiptText += GS + '!' + '\x11'; // Double height & width
+    // Grand Total (Normal size, bold)
+    receiptText += ESC + 'E' + '\x01'; // Bold on
     const grandTotal = Math.round(bill.grandTotal).toString();
     receiptText += 'TOTAL: Rs ' + grandTotal + '\n';
-    receiptText += GS + '!' + '\x00'; // Normal size
+    receiptText += ESC + 'E' + '\x00'; // Bold off
     
     receiptText += '================================\n';
     
