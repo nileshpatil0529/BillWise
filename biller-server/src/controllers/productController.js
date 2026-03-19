@@ -1,6 +1,5 @@
 import * as XLSX from 'xlsx';
-import bwipjs from 'bwip-js';
-import { ThermalPrinter, PrinterTypes } from 'node-thermal-printer';
+import fs from 'fs';
 import db from '../config/database.js';
 
 // Generate unique product ID
@@ -567,7 +566,7 @@ export const printBarcode = async (req, res) => {
       });
     }
 
-    // Get product details for additional information
+    // Get product details
     const product = db.prepare('SELECT * FROM products WHERE barcode = ?').get(barcode);
 
     if (!product) {
@@ -577,104 +576,48 @@ export const printBarcode = async (req, res) => {
       });
     }
 
-    // Initialize thermal printer
-    // Configure for Windows COM port (e.g., COM4)
-    const printerInterface = process.env.PRINTER_INTERFACE || 'tcp://localhost:9100';
+    // Get printer path from environment
+    const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
     
-    console.log(`Attempting to connect to printer: ${printerInterface}`);
-    
-    const printer = new ThermalPrinter({
-      type: PrinterTypes.EPSON,  // Most POS printers are EPSON compatible
-      interface: printerInterface,
-      characterSet: 'PC437_USA',
-      removeSpecialCharacters: false,
-      lineCharacter: '-',
-      width: 32,  // 32 characters for 58mm printer
-      options: {
-        timeout: 10000  // Increased timeout for Windows COM ports
-      }
-    });
+    console.log(`Printing to: ${printerPath}`);
 
-    // Check if printer is connected
-    let isPrinterConnected = false;
-    try {
-      isPrinterConnected = await printer.isPrinterConnected();
-      console.log(`Printer connection status: ${isPrinterConnected}`);
-    } catch (error) {
-      console.error('Printer connection check failed:', error.message);
-      console.error('Full error:', error);
-      return res.status(503).json({
-        success: false,
-        message: `Printer connection failed: ${error.message}. Please verify COM port in Device Manager and check .env configuration.`
-      });
-    }
+    // TSPL commands for barcode label printing
+    // Label format: 58mm x 40mm sticker with product info and barcode
+    const tsplCommand = 
+      `SIZE 58 mm, 40 mm\r\n` +        // Label size
+      `GAP 3 mm, 0\r\n` +              // Gap between labels
+      `DIRECTION 1\r\n` + 
+      `CLS\r\n` +                       // Clear buffer
+      `BOX 10,10,440,300,3\r\n` +      // Border box
+      `TEXT 30,25,"3",0,1,1,"${product.name.substring(0, 20)}"\r\n` +  // Product name
+      `TEXT 30,60,"2",0,1,1,"Price: Rs ${product.unitPrice.toFixed(2)}"\r\n` +  // Price
+      `BARCODE 30,110,"128",80,1,0,2,2,"${barcode}"\r\n` +  // CODE128 barcode
+      `TEXT 30,210,"1",0,1,1,"${barcode}"\r\n` +  // Barcode text
+      `PRINT ${quantity},1\r\n`;        // Print specified quantity
 
-    if (!isPrinterConnected) {
-      return res.status(503).json({
-        success: false,
-        message: 'Thermal printer not connected. Please check printer connection and configure PRINTER_INTERFACE in .env file.'
-      });
-    }
+    const buffer = Buffer.from(tsplCommand, 'ascii');
 
-    // Generate and print barcodes
-    for (let i = 0; i < quantity; i++) {
-      try {
-        // Generate barcode image using bwip-js
-        const barcodeBuffer = await bwipjs.toBuffer({
-          bcid: 'code128',       // Barcode type
-          text: barcode,          // Text to encode
-          scale: 3,               // 3x scaling factor
-          height: 10,             // Bar height, in millimeters
-          includetext: true,      // Show human-readable text
-          textxalign: 'center',   // Center the text
+    // Write to printer
+    fs.appendFile(printerPath, buffer, (err) => {
+      if (err) {
+        console.error('Print error:', err);
+        return res.status(500).json({
+          success: false,
+          message: `Failed to print: ${err.message}. Check PRINTER_INTERFACE in .env file.`
         });
+      }
 
-        printer.alignCenter();
-        
-        // Print product name
-        printer.bold(true);
-        printer.println(product.name.substring(0, 32)); // Limit to 32 chars for 58mm printer
-        printer.bold(false);
-        
-        // Print barcode image
-        await printer.printImage(barcodeBuffer);
-        
-        // Print price
-        printer.setTextSize(0, 0);
-        printer.println(`Price: ${product.unitPrice.toFixed(2)}`);
-        
-        // Add spacing between labels
-        printer.newLine();
-        printer.drawLine();
-        printer.newLine();
-
-        // Cut paper after each label (or after all labels, depending on preference)
-        if (i === quantity - 1) {
-          printer.cut();
+      console.log(`Successfully sent ${quantity} barcode(s) to printer for product: ${product.name}`);
+      
+      res.json({
+        success: true,
+        message: `Successfully printed ${quantity} barcode(s)`,
+        data: {
+          barcode,
+          quantity,
+          productName: product.name
         }
-
-      } catch (barcodeError) {
-        console.error(`Error generating barcode ${i + 1}:`, barcodeError);
-        throw new Error(`Failed to generate barcode: ${barcodeError.message}`);
-      }
-    }
-
-    try {
-      await printer.execute();
-      console.log(`Successfully printed ${quantity} barcode(s) for product: ${product.name}`);
-    } catch (printError) {
-      console.error('Print execution failed:', printError);
-      throw new Error(`Failed to send to printer: ${printError.message}`);
-    }
-
-    res.json({
-      success: true,
-      message: `Successfully printed ${quantity} barcode(s)`,
-      data: {
-        barcode,
-        quantity,
-        productName: product.name
-      }
+      });
     });
 
   } catch (error) {

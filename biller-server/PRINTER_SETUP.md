@@ -1,259 +1,202 @@
 # Thermal Printer Setup Guide
 
-This guide will help you set up and configure thermal printers for barcode printing in BillWise.
+This guide will help you set up and configure TSPL thermal printers for barcode printing in BillWise.
 
 ## Supported Printers
 
-The application supports ESC/POS compatible thermal printers, including:
-- **EPSON** TM series (TM-T20, TM-T82, TM-T88, etc.)
-- **Star Micronics** TSP series
-- Most 58mm (2 inch) and 80mm (3 inch) thermal printers
+The application uses TSPL (TSC Printer Language) commands and supports:
+- **TSC** label printers (TTP-244, TTP-345, etc.)
+- **Zebra** printers with TSPL mode
+- Most label printers that support TSPL commands
+- 58mm thermal printer labels
 
 ## Prerequisites
 
 ### Windows
-- Install the printer driver from manufacturer
-- Connect printer via USB, Serial, or Network
-- Note the COM port number (e.g., COM3) or IP address
+1. Install the printer driver from manufacturer
+2. Share the printer or note the COM port
+3. Configure printer as a network share (\\\\localhost\\PrinterName) or use COM port
 
 ### Linux
 ```bash
-# Install required dependencies
-sudo apt-get update
-sudo apt-get install libusb-1.0-0-dev build-essential
-
-# Give permission to USB devices
+# For USB printers
 sudo usermod -a -G lp $USER
 sudo usermod -a -G dialout $USER
 ```
 
 ### macOS
 ```bash
-# Install Xcode Command Line Tools
-xcode-select --install
-
 # For USB printers, identify the device
 ls /dev/cu.*
 ```
 
 ## Configuration
 
-### 1. Network Printer (Recommended)
+### 1. Windows Shared Printer (Recommended for Windows)
 Edit `.env` file and set:
+```env
+PRINTER_INTERFACE=\\\\localhost\\MyPOS
+```
+Replace `MyPOS` with your printer's share name.
+
+**How to share a printer:**
+1. Open Settings > Printers & scanners
+2. Select your printer > Manage > Printer properties
+3. Go to Sharing tab > Share this printer
+4. Note the share name
+
+### 2. Windows COM Port
+```env
+PRINTER_INTERFACE=COM4
+```
+Check Device Manager for the correct COM port number.
+
+### 3. Network Printer
 ```env
 PRINTER_INTERFACE=tcp://192.168.1.100:9100
 ```
-Replace `192.168.1.100` with your printer's IP address.
+Replace with your printer's IP address.
 
-**How to find printer IP:**
-- Print a test page from the printer (usually hold feed button)
-- Check your router's DHCP client list
-- Use printer's built-in network configuration menu
-
-### 2. USB Printer (Windows)
-```env
-# Check Device Manager for COM port number
-PRINTER_INTERFACE=\\\\.\\COM3
-```
-
-### 3. USB Printer (Linux)
+### 4. USB Printer (Linux)
 ```env
 PRINTER_INTERFACE=/dev/usb/lp0
-# or
-PRINTER_INTERFACE=/dev/ttyUSB0
 ```
 
-Find your device:
-```bash
-ls /dev/usb/lp*
-ls /dev/ttyUSB*
-```
-
-### 4. USB Printer (macOS)
+### 5. USB Printer (macOS)
 ```env
 PRINTER_INTERFACE=/dev/cu.usbserial
 ```
 
-Find your device:
-```bash
-ls /dev/cu.*
+## How It Works
+
+The application uses **TSPL commands** to print barcode labels. TSPL provides precise control over label printing with:
+- Exact positioning (X, Y coordinates)
+- Multiple barcode types (CODE128, EAN13, QR, etc.)
+- Text formatting and box drawing
+- Label size configuration
+
+Example TSPL command:
+```
+SIZE 58 mm, 40 mm
+GAP 3 mm, 0
+CLS
+BOX 10,10,440,300,3
+TEXT 30,25,"3",0,1,1,"Product Name"
+BARCODE 30,110,"128",80,1,0,2,2,"1234567890"
+PRINT 1,1
 ```
 
-## Printer Types
+## Label Format
 
-If your printer is not EPSON, change the printer type in `productController.js`:
-
-```javascript
-const printer = new ThermalPrinter({
-  type: PrinterTypes.STAR,  // Change to STAR if using Star Micronics
-  // ... other settings
-});
-```
-
-Available types:
-- `PrinterTypes.EPSON` - Most common ESC/POS printers
-- `PrinterTypes.STAR` - Star Micronics printers
-
-## Testing the Printer
-
-### 1. Network Printer Test
-```bash
-# Windows
-telnet 192.168.1.100 9100
-
-# Linux/Mac
-nc -v 192.168.1.100 9100
-```
-
-If connection succeeds, the printer is reachable.
-
-### 2. USB Printer Test (Linux)
-```bash
-# Send test data
-echo "Test Print" > /dev/usb/lp0
-```
+The barcode label includes:
+- **Border box** for professional appearance
+- **Product name** (up to 20 characters)
+- **Price** in Rupees
+- **CODE128 barcode** with human-readable text
+- Label size: 58mm × 40mm
 
 ## Troubleshooting
 
-### Printer Not Connected Error
-1. **Check Physical Connection**
-   - USB cable properly connected
-   - Printer powered on
-   - Network cable connected (for network printers)
+### Printer Not Working
+1. **Check Printer Connection**
+   - Printer is powered on
+   - USB/Network cable connected
+   - Windows: Verify share name or COM port
+   - Network: Ping the printer IP
 
-2. **Verify PRINTER_INTERFACE**
-   - Correct COM port or IP address
-   - Proper format in .env file
+2. **Verify PRINTER_INTERFACE in .env**
+   - Correct path/port/share name
+   - Proper escape characters for Windows paths (\\\\\\\\)
    - Restart server after changing .env
 
-3. **Windows Firewall**
-   - Allow NodeJS through firewall
-   - Allow port 9100 for network printers
+3. **Test Printer Manually**
+   - Windows: Print a test page from Printers & Scanners
+   - Linux: `echo "Test" > /dev/usb/lp0`
+   - Network: `telnet 192.168.1.100 9100`
 
-4. **Linux Permissions**
+4. **Check Permissions (Linux)**
    ```bash
    sudo chmod 666 /dev/usb/lp0
-   # or add user to lp group
-   sudo usermod -a -G lp $USER
    ```
 
-5. **Network Printer Issues**
-   - Ping the printer IP: `ping 192.168.1.100`
-   - Check printer port is 9100 (standard ESC/POS)
-   - Ensure printer has static IP or DHCP reservation
+### Label Not Printing Correctly
+1. **Wrong Label Size**
+   - Adjust SIZE in productController.js
+   - Default is 58mm × 40mm
 
-### Barcode Not Printing Correctly
-1. **Check Barcode Value**
-   - Ensure product has valid barcode
-   - Barcode should be alphanumeric
+2. **Barcode Too Large**
+   - Reduce barcode height or scale in TSPL command
+   - Adjust coordinates if elements overlap
 
-2. **Paper Size**
-   - Default is 58mm (2 inch)
-   - Adjust scale in code for different sizes
-
-3. **Print Quality**
-   - Check paper roll is installed correctly
-   - Clean printer head
-   - Adjust print density in printer settings
+3. **Text Cut Off**
+   - Product names are limited to 20 characters
+   - Adjust TEXT position or font size
 
 ### Common Error Messages
 
 | Error | Solution |
 |-------|----------|
-| `ECONNREFUSED` | Check IP address and port, ensure printer is on |
-| `ENOENT` | Check COM port or device path |
-| `EACCES` | Fix permissions (Linux/Mac) |
-| `timeout` | Increase timeout in controller or check connection |
-
-## Paper Size Configuration
-
-For different paper widths, modify the barcode scale in `productController.js`:
-
-```javascript
-// 58mm (2 inch) - Default
-const barcodeBuffer = await bwipjs.toBuffer({
-  bcid: 'code128',
-  text: barcode,
-  scale: 3,
-  height: 10,
-  // ...
-});
-
-// 80mm (3 inch)
-const barcodeBuffer = await bwipjs.toBuffer({
-  bcid: 'code128',
-  text: barcode,
-  scale: 4,      // Increased scale
-  height: 12,    // Increased height
-  // ...
-});
-```
+| `ENOENT` | Check PRINTER_INTERFACE path, verify printer exists |
+| `EACCES` | Fix permissions (Linux/Mac) or check share access (Windows) |
+| `ECONNREFUSED` | Network printer not reachable, check IP and port |
 
 ## Usage
 
-1. Go to Products page
-2. Click the actions menu (⋮) for any product
-3. Select "Print Barcode"
-4. Enter the number of barcodes to print (1-100)
-5. Click "Print"
+1. Go to **Products** page
+2. Click the **actions menu (⋮)** for any product  
+3. Select **"Print Barcode"**
+4. Enter the number of labels (1-100)
+5. Click **"Print"**
 
-The barcode label will include:
+The printer will produce labels with:
 - Product name
-- Barcode image
 - Price
+- CODE128 barcode
 
-## Advanced Configuration
+## Custom Label Format
 
-### Custom Label Format
-
-Edit the `printBarcode` function in `productController.js`:
-
-```javascript
-// Add product ID
-printer.println(`ID: ${product.productId}`);
-
-// Add category
-printer.println(`Category: ${product.category}`);
-
-// Add date
-printer.println(`Date: ${new Date().toLocaleDateString()}`);
-```
-
-### Multiple Printers
-
-To support multiple printers (e.g., one for receipts, one for labels):
-
-```env
-LABEL_PRINTER_INTERFACE=tcp://192.168.1.100:9100
-RECEIPT_PRINTER_INTERFACE=tcp://192.168.1.101:9100
-```
-
-### Character Sets
-
-Change character set for different languages:
+Edit `printBarcode` in `biller-server/src/controllers/productController.js`:
 
 ```javascript
-const printer = new ThermalPrinter({
-  // ...
-  characterSet: 'PC437_USA',  // Default
-  // Other options:
-  // 'PC850_MULTILINGUAL'
-  // 'PC860_PORTUGUESE'
-  // 'PC865_NORDIC'
-  // 'WINDOWS1252'
-});
+const tsplCommand = 
+  `SIZE 58 mm, 40 mm\r\n` +
+  `GAP 3 mm, 0\r\n` +
+  `DIRECTION 1\r\n` +
+  `CLS\r\n` +
+  `BOX 10,10,440,300,3\r\n` +
+  // Add your custom fields here
+  `TEXT 30,25,"3",0,1,1,"${product.name}"\r\n` +
+  `TEXT 30,60,"2",0,1,1,"Stock: ${product.stockQuantity}"\r\n` +  // New field
+  `BARCODE 30,110,"128",80,1,0,2,2,"${barcode}"\r\n` +
+  `PRINT ${quantity},1\r\n`;
 ```
+
+## TSPL Command Reference
+
+### Common Commands
+- `SIZE width, height` - Set label size
+- `GAP gap, offset` - Set gap between labels  
+- `CLS` - Clear buffer
+- `BOX x1,y1,x2,y2,thickness` - Draw rectangle
+- `TEXT x,y,font,rotation,x_mul,y_mul,"text"` - Print text
+- `BARCODE x,y,type,height,readable,rotation,narrow,wide,"data"` - Print barcode
+- `PRINT quantity,copies` - Print labels
+
+### Barcode Types
+- `"128"` - CODE128 (alphanumeric)
+- `"EAN13"` - EAN-13 (13 digits)
+- `"QRCODE"` - QR Code (2D)
+- `"39"` - CODE39
 
 ## Resources
 
-- [node-thermal-printer Documentation](https://github.com/node-thermal-printer/node-thermal-printer)
-- [bwip-js Barcode Types](https://github.com/metafloor/bwip-js)
-- [ESC/POS Command Reference](https://reference.epson-biz.com/modules/ref_escpos/)
+- [TSPL Programming Manual](https://www.tscprinters.com/EN/Download/Programming-Manual)
+- [TSC Printer Utilities](https://www.tscprinters.com/EN/Download/Software)
 
 ## Support
 
-For issues or questions:
-1. Check this documentation
-2. Verify printer connectivity
-3. Check server logs for error messages
-4. Test printer with manufacturer's tools first
+For issues:
+1. Verify PRINTER_INTERFACE in .env
+2. Test printer with manufacturer's tools
+3. Check server logs for detailed errors
+4. Ensure barcode exists for the product
