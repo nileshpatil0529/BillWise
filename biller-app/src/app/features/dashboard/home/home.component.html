@@ -70,7 +70,6 @@
               #inlineScanner
               [currencySymbol]="settingsService.settings().currency"
               (barcodeScanned)="onScannerBarcodeScanned($event)"
-              (productAdded)="onScannerProductAdded($event)"
               (closed)="closeInlineScanner()">
             </app-inline-scanner>
           </div>
