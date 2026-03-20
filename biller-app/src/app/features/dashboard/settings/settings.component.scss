@@ -588,3 +588,98 @@ mat-tab-group {
     }
   }
 }
+
+// Categories Section
+.category-add-section {
+  display: flex;
+  gap: v.$spacing-md;
+  align-items: flex-start;
+  margin-bottom: v.$spacing-md;
+
+  .category-input {
+    flex: 1;
+  }
+
+  button {
+    margin-top: 8px;
+  }
+}
+
+.categories-list {
+  h3 {
+    margin: v.$spacing-md 0 v.$spacing-xs 0;
+    font-size: 16px;
+    font-weight: 500;
+    color: v.$light-text-primary;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+
+  .hint {
+    font-size: 13px;
+    color: v.$light-text-secondary;
+    margin-bottom: v.$spacing-md;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: v.$spacing-xl;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      margin-bottom: v.$spacing-sm;
+      opacity: 0.5;
+    }
+
+    p {
+      margin: 0;
+    }
+  }
+
+  mat-list {
+    padding: 0;
+
+    mat-list-item {
+      height: auto;
+      padding: 0;
+
+      .category-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: v.$spacing-sm 0;
+
+        mat-checkbox {
+          flex: 1;
+
+          .category-name {
+            font-size: 14px;
+            font-weight: 500;
+            margin-left: v.$spacing-xs;
+          }
+        }
+
+        button[mat-icon-button] {
+          flex-shrink: 0;
+        }
+      }
+    }
+  }
+}
+

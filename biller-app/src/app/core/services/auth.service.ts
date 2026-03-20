@@ -69,7 +69,21 @@ export class AuthService {
   }
 
   logout(): void {
-    this.http.post(`${this.API_URL}/auth/logout`, {}).subscribe();
+    this.http.post(`${this.API_URL}/auth/logout`, {}).subscribe({
+      complete: () => {
+        this.clearAuth();
+        this.router.navigate(['/login']);
+      },
+      error: () => {
+        // Even if logout API fails, clear local auth
+        this.clearAuth();
+        this.router.navigate(['/login']);
+      }
+    });
+  }
+
+  // Logout without making API call (used for token expiration)
+  logoutLocal(): void {
     this.clearAuth();
     this.router.navigate(['/login']);
   }

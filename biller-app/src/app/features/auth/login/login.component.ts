@@ -67,10 +67,16 @@ export class LoginComponent {
         this.loading.set(false);
         if (response.success) {
           this.snackBar.open('Login successful!', 'Close', {
-            duration: 3000,
+            duration: 2000,
             panelClass: ['success-snackbar']
           });
-          this.router.navigate([this.returnUrl]);
+          
+          // Use setTimeout to ensure navigation happens after auth state is fully updated
+          setTimeout(() => {
+            this.router.navigate([this.returnUrl]).then(() => {
+              console.log('Navigated to:', this.returnUrl);
+            });
+          }, 100);
         } else {
           this.snackBar.open(response.message || 'Login failed', 'Close', {
             duration: 5000,

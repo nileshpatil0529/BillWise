@@ -195,6 +195,7 @@ const initializeDatabase = () => {
       taxEnabled INTEGER DEFAULT 1,
       taxRates TEXT DEFAULT '[{"name":"GST 5%","rate":5},{"name":"GST 12%","rate":12},{"name":"GST 18%","rate":18}]',
       discountEnabled INTEGER DEFAULT 1,
+      categories TEXT DEFAULT '[{"name":"General","enabled":true}]',
       invoicePrefix TEXT DEFAULT 'INV',
       invoiceStartNumber INTEGER DEFAULT 1,
       footerText TEXT DEFAULT 'Thank you for your business!',
@@ -224,6 +225,11 @@ const initializeDatabase = () => {
     if (!hasDebtEnabled) {
       db.exec('ALTER TABLE settings ADD COLUMN debtEnabled INTEGER DEFAULT 0');
       console.log('✅ Migration: Added debtEnabled column');
+    }
+    const hasCategories = columns.some(col => col.name === 'categories');
+    if (!hasCategories) {
+      db.exec('ALTER TABLE settings ADD COLUMN categories TEXT DEFAULT \'[{"name":"General","enabled":true}]\'');
+      console.log('✅ Migration: Added categories column');
     }
   } catch (e) {
     // Column might already exist

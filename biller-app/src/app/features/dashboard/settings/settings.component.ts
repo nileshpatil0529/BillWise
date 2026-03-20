@@ -13,9 +13,11 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatRadioModule } from '@angular/material/radio';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatListModule } from '@angular/material/list';
 
 import { SettingsService } from '../../../core/services/settings.service';
-import { Settings, ApplicationType, ThemeType, ScannerType } from '../../../core/models/settings.model';
+import { Settings, ApplicationType, ThemeType, ScannerType, Category } from '../../../core/models/settings.model';
 
 @Component({
   selector: 'app-settings',
@@ -34,7 +36,9 @@ import { Settings, ApplicationType, ThemeType, ScannerType } from '../../../core
     MatSnackBarModule,
     MatTabsModule,
     MatProgressSpinnerModule,
-    MatRadioModule
+    MatRadioModule,
+    MatCheckboxModule,
+    MatListModule
   ],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss']
@@ -50,6 +54,8 @@ export class SettingsComponent implements OnInit {
 
   saving = signal(false);
   logoPreview = signal<string | null>(null);
+  categories = signal<Category[]>([]);
+  newCategoryName = signal<string>('');
 
   applicationTypes: { value: ApplicationType; label: string; icon: string }[] = [
     { value: 'hotel', label: 'Hotel / Restaurant', icon: 'restaurant' },
@@ -140,6 +146,9 @@ export class SettingsComponent implements OnInit {
     if (settings.logo) {
       this.logoPreview.set(settings.logo);
     }
+
+    // Load categories
+    this.categories.set(settings.categories || [{ name: 'General', enabled: true }]);
   }
 
   onThemeChange(isDark: boolean): void {
@@ -272,5 +281,65 @@ export class SettingsComponent implements OnInit {
 
   getAppTypeIcon(type: string): string {
     return this.applicationTypes.find(t => t.value === type)?.icon || 'store';
+  }
+
+  // Categories Management
+  addCategory(): void {
+    const name = this.newCategoryName().trim();
+    if (!name) {
+      this.snackBar.open('Please enter a category name', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const currentCategories = this.categories();
+    if (currentCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
+      this.snackBar.open('Category already exists', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const newCategory: Category = { name, enabled: true };
+    this.categories.set([...currentCategories, newCategory]);
+    this.newCategoryName.set('');
+  }
+
+  toggleCategory(index: number): void {
+    const currentCategories = [...this.categories()];
+    currentCategories[index].enabled = !currentCategories[index].enabled;
+    this.categories.set(currentCategories);
+  }
+
+  removeCategory(index: number): void {
+    const categoryName = this.categories()[index].name;
+    
+    // Prevent removing 'General' category
+    if (categoryName === 'General') {
+      this.snackBar.open('Cannot remove General category', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (confirm(`Are you sure you want to remove "${categoryName}"?`)) {
+      const currentCategories = [...this.categories()];
+      currentCategories.splice(index, 1);
+      this.categories.set(currentCategories);
+    }
+  }
+
+  saveCategories(): void {
+    this.saving.set(true);
+    
+    const settings: Partial<Settings> = {
+      categories: this.categories()
+    };
+
+    this.settingsService.updateSettings(settings).subscribe({
+      next: () => {
+        this.snackBar.open('Categories saved successfully', 'Close', { duration: 3000 });
+        this.saving.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Failed to save categories', 'Close', { duration: 3000 });
+        this.saving.set(false);
+      }
+    });
   }
 }

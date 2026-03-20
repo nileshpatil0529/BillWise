@@ -534,11 +534,25 @@ export const exportProducts = async (req, res) => {
 
 export const getCategories = async (req, res) => {
   try {
-    const categories = db.prepare('SELECT DISTINCT category FROM products').all();
+    // Get categories from settings (only enabled ones)
+    const settings = db.prepare('SELECT categories FROM settings WHERE id = 1').get();
+    
+    let categories = [];
+    if (settings && settings.categories) {
+      const allCategories = JSON.parse(settings.categories);
+      categories = allCategories
+        .filter(cat => cat.enabled)
+        .map(cat => cat.name);
+    }
+    
+    // Fallback to 'General' if no categories found
+    if (categories.length === 0) {
+      categories = ['General'];
+    }
     
     res.json({
       success: true,
-      data: categories.map(c => c.category)
+      data: categories
     });
   } catch (error) {
     res.status(500).json({
@@ -547,6 +561,7 @@ export const getCategories = async (req, res) => {
     });
   }
 };
+
 
 export const printBarcode = async (req, res) => {
   try {

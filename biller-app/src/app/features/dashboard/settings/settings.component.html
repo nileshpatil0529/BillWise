@@ -346,5 +346,95 @@
         </mat-card>
       </div>
     </mat-tab>
+
+    <!-- Categories Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>category</mat-icon>
+        <span>Categories</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-card class="settings-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>category</mat-icon>
+            <mat-card-title>Product Categories</mat-card-title>
+            <mat-card-subtitle>Manage product categories for better organization</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <!-- Add New Category -->
+            <div class="category-add-section">
+              <mat-form-field appearance="outline" class="category-input">
+                <mat-label>New Category Name</mat-label>
+                <input matInput 
+                       [value]="newCategoryName()" 
+                       (input)="newCategoryName.set($any($event.target).value)"
+                       (keyup.enter)="addCategory()"
+                       placeholder="Enter category name">
+                <mat-icon matPrefix>add</mat-icon>
+              </mat-form-field>
+              <button mat-raised-button color="primary" (click)="addCategory()">
+                <mat-icon>add</mat-icon>
+                Add Category
+              </button>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <!-- Categories List -->
+            <div class="categories-list">
+              <h3>Categories</h3>
+              <p class="hint">Check categories to make them available in products. General category cannot be removed.</p>
+              
+              @if (categories().length === 0) {
+                <div class="empty-state">
+                  <mat-icon>category</mat-icon>
+                  <p>No categories yet. Add your first category above.</p>
+                </div>
+              } @else {
+                <mat-list>
+                  @for (category of categories(); track $index) {
+                    <mat-list-item>
+                      <div class="category-item">
+                        <mat-checkbox 
+                          [checked]="category.enabled"
+                          (change)="toggleCategory($index)">
+                          <span class="category-name">{{ category.name }}</span>
+                        </mat-checkbox>
+                        @if (category.name !== 'General') {
+                          <button mat-icon-button 
+                                  color="warn" 
+                                  (click)="removeCategory($index)"
+                                  matTooltip="Remove category">
+                            <mat-icon>delete</mat-icon>
+                          </button>
+                        }
+                      </div>
+                    </mat-list-item>
+                    <mat-divider></mat-divider>
+                  }
+                </mat-list>
+              }
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" (click)="saveCategories()" [disabled]="saving()">
+              @if (saving()) {
+                <span class="button-content">
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Saving...
+                </span>
+              } @else {
+                <span class="button-content">
+                  <mat-icon>save</mat-icon>
+                  Save Categories
+                </span>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </mat-tab>
   </mat-tab-group>
-</div>

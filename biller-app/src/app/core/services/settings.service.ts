@@ -27,6 +27,7 @@ export class SettingsService {
     scannerType: 'none',
     taxEnabled: true,
     taxRates: [],
+    categories: [{ name: 'General', enabled: true }],
     discountEnabled: true,
     debtEnabled: false,
     invoicePrefix: 'INV',

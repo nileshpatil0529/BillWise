@@ -13,6 +13,11 @@ export interface Currency {
   name: string;
 }
 
+export interface Category {
+  name: string;
+  enabled: boolean;
+}
+
 export interface Settings {
   businessName: string;
   logo: string;
@@ -29,6 +34,7 @@ export interface Settings {
   taxRates: TaxRate[];
   discountEnabled: boolean;
   debtEnabled: boolean;
+  categories: Category[];
   invoicePrefix: string;
   invoiceStartNumber: number;
   footerText: string;
