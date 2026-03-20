@@ -12,6 +12,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { Product } from '../../../../core/models/product.model';
 import { BarcodeScannerDialogComponent } from '../../home/barcode-scanner-dialog/barcode-scanner-dialog.component';
 import { SettingsService } from '../../../../core/services/settings.service';
+import { ProductService } from '../../../../core/services/product.service';
 
 interface DialogData {
   mode: 'add' | 'edit';
@@ -50,12 +51,9 @@ interface DialogData {
           <mat-form-field appearance="outline">
             <mat-label>Category</mat-label>
             <mat-select formControlName="category">
-              <mat-option value="Groceries">Groceries</mat-option>
-              <mat-option value="Electronics">Electronics</mat-option>
-              <mat-option value="Clothing">Clothing</mat-option>
-              <mat-option value="Food & Beverages">Food & Beverages</mat-option>
-              <mat-option value="Services">Services</mat-option>
-              <mat-option value="General">General</mat-option>
+              @for (category of productService.categories(); track category) {
+                <mat-option [value]="category">{{ category }}</mat-option>
+              }
             </mat-select>
           </mat-form-field>
         </div>
@@ -187,6 +185,7 @@ interface DialogData {
 export class ProductDialogComponent {
   productForm: FormGroup;
   settingsService = inject(SettingsService);
+  productService = inject(ProductService);
 
   constructor(
     private fb: FormBuilder,
@@ -194,6 +193,10 @@ export class ProductDialogComponent {
     @Inject(MAT_DIALOG_DATA) public data: DialogData,
     private dialog: MatDialog
   ) {
+    // Load categories if not already loaded
+    if (this.productService.categories().length === 0) {
+      this.productService.getCategories().subscribe();
+    }
     const product = data.product;
     
     this.productForm = this.fb.group({
@@ -206,7 +209,7 @@ export class ProductDialogComponent {
       costPrice: [product?.costPrice || 0, Validators.min(0)],
       stockQuantity: [product?.stockQuantity || '', [Validators.required, Validators.min(1)]],
       lowStockAlert: [product?.lowStockAlert || 10, Validators.min(0)],
-      status: [product?.status === 'active' || !product]
+      status: [product?.status !== 'inactive'] // Default to active for new products
     });
 
     // Add barcode match validator

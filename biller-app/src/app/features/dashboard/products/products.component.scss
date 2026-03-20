@@ -72,6 +72,7 @@
     display: flex;
     gap: v.$spacing-md;
     flex-wrap: wrap;
+    align-items: flex-start;
 
     .search-field {
       flex: 1;
@@ -79,6 +80,19 @@
       
       @include m.mobile {
         min-width: 100%;
+      }
+    }
+
+    .scan-button {
+      margin-top: 8px;
+      height: 48px;
+      
+      mat-icon {
+        margin-right: v.$spacing-xs;
+      }
+      
+      @include m.mobile {
+        width: 100%;
       }
     }
 

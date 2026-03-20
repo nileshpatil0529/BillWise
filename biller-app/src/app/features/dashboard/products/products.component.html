@@ -42,6 +42,13 @@
         }
       </mat-form-field>
 
+      @if (settingsService.settings().scannerType === 'camera') {
+        <button mat-raised-button color="accent" (click)="openBarcodeScanner()" class="scan-button">
+          <mat-icon>qr_code_scanner</mat-icon>
+          Scan
+        </button>
+      }
+
       <mat-form-field appearance="outline" class="category-field">
         <mat-label>Category</mat-label>
         <mat-select [value]="selectedCategory()" (selectionChange)="selectedCategory.set($event.value); onCategoryChange()">

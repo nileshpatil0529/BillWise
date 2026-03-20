@@ -21,9 +21,11 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 
 import { ProductService } from '../../../core/services/product.service';
 import { SettingsService } from '../../../core/services/settings.service';
+import { BeepService } from '../../../core/services/beep.service';
 import { Product } from '../../../core/models/product.model';
 import { ProductDialogComponent } from './product-dialog/product-dialog.component';
 import { BarcodePrintDialogComponent } from './barcode-print-dialog/barcode-print-dialog.component';
+import { BarcodeScannerDialogComponent } from '../home/barcode-scanner-dialog/barcode-scanner-dialog.component';
 
 @Component({
   selector: 'app-products',
@@ -74,7 +76,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
     public productService: ProductService,
     public settingsService: SettingsService,
     private dialog: MatDialog,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private beepService: BeepService
   ) {}
 
   ngOnInit(): void {
@@ -142,10 +145,11 @@ export class ProductsComponent implements OnInit, OnDestroy {
     this.loadProducts();
   }
 
-  openAddDialog(): void {
+  openAddDialog(barcode?: string): void {
+    const initialProduct = barcode ? { barcode, confirmBarcode: barcode } as Partial<Product> : undefined;
     const dialogRef = this.dialog.open(ProductDialogComponent, {
       width: '600px',
-      data: { mode: 'add' }
+      data: { mode: 'add', product: initialProduct as Product }
     });
 
     dialogRef.afterClosed().subscribe(result => {
@@ -193,6 +197,61 @@ export class ProductsComponent implements OnInit, OnDestroy {
             this.snackBar.open('Failed to update product', 'Close', { duration: 3000 });
           }
         });
+      }
+    });
+  }
+
+  openBarcodeScanner(): void {
+    const dialogRef = this.dialog.open(BarcodeScannerDialogComponent, {
+      width: '500px',
+      maxWidth: '90vw',
+      data: { mode: 'single', title: 'Scan Product Barcode' }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.handleScannedBarcode(result);
+      }
+    });
+  }
+
+  handleScannedBarcode(barcode: string): void {
+    this.beepService.playSuccess();
+    this.loading.set(true);
+
+    // Search for product with this barcode
+    this.productService.searchProducts(barcode).subscribe({
+      next: (response) => {
+        this.loading.set(false);
+        const products: Product[] = response.data || [];
+        
+        // Find exact barcode match
+        const product = products.find((p: Product) => 
+          p.barcode === barcode
+        );
+
+        if (product) {
+          // Product exists - open edit dialog
+          this.snackBar.open(`Product found: ${product.name}`, 'Close', { 
+            duration: 2000,
+            panelClass: ['success-snackbar']
+          });
+          this.openEditDialog(product);
+        } else {
+          // Product not found - open add dialog with barcode prefilled
+          this.snackBar.open('Product not found. Opening add dialog...', 'Close', { 
+            duration: 2000,
+            panelClass: ['info-snackbar']
+          });
+          this.openAddDialog(barcode);
+        }
+      },
+      error: () => {
+        this.loading.set(false);
+        this.snackBar.open('Error searching for product. Opening add dialog...', 'Close', { 
+          duration: 3000 
+        });
+        this.openAddDialog(barcode);
       }
     });
   }
