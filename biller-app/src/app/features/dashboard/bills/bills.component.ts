@@ -264,7 +264,7 @@ export class BillsComponent implements OnInit {
       doc.text('Sales Report', margin, yPos);
       
       // Date range
-      const dateRange = `${this.startDate()?.toLocaleDateString()} - ${this.endDate()?.toLocaleDateString()}`;
+      const dateRange = `${this.formatDateString(this.startDate())} - ${this.formatDateString(this.endDate())}`;
       doc.setFontSize(10);
       doc.setFont('helvetica', 'normal');
       doc.text(dateRange, pageWidth - margin, yPos, { align: 'right' });
@@ -346,7 +346,7 @@ export class BillsComponent implements OnInit {
       doc.setFontSize(8);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(120, 120, 120);
-      doc.text(`Generated: ${new Date().toLocaleString()}`, margin, pageHeight - 15);
+      doc.text(`Generated: ${this.formatDateString(new Date())}`, margin, pageHeight - 15);
       if (settings.taxNumber) {
         doc.text(`Tax No: ${settings.taxNumber}`, pageWidth - margin, pageHeight - 15, { align: 'right' });
       }
@@ -361,6 +361,15 @@ export class BillsComponent implements OnInit {
 
   formatCurrency(amount: number): string {
     return this.settingsService.formatCurrency(amount);
+  }
+
+  formatDateString(date: Date | null | undefined): string {
+    if (!date) return '';
+    const d = date instanceof Date ? date : new Date(date);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   }
 
   getPaymentMethodIcon(method: string): string {

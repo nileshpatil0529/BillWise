@@ -37,7 +37,7 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
           </div>
           <div class="info-row">
             <span class="label">Date & Time:</span>
-            <span class="value">{{ data.createdAt | date:'medium' }}</span>
+            <span class="value">{{ data.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
           </div>
           @if (data.customerName) {
             <div class="info-row">

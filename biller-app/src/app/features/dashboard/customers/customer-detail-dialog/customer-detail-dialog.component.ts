@@ -416,7 +416,11 @@ export class CustomerDetailDialogComponent implements OnInit {
   }
 
   formatDate(dateString: string): string {
-    return new Date(dateString).toLocaleDateString();
+    const d = new Date(dateString);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
   }
 
   setPaymentAmount(billId: string, value: string): void {
@@ -581,7 +585,7 @@ export class CustomerDetailDialogComponent implements OnInit {
     
     doc.setFontSize(9);
     doc.setFont('helvetica', 'normal');
-    doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - margin, yPos, { align: 'right' });
+    doc.text(`Generated: ${this.formatDate(new Date().toISOString())}`, pageWidth - margin, yPos, { align: 'right' });
     yPos += 8;
 
     doc.setFontSize(10);
@@ -650,7 +654,7 @@ export class CustomerDetailDialogComponent implements OnInit {
     unpaidBills.forEach((bill, index) => {
       // Add bill header row
       const billNumberText = bill.billNumber || bill.billId.substring(0, 12);
-      const billHeaderText = `${new Date(bill.createdAt).toLocaleDateString()} | ${bill.paymentMethod || 'N/A'}`;
+      const billHeaderText = `${this.formatDate(bill.createdAt)} | ${bill.paymentMethod || 'N/A'}`;
       
       allRows.push([
         { content: billNumberText, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [245, 245, 245] } },
