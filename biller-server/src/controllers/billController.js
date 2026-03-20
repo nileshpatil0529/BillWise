@@ -350,8 +350,11 @@ export const getReport = async (req, res) => {
         case 'debt':
           if (bill.paymentStatus === 'paid') {
             summary.debtPaid += bill.grandTotal;
-          } else {
+          } else if (bill.paymentStatus === 'partial') {
+            summary.debtPaid += bill.amountPaid || 0;
             summary.debtAmount += bill.grandTotal - (bill.amountPaid || 0);
+          } else {
+            summary.debtAmount += bill.grandTotal;
           }
           break;
       }

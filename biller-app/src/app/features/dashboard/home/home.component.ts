@@ -409,7 +409,7 @@ export class HomeComponent implements OnInit {
   }
 
   onScannerBarcodeScanned(barcode: string): void {
-    // Search for product by barcode
+    // Search for product by barcode and auto-add to cart
     this.productService.searchProducts(barcode).subscribe({
       next: (response) => {
         const products: Product[] = response.data || [];
@@ -420,39 +420,66 @@ export class HomeComponent implements OnInit {
         );
 
         if (product) {
-          this.inlineScanner?.setScannedProduct(product);
+          // Check if product already in cart
+          const existingItem = this.billService.cartItems().find(item => item.productId === product.productId);
+          
+          if (existingItem) {
+            // Increase quantity
+            this.billService.updateCartItem(product.productId, { quantity: existingItem.quantity + 1 });
+            this.beepService.playSuccess();
+            this.snackBar.open(`${product.name} quantity increased`, 'Close', {
+              duration: 2000,
+              panelClass: ['success-snackbar']
+            });
+          } else {
+            // Add new item
+            this.selectProduct(product);
+            this.snackBar.open(`${product.name} added to cart`, 'Close', {
+              duration: 2000,
+              panelClass: ['success-snackbar']
+            });
+          }
+          this.inlineScanner?.setProductAdded();
         } else if (products.length > 0) {
-          this.inlineScanner?.setScannedProduct(products[0]);
+          // Add first match if no exact match
+          const firstProduct = products[0];
+          const existingItem = this.billService.cartItems().find(item => item.productId === firstProduct.productId);
+          
+          if (existingItem) {
+            this.billService.updateCartItem(firstProduct.productId, { quantity: existingItem.quantity + 1 });
+            this.beepService.playSuccess();
+            this.snackBar.open(`${firstProduct.name} quantity increased`, 'Close', {
+              duration: 2000,
+              panelClass: ['success-snackbar']
+            });
+          } else {
+            this.selectProduct(firstProduct);
+            this.snackBar.open(`${firstProduct.name} added to cart`, 'Close', {
+              duration: 2000,
+              panelClass: ['success-snackbar']
+            });
+          }
+          this.inlineScanner?.setProductAdded();
         } else {
           this.inlineScanner?.setNotFound();
+          this.snackBar.open(`Product not found for barcode: ${barcode}`, 'Close', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
         }
       },
       error: () => {
         this.inlineScanner?.setNotFound();
+        this.snackBar.open('Failed to search product', 'Close', {
+          duration: 3000
+        });
       }
     });
   }
 
   onScannerProductAdded(product: Product): void {
-    // Check if product already in cart
-    const existingItem = this.billService.cartItems().find(item => item.productId === product.productId);
-    
-    if (existingItem) {
-      // Increase quantity
-      this.billService.updateCartItem(product.productId, { quantity: existingItem.quantity + 1 });
-      this.beepService.playSuccess();
-      this.snackBar.open(`${product.name} quantity increased`, 'Close', {
-        duration: 2000,
-        panelClass: ['success-snackbar']
-      });
-    } else {
-      // Add new item
-      this.selectProduct(product);
-      this.snackBar.open(`${product.name} added to cart`, 'Close', {
-        duration: 2000,
-        panelClass: ['success-snackbar']
-      });
-    }
+    // This method is no longer needed as products are auto-added in onScannerBarcodeScanned
+    // Kept for backward compatibility
   }
 
   private addProductByBarcode(barcode: string): void {

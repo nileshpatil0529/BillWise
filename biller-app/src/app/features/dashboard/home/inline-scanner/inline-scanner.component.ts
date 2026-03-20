@@ -29,7 +29,7 @@ import { Product } from '../../../../core/models/product.model';
           <mat-icon class="scanner-icon">qr_code_scanner</mat-icon>
           <div class="header-text">
             <span class="title">Barcode Scanner</span>
-            <span class="subtitle">{{ scannedProduct() ? 'Product found!' : 'Position barcode in frame' }}</span>
+            <span class="subtitle">{{ isScanning() ? 'Scanning...' : 'Click Scan to start' }}</span>
           </div>
         </div>
         <button mat-icon-button class="close-btn" (click)="onClose()">
@@ -73,7 +73,7 @@ import { Product } from '../../../../core/models/product.model';
                 <div class="corner tr"></div>
                 <div class="corner bl"></div>
                 <div class="corner br"></div>
-                <div class="scan-line" [class.active]="!loading() && !error()"></div>
+                <div class="scan-line" [class.active]="isScanning()"></div>
               </div>
             }
           </div>
@@ -86,50 +86,34 @@ import { Product } from '../../../../core/models/product.model';
         </div>
 
         <div class="result-panel">
-          @if (scannedProduct()) {
+          @if (lastScannedCode()) {
             <div class="product-found">
-              <div class="product-icon">
-                <mat-icon>inventory_2</mat-icon>
+              <div class="product-icon success">
+                <mat-icon>check_circle</mat-icon>
               </div>
               <div class="product-details">
-                <span class="product-name">{{ scannedProduct()!.name }}</span>
+                <span class="product-name">Product Added</span>
                 <span class="product-info">
                   <span class="barcode">{{ lastScannedCode() }}</span>
-                  <span class="price">{{ formatCurrency(scannedProduct()!.unitPrice) }}</span>
-                </span>
-                <span class="stock" [class.low]="scannedProduct()!.stockQuantity <= 10">
-                  Stock: {{ scannedProduct()!.stockQuantity }}
                 </span>
               </div>
-            </div>
-
-            <div class="action-buttons">
-              <button mat-flat-button color="primary" class="ok-btn" (click)="confirmAdd()">
-                <mat-icon>check</mat-icon>
-                Add to Cart
-              </button>
-              <button mat-stroked-button color="warn" class="cancel-btn" (click)="cancelScan()">
-                <mat-icon>close</mat-icon>
-                Cancel
-              </button>
-            </div>
-          } @else if (lastScannedCode() && !scannedProduct()) {
-            <div class="not-found">
-              <mat-icon>error_outline</mat-icon>
-              <span>Product not found</span>
-              <span class="scanned-code">{{ lastScannedCode() }}</span>
-              <button mat-stroked-button (click)="resetScan()">
-                <mat-icon>refresh</mat-icon>
-                Scan Again
-              </button>
             </div>
           } @else {
             <div class="waiting">
               <mat-icon>qr_code</mat-icon>
-              <span>Scan a product barcode</span>
-              <span class="hint">Point camera at 1D barcode or QR code</span>
+              <span>Ready to scan</span>
+              <span class="hint">Click Scan button to start</span>
             </div>
           }
+
+          <div class="action-buttons">
+            <button mat-flat-button color="primary" class="scan-btn" 
+                    (click)="startScan()"
+                    [disabled]="!canScan() || isScanning() || loading() || !!error()">
+              <mat-icon>{{ isScanning() ? 'hourglass_empty' : 'qr_code_scanner' }}</mat-icon>
+              {{ isScanning() ? 'Scanning...' : 'Scan' }}
+            </button>
+          </div>
         </div>
       </div>
 
@@ -418,6 +402,7 @@ import { Product } from '../../../../core/models/product.model';
     .action-buttons {
       display: flex;
       gap: 12px;
+      margin-top: 16px;
 
       button {
         flex: 1;
@@ -427,12 +412,62 @@ import { Product } from '../../../../core/models/product.model';
         }
       }
 
-      .ok-btn {
-        background: #4caf50;
+      .scan-btn {
+        min-height: 48px;
+        font-size: 16px;
       }
     }
 
-    .not-found, .waiting {
+    .product-found {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 16px;
+      background: rgba(76, 175, 80, 0.2);
+      border-radius: 8px;
+      border-left: 4px solid #4caf50;
+
+      .product-icon {
+        flex-shrink: 0;
+
+        mat-icon {
+          font-size: 40px;
+          width: 40px;
+          height: 40px;
+          color: #4caf50;
+        }
+
+        &.success mat-icon {
+          color: #4caf50;
+        }
+      }
+
+      .product-details {
+        flex: 1;
+        min-width: 0;
+
+        .product-name {
+          display: block;
+          font-size: 16px;
+          font-weight: 600;
+          color: white;
+          margin-bottom: 4px;
+        }
+
+        .product-info {
+          display: flex;
+          gap: 16px;
+          font-size: 13px;
+
+          .barcode {
+            color: rgba(255, 255, 255, 0.7);
+            font-family: 'Roboto Mono', monospace;
+          }
+        }
+      }
+    }
+
+    .waiting {
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -449,21 +484,10 @@ import { Product } from '../../../../core/models/product.model';
         color: rgba(255, 255, 255, 0.4);
       }
 
-      .scanned-code {
-        font-family: 'Roboto Mono', monospace;
-        font-size: 12px;
-        color: rgba(255, 255, 255, 0.5);
-        margin-bottom: 8px;
-      }
-
       .hint {
         font-size: 12px;
         color: rgba(255, 255, 255, 0.5);
       }
-    }
-
-    .not-found mat-icon {
-      color: #ffb74d;
     }
 
     .scanner-footer {
@@ -510,11 +534,12 @@ export class InlineScannerComponent implements OnInit, OnDestroy {
   loading = signal(true);
   error = signal<string | null>(null);
   lastScannedCode = signal<string | null>(null);
-  scannedProduct = signal<Product | null>(null);
   addedCount = signal(0);
   availableDevices = signal<MediaDeviceInfo[]>([]);
   selectedDevice = signal<MediaDeviceInfo | undefined>(undefined);
   currentDeviceIndex = 0;
+  isScanning = signal(false);
+  canScan = signal(false);
 
   private beepService = inject(BeepService);
   private lastScanTime = 0;
@@ -547,6 +572,7 @@ export class InlineScannerComponent implements OnInit, OnDestroy {
       );
       this.selectedDevice.set(backCamera || devices[0]);
       this.loading.set(false);
+      this.canScan.set(true);
     }
   }
 
@@ -570,8 +596,8 @@ export class InlineScannerComponent implements OnInit, OnDestroy {
   onScanSuccess(barcode: string): void {
     const now = Date.now();
     
-    // Only process if we don't have a pending scanned product
-    if (this.scannedProduct() || (now - this.lastScanTime < this.scanDebounceMs)) {
+    // Only process if scanning is enabled
+    if (!this.isScanning() || (now - this.lastScanTime < this.scanDebounceMs)) {
       return;
     }
     this.lastScanTime = now;
@@ -579,27 +605,22 @@ export class InlineScannerComponent implements OnInit, OnDestroy {
     if (barcode) {
       this.beepService.playDoubleBeep();
       this.lastScannedCode.set(barcode);
-      // Emit barcode for parent to handle product lookup
+      this.isScanning.set(false);
+      // Emit barcode for parent to handle product lookup and auto-add
       this.barcodeScanned.emit(barcode);
     }
   }
 
-  confirmAdd(): void {
-    const product = this.scannedProduct();
-    if (product) {
-      this.productAdded.emit(product);
-      this.addedCount.update(c => c + 1);
-      this.resetScan();
+  startScan(): void {
+    if (this.canScan() && !this.loading() && !this.error()) {
+      this.isScanning.set(true);
+      this.lastScannedCode.set(null);
     }
   }
 
-  cancelScan(): void {
-    this.resetScan();
-  }
-
-  resetScan(): void {
+  onProductAdded(): void {
+    this.addedCount.update(c => c + 1);
     this.lastScannedCode.set(null);
-    this.scannedProduct.set(null);
   }
 
   switchCamera(): void {
@@ -626,12 +647,12 @@ export class InlineScannerComponent implements OnInit, OnDestroy {
     return `${this.currencySymbol}${amount.toFixed(2)}`;
   }
 
-  setScannedProduct(product: Product | null): void {
-    this.scannedProduct.set(product);
+  setProductAdded(): void {
+    this.onProductAdded();
   }
 
   setNotFound(): void {
-    this.scannedProduct.set(null);
     this.beepService.playError();
+    this.lastScannedCode.set(null);
   }
 }

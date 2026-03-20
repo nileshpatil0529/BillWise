@@ -94,29 +94,6 @@ export interface CustomerDetailDialogData {
               <td mat-cell *matCellDef="let debt">{{ formatDate(debt.createdAt) }}</td>
             </ng-container>
 
-            <!-- Pay Column -->
-            <ng-container matColumnDef="pay">
-              <th mat-header-cell *matHeaderCellDef>Pay</th>
-              <td mat-cell *matCellDef="let debt">
-                <div class="pay-cell">
-                  <mat-form-field appearance="outline" class="pay-input">
-                    <input matInput 
-                           type="number" 
-                           [value]="debt.remainingAmount"
-                           (input)="setPaymentAmount(debt.billId, $any($event.target).value)"
-                           [max]="debt.remainingAmount"
-                           min="0">
-                  </mat-form-field>
-                  <button mat-icon-button color="primary" 
-                          (click)="payDebt(debt); $event.stopPropagation()"
-                          [disabled]="paying()"
-                          matTooltip="Pay debt">
-                    <mat-icon>payments</mat-icon>
-                  </button>
-                </div>
-              </td>
-            </ng-container>
-
             <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
             <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
                 (click)="viewBillDetails(row)"
@@ -128,39 +105,63 @@ export interface CustomerDetailDialogData {
 
       <mat-dialog-actions>
         @if (customer()!.debts.length > 0) {
-          <button mat-raised-button color="primary" 
-                  (click)="payAllDebts()" 
-                  [disabled]="paying()"
-                  matTooltip="Pay all remaining debts">
-            <mat-icon>payments</mat-icon>
-            Pay All ({{ formatCurrency(customer()!.totalDebt) }})
-          </button>
+          <div class="payment-footer">
+            <mat-form-field appearance="outline" class="payment-input">
+              <mat-label>Payment Amount</mat-label>
+              <input matInput 
+                     type="number" 
+                     [ngModel]="payAllAmount()"
+                     (ngModelChange)="payAllAmount.set($event)"
+                     [max]="customer()!.totalDebt"
+                     min="0"
+                     step="0.01">
+              <span matTextSuffix>{{ settingsService.settings().currency }}</span>
+            </mat-form-field>
+            <button mat-raised-button color="primary" 
+                    (click)="payAllDebts()" 
+                    [disabled]="paying() || payAllAmount() <= 0"
+                    class="pay-button">
+              <mat-icon>payments</mat-icon>
+              Pay Amount
+            </button>
+          </div>
         }
-        <button mat-raised-button color="accent" 
-                class="pdf-button"
-                (click)="downloadCustomerBillsPDF()" 
-                [disabled]="generatingPDF()"
-                matTooltip="Download detailed PDF report of all customer bills">
-          <span class="button-content">
-            @if (generatingPDF()) {
-              <mat-spinner diameter="20"></mat-spinner>
-              <span>Generating...</span>
-            } @else {
-              <mat-icon>picture_as_pdf</mat-icon>
-              <span>PDF Report</span>
-            }
-          </span>
-        </button>
-        <span class="spacer"></span>
-        <button mat-raised-button mat-dialog-close>Close</button>
+        <div class="action-buttons">
+          <button mat-raised-button color="accent" 
+                  class="pdf-button"
+                  (click)="downloadCustomerBillsPDF()" 
+                  [disabled]="generatingPDF() || customer()!.debts.length === 0"
+                  matTooltip="Download detailed PDF report of all customer bills">
+            <span class="button-content">
+              @if (generatingPDF()) {
+                <mat-spinner diameter="20"></mat-spinner>
+                <span>Generating...</span>
+              } @else {
+                <mat-icon>picture_as_pdf</mat-icon>
+                <span>PDF Report</span>
+              }
+            </span>
+          </button>
+          <button mat-raised-button mat-dialog-close>Close</button>
+        </div>
       </mat-dialog-actions>
     }
   `,
   styles: [`
+    /* Remove dialog margins on small displays */
+    @media (max-width: 768px) {
+      ::ng-deep .customer-detail-dialog .mat-mdc-dialog-container {
+        margin: 0 !important;
+        max-width: 100vw !important;
+        max-height: 100vh !important;
+        border-radius: 0 !important;
+      }
+    }
+
     :host {
       display: block;
       width: 100%;
-      max-width: 600px;
+      height: 100%;
     }
 
     .dialog-header {
@@ -225,7 +226,9 @@ export interface CustomerDetailDialogData {
 
     mat-dialog-content {
       padding-top: 0;
-      min-height: 100px;
+      min-height: 200px;
+      max-height: calc(85vh - 200px);
+      overflow-y: auto;
     }
 
     .loading-container {
@@ -274,22 +277,56 @@ export interface CustomerDetailDialogData {
         color: #f44336;
         font-weight: 500;
       }
+    }
 
-      .pay-cell {
+    mat-dialog-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 24px;
+      border-top: 1px solid var(--mat-divider-color);
+      flex-wrap: wrap;
+      gap: 12px;
+      position: sticky;
+      bottom: 0;
+      background: inherit;
+      z-index: 10;
+
+      .payment-footer {
         display: flex;
-        align-items: center;
-        gap: 4px;
+        align-items: flex-start;
+        gap: 12px;
 
-        .pay-input {
-          width: 80px;
+        .payment-input {
+          min-width: 200px;
+          max-width: 300px;
 
           ::ng-deep .mat-mdc-form-field-subscript-wrapper {
             display: none;
           }
+        }
 
-          input {
-            text-align: right;
-          }
+        .pay-button {
+          margin-top: 4px;
+          min-width: 140px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
+        }
+      }
+
+      .action-buttons {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-left: auto;
+      }
+
+      .pdf-button {
+        .button-content {
+          display: flex;
+          align-items: center;
+          gap: 8px;
         }
       }
     }
@@ -306,31 +343,40 @@ export interface CustomerDetailDialogData {
       }
     }
 
-    mat-dialog-actions {
-      display: flex;
-      align-items: center;
-      padding: 16px 24px;
-      border-top: 1px solid var(--mat-divider-color);
-      flex-wrap: wrap;
-      gap: 8px;
-
-      .spacer {
-        flex: 1;
+    /* Responsive */
+    @media (max-width: 768px) {
+      .dialog-header {
+        padding: 12px;
       }
 
-      .pdf-button {
-        .button-content {
-          display: flex;
-          align-items: center;
-          gap: 8px;
+      mat-dialog-content {
+        padding: 0 12px 12px;
+        max-height: calc(100vh - 200px);
+      }
+
+      mat-dialog-actions {
+        padding: 12px;
+
+        .payment-footer {
+          flex-direction: column;
+          width: 100%;
+
+          .payment-input {
+            max-width: 100%;
+            width: 100%;
+          }
+
+          .pay-button {
+            width: 100%;
+            justify-content: center;
+          }
         }
       }
     }
 
-    /* Responsive */
     @media (max-width: 480px) {
       .dialog-header {
-        padding: 12px 16px;
+        padding: 8px;
       }
 
       .customer-info .customer-name {
@@ -338,22 +384,36 @@ export interface CustomerDetailDialogData {
       }
 
       mat-dialog-content {
-        padding: 0 16px 16px;
+        padding: 0 8px 8px;
+        max-height: calc(100vh - 220px);
       }
 
       mat-dialog-actions {
-        padding: 12px 16px;
-      }
+        padding: 8px;
+        flex-direction: column;
+        align-items: stretch;
 
-      .debts-table .pay-cell .pay-input {
-        width: 60px;
+        .payment-footer {
+          order: -1;
+          margin-bottom: 12px;
+        }
+
+        .action-buttons {
+          width: 100%;
+          margin-left: 0;
+          justify-content: space-between;
+
+          button {
+            flex: 1;
+          }
+        }
       }
     }
   `]
 })
 export class CustomerDetailDialogComponent implements OnInit {
   private customerService = inject(CustomerService);
-  private settingsService = inject(SettingsService);
+  public settingsService = inject(SettingsService);
   private billService = inject(BillService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
@@ -362,9 +422,9 @@ export class CustomerDetailDialogComponent implements OnInit {
   loading = signal(true);
   paying = signal(false);
   generatingPDF = signal(false);
-  paymentAmounts: Map<string, number> = new Map();
+  payAllAmount = signal(0);
 
-  displayedColumns = ['remaining', 'date', 'pay'];
+  displayedColumns = ['remaining', 'date'];
 
   constructor(
     private dialogRef: MatDialogRef<CustomerDetailDialogComponent>,
@@ -398,10 +458,8 @@ export class CustomerDetailDialogComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.customer.set(response.data);
-          // Initialize payment amounts
-          response.data.debts.forEach(debt => {
-            this.paymentAmounts.set(debt.billId, debt.remainingAmount);
-          });
+          // Set default payment amount to total debt
+          this.payAllAmount.set(response.data.totalDebt);
         }
         this.loading.set(false);
       },
@@ -423,59 +481,57 @@ export class CustomerDetailDialogComponent implements OnInit {
     return `${day}/${month}/${year}`;
   }
 
-  setPaymentAmount(billId: string, value: string): void {
-    const amount = parseFloat(value) || 0;
-    this.paymentAmounts.set(billId, amount);
-  }
-
-  payDebt(debt: CustomerDebt): void {
-    const amount = this.paymentAmounts.get(debt.billId) || 0;
-    
-    if (amount <= 0) {
-      this.snackBar.open('Please enter a valid amount', 'Close', { duration: 3000 });
-      return;
-    }
-
-    if (amount > debt.remainingAmount) {
-      this.snackBar.open('Amount cannot exceed remaining debt', 'Close', { duration: 3000 });
-      return;
-    }
-
-    this.paying.set(true);
-    this.customerService.payDebt(this.data.customerId, debt.billId, amount).subscribe({
-      next: (response) => {
-        this.snackBar.open(response.message, 'Close', { duration: 3000 });
-        this.loadCustomer();
-        this.paying.set(false);
-      },
-      error: (error) => {
-        this.snackBar.open(error.error?.message || 'Failed to process payment', 'Close', { duration: 3000 });
-        this.paying.set(false);
-      }
-    });
-  }
-
   payAllDebts(): void {
     const customerData = this.customer();
+    const amount = this.payAllAmount();
+    
     if (!customerData || customerData.debts.length === 0) return;
 
-    this.paying.set(true);
-    let completed = 0;
-    const total = customerData.debts.length;
+    if (amount <= 0) {
+      this.snackBar.open('Please enter a valid payment amount', 'Close', { duration: 3000 });
+      return;
+    }
 
-    customerData.debts.forEach(debt => {
-      this.customerService.payDebt(this.data.customerId, debt.billId, debt.remainingAmount).subscribe({
+    if (amount > customerData.totalDebt) {
+      this.snackBar.open('Payment amount cannot exceed total debt', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.paying.set(true);
+
+    // Process payment by distributing amount across debts
+    let remainingPayment = amount;
+    const paymentsToMake: { billId: string, amount: number }[] = [];
+
+    for (const debt of customerData.debts) {
+      if (remainingPayment <= 0) break;
+      
+      const paymentForThisDebt = Math.min(remainingPayment, debt.remainingAmount);
+      paymentsToMake.push({ billId: debt.billId, amount: paymentForThisDebt });
+      remainingPayment -= paymentForThisDebt;
+    }
+
+    // Execute all payments
+    let completed = 0;
+    const total = paymentsToMake.length;
+    let hasError = false;
+
+    paymentsToMake.forEach(payment => {
+      this.customerService.payDebt(this.data.customerId, payment.billId, payment.amount).subscribe({
         next: () => {
           completed++;
           if (completed === total) {
-            this.snackBar.open('All debts paid successfully!', 'Close', { duration: 3000 });
+            if (!hasError) {
+              this.snackBar.open('Payment processed successfully!', 'Close', { duration: 3000 });
+            }
             this.loadCustomer();
             this.paying.set(false);
           }
         },
         error: (error) => {
+          hasError = true;
           completed++;
-          this.snackBar.open(error.error?.message || 'Failed to process some payments', 'Close', { duration: 3000 });
+          this.snackBar.open(error.error?.message || 'Failed to process payment', 'Close', { duration: 3000 });
           if (completed === total) {
             this.loadCustomer();
             this.paying.set(false);

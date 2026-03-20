@@ -230,10 +230,13 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   viewCustomerDetails(customer: Customer): void {
+    const isMobile = window.innerWidth <= 768;
     this.dialog.open(CustomerDetailDialogComponent, {
-      width: '100%',
-      maxWidth: '600px',
-      maxHeight: '80vh',
+      width: isMobile ? '100vw' : '90vw',
+      maxWidth: isMobile ? '100vw' : '1200px',
+      height: isMobile ? '100vh' : '85vh',
+      maxHeight: isMobile ? '100vh' : '85vh',
+      panelClass: 'customer-detail-dialog',
       data: { customerId: customer.customerId }
     }).afterClosed().subscribe(() => {
       this.loadCustomers(true);
