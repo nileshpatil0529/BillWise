@@ -169,7 +169,7 @@
       </div>
     }
 
-    <div class="table-container">
+    <div class="table-container" #tableContainer>
       <table mat-table [dataSource]="dataSource" matSort class="bills-table">
         <!-- Bill Number Column -->
         <ng-container matColumnDef="billNumber">
@@ -249,11 +249,20 @@
           </td>
         </tr>
       </table>
+      
+      <!-- Loading More Indicator -->
+      @if (loadingMore()) {
+        <div class="loading-more">
+          <mat-spinner diameter="24"></mat-spinner>
+          <span>Loading more bills...</span>
+        </div>
+      }
+      
+      @if (!hasMore() && allBills().length > 0) {
+        <div class="end-message">
+          <span>All bills loaded</span>
+        </div>
+      }
     </div>
-
-    <mat-paginator [pageSizeOptions]="[10, 25, 50, 100]"
-                   showFirstLastButtons
-                   aria-label="Select page of bills">
-    </mat-paginator>
   </mat-card>
 </div>

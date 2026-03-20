@@ -1,9 +1,8 @@
-import { Component, OnInit, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -20,6 +19,8 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
@@ -37,7 +38,6 @@ declare var jspdf: any;
     FormsModule,
     MatCardModule,
     MatTableModule,
-    MatPaginatorModule,
     MatSortModule,
     MatFormFieldModule,
     MatInputModule,
@@ -53,18 +53,27 @@ declare var jspdf: any;
     MatProgressSpinnerModule,
     MatSnackBarModule,
     MatDialogModule,
-    MatExpansionModule
+    MatExpansionModule,
+    ScrollingModule
   ],
   templateUrl: './bills.component.html',
   styleUrl: './bills.component.scss'
 })
 export class BillsComponent implements OnInit {
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   displayedColumns = ['billNumber', 'createdAt', 'itemsCount', 'grandTotal', 'paymentMethod', 'paymentStatus', 'actions'];
   dataSource = new MatTableDataSource<Bill>([]);
   loading = signal(false);
+  loadingMore = signal(false);
+
+  // Lazy loading state
+  currentPage = signal(1);
+  pageSize = 50;
+  hasMore = signal(true);
+  allBills = signal<Bill[]>([]);
+  private destroy$ = new Subject<void>();
 
   // Filters
   startDate = signal<Date | null>(null);
@@ -97,9 +106,32 @@ export class BillsComponent implements OnInit {
     this.setDatePreset('today');
   }
 
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
   ngAfterViewInit(): void {
-    this.dataSource.paginator = this.paginator;
     this.dataSource.sort = this.sort;
+    
+    // Setup scroll listener for lazy loading
+    if (this.tableContainer) {
+      fromEvent(this.tableContainer.nativeElement, 'scroll')
+        .pipe(
+          debounceTime(200),
+          takeUntil(this.destroy$)
+        )
+        .subscribe(() => this.onScroll());
+    }
+  }
+
+  onScroll(): void {
+    const element = this.tableContainer.nativeElement;
+    const atBottom = element.scrollHeight - element.scrollTop <= element.clientHeight + 100;
+    
+    if (atBottom && !this.loadingMore() && this.hasMore() && !this.loading()) {
+      this.loadBills(false);
+    }
   }
 
   setDatePreset(preset: string): void {
@@ -136,28 +168,52 @@ export class BillsComponent implements OnInit {
     }
 
     if (preset !== 'custom') {
-      this.loadBills();
+      this.loadBills(true);
       this.loadReport();
     }
   }
 
-  loadBills(): void {
-    this.loading.set(true);
+  loadBills(reset: boolean = false): void {
+    if (reset) {
+      this.currentPage.set(1);
+      this.hasMore.set(true);
+      this.allBills.set([]);
+      this.loading.set(true);
+    } else {
+      this.loadingMore.set(true);
+    }
     
     this.billService.getBills({
       startDate: this.startDate()?.toISOString(),
       endDate: this.endDate()?.toISOString(),
       paymentMethod: this.paymentMethod() !== 'all' ? this.paymentMethod() : undefined,
-      paymentStatus: this.paymentStatus() !== 'all' ? this.paymentStatus() : undefined
+      paymentStatus: this.paymentStatus() !== 'all' ? this.paymentStatus() : undefined,
+      page: this.currentPage(),
+      limit: this.pageSize
     }).subscribe({
       next: (response) => {
         if (response.success) {
-          this.dataSource.data = response.data.bills;
+          const newBills = response.data.bills;
+          
+          if (reset) {
+            this.allBills.set(newBills);
+          } else {
+            this.allBills.set([...this.allBills(), ...newBills]);
+          }
+          
+          this.dataSource.data = this.allBills();
+          this.hasMore.set(newBills.length === this.pageSize);
+          
+          if (!reset) {
+            this.currentPage.update(p => p + 1);
+          }
         }
         this.loading.set(false);
+        this.loadingMore.set(false);
       },
       error: () => {
         this.loading.set(false);
+        this.loadingMore.set(false);
         this.snackBar.open('Failed to load bills', 'Close', { duration: 3000 });
       }
     });
@@ -177,7 +233,7 @@ export class BillsComponent implements OnInit {
   }
 
   applyFilters(): void {
-    this.loadBills();
+    this.loadBills(true);
     this.loadReport();
   }
 

@@ -1,9 +1,8 @@
-import { Component, OnInit, OnDestroy, signal, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
-import { MatPaginator, MatPaginatorModule } from '@angular/material/paginator';
 import { MatSort, MatSortModule } from '@angular/material/sort';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -17,7 +16,8 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { ScrollingModule } from '@angular/cdk/scrolling';
+import { Subject, debounceTime, distinctUntilChanged, takeUntil, fromEvent } from 'rxjs';
 
 import { ProductService } from '../../../core/services/product.service';
 import { SettingsService } from '../../../core/services/settings.service';
@@ -36,7 +36,6 @@ import { BarcodeScannerDialogComponent } from '../home/barcode-scanner-dialog/ba
     ReactiveFormsModule,
     MatCardModule,
     MatTableModule,
-    MatPaginatorModule,
     MatSortModule,
     MatFormFieldModule,
     MatInputModule,
@@ -49,25 +48,28 @@ import { BarcodeScannerDialogComponent } from '../home/barcode-scanner-dialog/ba
     MatSlideToggleModule,
     MatChipsModule,
     MatMenuModule,
-    MatProgressSpinnerModule
+    MatProgressSpinnerModule,
+    ScrollingModule
   ],
   templateUrl: './products.component.html',
   styleUrl: './products.component.scss'
 })
 export class ProductsComponent implements OnInit, OnDestroy {
-  @ViewChild(MatPaginator) paginator!: MatPaginator;
   @ViewChild(MatSort) sort!: MatSort;
+  @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   displayedColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'status', 'actions'];
   dataSource = new MatTableDataSource<Product>([]);
   loading = signal(false);
+  loadingMore = signal(false);
   searchQuery = signal('');
   selectedCategory = signal('');
 
-  // Server-side pagination
-  pageIndex = signal(0);
-  pageSize = signal(10);
-  totalProducts = signal(0);
+  // Lazy loading state
+  currentPage = signal(1);
+  pageSize = 50; // Load 50 items at a time
+  hasMore = signal(true);
+  allProducts = signal<Product[]>([]);
 
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
@@ -83,7 +85,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // Load categories and initial products
     this.productService.getCategories().subscribe();
-    this.loadProducts();
+    this.loadProducts(true);
     
     // Setup search with debounce
     this.searchSubject.pipe(
@@ -92,8 +94,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
       takeUntil(this.destroy$)
     ).subscribe(query => {
       this.searchQuery.set(query);
-      this.pageIndex.set(0); // Reset to first page on search
-      this.loadProducts();
+      this.loadProducts(true); // Reset and reload
     });
   }
 
@@ -103,36 +104,70 @@ export class ProductsComponent implements OnInit, OnDestroy {
   }
 
   ngAfterViewInit(): void {
-    // Don't set client-side paginator - we use server-side pagination
     this.dataSource.sort = this.sort;
+    
+    // Setup scroll listener for lazy loading
+    if (this.tableContainer) {
+      fromEvent(this.tableContainer.nativeElement, 'scroll')
+        .pipe(
+          debounceTime(200),
+          takeUntil(this.destroy$)
+        )
+        .subscribe(() => this.onScroll());
+    }
   }
 
-  loadProducts(): void {
-    this.loading.set(true);
+  onScroll(): void {
+    const element = this.tableContainer.nativeElement;
+    const atBottom = element.scrollHeight - element.scrollTop <= element.clientHeight + 100;
+    
+    if (atBottom && !this.loadingMore() && this.hasMore() && !this.loading()) {
+      this.loadProducts(false);
+    }
+  }
+
+  loadProducts(reset: boolean = false): void {
+    if (reset) {
+      this.currentPage.set(1);
+      this.hasMore.set(true);
+      this.allProducts.set([]);
+      this.loading.set(true);
+    } else {
+      this.loadingMore.set(true);
+    }
+
     this.productService.getProducts({
       category: this.selectedCategory() || undefined,
       search: this.searchQuery() || undefined,
-      page: this.pageIndex() + 1, // API uses 1-based page
-      limit: this.pageSize()
+      page: this.currentPage(),
+      limit: this.pageSize
     }).subscribe({
       next: (response) => {
         if (response.success) {
-          this.dataSource.data = response.data.products;
-          this.totalProducts.set(response.data.total);
+          const newProducts = response.data.products;
+          
+          if (reset) {
+            this.allProducts.set(newProducts);
+          } else {
+            this.allProducts.set([...this.allProducts(), ...newProducts]);
+          }
+          
+          this.dataSource.data = this.allProducts();
+          this.hasMore.set(newProducts.length === this.pageSize);
+          
+          if (!reset) {
+            this.currentPage.update(p => p + 1);
+          }
         }
         this.loading.set(false);
+        this.loadingMore.set(false);
       },
       error: () => {
         this.loading.set(false);
+        this.loadingMore.set(false);
         this.snackBar.open('Failed to load products', 'Close', { duration: 3000 });
       }
     });
-  }
-
-  onPageChange(event: any): void {
-    this.pageIndex.set(event.pageIndex);
-    this.pageSize.set(event.pageSize);
-    this.loadProducts();
   }
 
   applyFilter(event: Event): void {
@@ -141,8 +176,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   }
 
   onCategoryChange(): void {
-    this.pageIndex.set(0); // Reset to first page on category change
-    this.loadProducts();
+    this.loadProducts(true); // Reset and reload
   }
 
   openAddDialog(barcode?: string): void {
@@ -164,7 +198,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
                 duration: 3000,
                 panelClass: ['success-snackbar']
               });
-              this.loadProducts();
+              this.loadProducts(true);
             }
           },
           error: () => {
@@ -190,7 +224,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
                 duration: 3000,
                 panelClass: ['success-snackbar']
               });
-              this.loadProducts();
+              this.loadProducts(true);
             }
           },
           error: () => {
@@ -265,7 +299,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
               duration: 3000,
               panelClass: ['success-snackbar']
             });
-            this.loadProducts();
+            this.loadProducts(true);
           }
         },
         error: () => {
@@ -303,7 +337,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
               duration: 3000,
               panelClass: ['success-snackbar']
             });
-            this.loadProducts();
+            this.loadProducts(true);
           }
         },
         error: () => {

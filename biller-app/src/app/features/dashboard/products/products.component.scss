@@ -143,8 +143,49 @@
   }
 
   .table-container {
+    max-height: calc(100vh - 240px);
+    min-height: 400px;
     overflow-x: auto;
+    overflow-y: auto;
     @include m.custom-scrollbar;
+    
+    @include m.mobile {
+      max-height: calc(100vh - 200px);
+      min-height: 300px;
+    }
+  }
+  
+  .loading-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: v.$spacing-md;
+    padding: v.$spacing-lg;
+    
+    span {
+      color: v.$light-text-secondary;
+      font-size: 14px;
+      
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+  }
+  
+  .end-message {
+    display: flex;
+    justify-content: center;
+    padding: v.$spacing-md;
+    
+    span {
+      color: v.$light-text-secondary;
+      font-size: 13px;
+      font-style: italic;
+      
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
   }
 
   .products-table {

@@ -37,7 +37,7 @@
       </div>
     }
 
-    <div class="table-container">
+    <div class="table-container" #tableContainer>
       <table mat-table [dataSource]="dataSource" matSort class="customers-table">
         <!-- Name Column -->
         <ng-container matColumnDef="name">
@@ -97,11 +97,20 @@
           </td>
         </tr>
       </table>
+      
+      <!-- Loading More Indicator -->
+      @if (loadingMore()) {
+        <div class="loading-more">
+          <mat-spinner diameter="24"></mat-spinner>
+          <span>Loading more customers...</span>
+        </div>
+      }
+      
+      @if (!hasMore() && allCustomers().length > 0) {
+        <div class="end-message">
+          <span>All customers loaded</span>
+        </div>
+      }
     </div>
-
-    <mat-paginator [pageSizeOptions]="[10, 25, 50]"
-                   showFirstLastButtons
-                   aria-label="Select page of customers">
-    </mat-paginator>
   </mat-card>
 </div>

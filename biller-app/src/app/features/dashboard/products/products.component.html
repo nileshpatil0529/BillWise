@@ -69,7 +69,7 @@
       </div>
     }
 
-    <div class="table-container">
+    <div class="table-container" #tableContainer>
       <table mat-table [dataSource]="dataSource" matSort class="products-table">
         <!-- Product ID Column -->
         <ng-container matColumnDef="productId">
@@ -171,15 +171,20 @@
           </td>
         </tr>
       </table>
+      
+      <!-- Loading More Indicator -->
+      @if (loadingMore()) {
+        <div class="loading-more">
+          <mat-spinner diameter="24"></mat-spinner>
+          <span>Loading more products...</span>
+        </div>
+      }
+      
+      @if (!hasMore() && allProducts().length > 0) {
+        <div class="end-message">
+          <span>All products loaded</span>
+        </div>
+      }
     </div>
-
-    <mat-paginator [length]="totalProducts()"
-                   [pageIndex]="pageIndex()"
-                   [pageSize]="pageSize()"
-                   [pageSizeOptions]="[10, 25, 50, 100]"
-                   (page)="onPageChange($event)"
-                   showFirstLastButtons
-                   aria-label="Select page of products">
-    </mat-paginator>
   </mat-card>
 </div>
