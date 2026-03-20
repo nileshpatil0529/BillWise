@@ -317,6 +317,7 @@ export const getReport = async (req, res) => {
       cardSales: 0,
       onlineSales: 0,
       debtAmount: 0,
+      debtPaid: 0,
       averageBillValue: 0,
       totalDiscount: 0,
       totalTax: 0
@@ -347,7 +348,9 @@ export const getReport = async (req, res) => {
           summary.onlineSales += bill.grandTotal;
           break;
         case 'debt':
-          if (bill.paymentStatus !== 'paid') {
+          if (bill.paymentStatus === 'paid') {
+            summary.debtPaid += bill.grandTotal;
+          } else {
             summary.debtAmount += bill.grandTotal - (bill.amountPaid || 0);
           }
           break;

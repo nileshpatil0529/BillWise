@@ -50,6 +50,7 @@ export interface ReportSummary {
   cardSales: number;
   onlineSales: number;
   debtAmount: number;
+  debtPaid: number;
   averageBillValue: number;
   totalDiscount: number;
   totalTax: number;

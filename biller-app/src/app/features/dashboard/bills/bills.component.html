@@ -34,7 +34,7 @@
       <!-- Summary Cards -->
       @if (reportData(); as report) {
         <div class="summary-cards">
-          <mat-card class="summary-card">
+          <mat-card class="summary-card total">
             <mat-icon>trending_up</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.totalSales) }}</span>
@@ -62,15 +62,23 @@
             <mat-icon>credit_card</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.cardSales + report.summary.onlineSales) }}</span>
-              <span class="card-label">Online Sales</span>
+              <span class="card-label">Card/Online</span>
             </div>
           </mat-card>
 
-          <mat-card class="summary-card debt">
+          <mat-card class="summary-card debt-pending">
             <mat-icon>account_balance</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.debtAmount) }}</span>
               <span class="card-label">Pending Debt</span>
+            </div>
+          </mat-card>
+
+          <mat-card class="summary-card debt-paid">
+            <mat-icon>check_circle</mat-icon>
+            <div class="card-content">
+              <span class="card-value">{{ formatCurrency(report.summary.debtPaid) }}</span>
+              <span class="card-label">Debt Paid</span>
             </div>
           </mat-card>
 

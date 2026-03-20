@@ -225,13 +225,26 @@
 // Summary Cards
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(7, 1fr);
   gap: v.$spacing-md;
+  margin-bottom: v.$spacing-md;
   
+  // Large tablets & smaller desktops (1400px and below) - 4 columns
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  // Tablets (below 1024px) - 3 columns
   @include m.lg-down {
     grid-template-columns: repeat(3, 1fr);
   }
   
+  // Small tablets (below 768px) - 2 columns
+  @include m.md-down {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  // Mobile (below 600px) - 2 columns with smaller gap
   @include m.mobile {
     grid-template-columns: repeat(2, 1fr);
     gap: v.$spacing-sm;
@@ -294,28 +307,18 @@
     }
 
     // Sales card (default blue)
-    &:first-child {
-      mat-icon {
-        color: #42a5f5;
-      }
-      .icon-wrapper, mat-icon {
-        background: rgba(#42a5f5, 0.1);
-        @include m.dark-theme {
-          background: rgba(#42a5f5, 0.15);
-        }
+    &.total mat-icon {
+      color: #42a5f5;
+      background: rgba(#42a5f5, 0.1);
+      @include m.dark-theme {
+        background: rgba(#42a5f5, 0.15);
       }
     }
     
-    // Bills card (purple)
+    // Bills card (default - will use second child)
     &:nth-child(2) {
       mat-icon {
         color: #7e57c2;
-      }
-      .icon-wrapper, mat-icon {
-        background: rgba(#7e57c2, 0.1);
-        @include m.dark-theme {
-          background: rgba(#7e57c2, 0.15);
-        }
       }
     }
 
@@ -339,13 +342,23 @@
       }
     }
 
-    &.debt mat-icon {
+    &.debt-pending mat-icon {
       color: v.$light-warning;
       background: rgba(v.$light-warning, 0.1);
 
       @include m.dark-theme {
         color: v.$dark-warning;
         background: rgba(v.$dark-warning, 0.15);
+      }
+    }
+
+    &.debt-paid mat-icon {
+      color: v.$light-success;
+      background: rgba(v.$light-success, 0.1);
+
+      @include m.dark-theme {
+        color: v.$dark-success;
+        background: rgba(v.$dark-success, 0.15);
       }
     }
     
