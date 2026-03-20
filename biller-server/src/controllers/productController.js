@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import ExcelJS from 'exceljs';
 import fs from 'fs';
 import db from '../config/database.js';
 
@@ -427,7 +428,27 @@ export const importProducts = async (req, res) => {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
 
+    // Debug: Log the column headers from the first row
+    if (data.length > 0) {
+      console.log('Excel columns detected:', Object.keys(data[0]));
+    }
+
+    // Get enabled categories from settings for validation
+    const settings = db.prepare('SELECT categories FROM settings WHERE id = 1').get();
+    let validCategories = ['General'];
+    if (settings && settings.categories) {
+      const allCategories = JSON.parse(settings.categories);
+      validCategories = allCategories
+        .filter(cat => cat.enabled)
+        .map(cat => cat.name);
+      if (validCategories.length === 0) {
+        validCategories = ['General'];
+      }
+    }
+
     let imported = 0;
+    let updated = 0;
+    let inserted = 0;
     let errors = [];
 
     const insertProduct = db.prepare(`
@@ -435,17 +456,64 @@ export const importProducts = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
     `);
 
-    const updateStock = db.prepare('UPDATE products SET stockQuantity = stockQuantity + ?, updatedAt = ? WHERE productId = ?');
+    const updateProduct = db.prepare(`
+      UPDATE products 
+      SET name = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, updatedAt = ? 
+      WHERE productId = ?
+    `);
 
     const transaction = db.transaction((rows) => {
-      for (const row of rows) {
+      for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
         try {
-          const productName = row.name || row.Name || row['Product Name'] || '';
-          const productBarcode = row.barcode || row.Barcode || row['Barcode'] || '';
-          const stockToAdd = parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
+          const productName = (row.name || row.Name || row['Product Name'] || '').toString().trim();
+          
+          // Handle barcode - convert from number/scientific notation if needed
+          let barcodeValue = row.barcode || row.Barcode || row['Barcode'] || '';
+          if (typeof barcodeValue === 'number') {
+            // Convert number to string, handling scientific notation
+            barcodeValue = barcodeValue.toFixed(0); // Convert to integer string
+          }
+          const productBarcode = barcodeValue.toString().trim();
+          
+          const productCategory = (row.category || row.Category || 'General').toString().trim();
+          const stockQuantity = parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
+          const productStatus = (row.status || row.Status || 'active').toString().trim().toLowerCase();
           const now = new Date().toISOString();
 
-          // Check for existing product
+          // Validation: Check required fields
+          if (!productName || productName === '') {
+            errors.push({ 
+              row: i + 2, // Excel row number (1-indexed + header)
+              productName: productName || 'N/A',
+              error: 'Product Name is required and cannot be blank' 
+            });
+            continue;
+          }
+
+          // Validation: Check if category is valid
+          if (!validCategories.includes(productCategory)) {
+            errors.push({ 
+              row: i + 2,
+              productName,
+              category: productCategory,
+              error: `Invalid category '${productCategory}'. Valid categories are: ${validCategories.join(', ')}` 
+            });
+            continue;
+          }
+
+          // Validation: Check if status is valid
+          if (productStatus !== 'active' && productStatus !== 'inactive') {
+            errors.push({ 
+              row: i + 2,
+              productName,
+              status: productStatus,
+              error: `Invalid status '${productStatus}'. Must be either 'active' or 'inactive'` 
+            });
+            continue;
+          }
+
+          // Check if product exists by name or barcode
           let existingProduct = null;
           if (productName) {
             existingProduct = db.prepare('SELECT * FROM products WHERE LOWER(name) = LOWER(?)').get(productName);
@@ -454,39 +522,83 @@ export const importProducts = async (req, res) => {
             existingProduct = db.prepare('SELECT * FROM products WHERE barcode = ?').get(productBarcode);
           }
 
+          console.log(`Row ${i + 2}: Name="${productName}", Barcode="${productBarcode}", Exists=${!!existingProduct}`);
+
           if (existingProduct) {
-            updateStock.run(stockToAdd, now, existingProduct.productId);
-            imported++;
-          } else if (productName) {
-            const productId = row.productId || row.ProductId || row['Product ID'] || generateProductId();
-            
-            insertProduct.run(
-              productId,
+            // Update existing product - replace all values with new values
+            updateProduct.run(
               productName,
-              row.category || row.Category || 'General',
+              productCategory,
               row.description || row.Description || '',
               productBarcode,
               parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
               parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
-              stockToAdd,
+              stockQuantity,
+              parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              now,
+              existingProduct.productId
+            );
+            // Also update status if needed
+            if (existingProduct.status !== productStatus) {
+              db.prepare('UPDATE products SET status = ?, updatedAt = ? WHERE productId = ?').run(productStatus, now, existingProduct.productId);
+            }
+            updated++;
+            imported++;
+          } else {
+            // Insert new product
+            const newProductId = generateProductId();
+            
+            insertProduct.run(
+              newProductId,
+              productName,
+              productCategory,
+              row.description || row.Description || '',
+              productBarcode,
+              parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
+              parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
+              stockQuantity,
               parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
               now,
               now
             );
+            // Update status if not active
+            if (productStatus !== 'active') {
+              db.prepare('UPDATE products SET status = ? WHERE productId = ?').run(productStatus, newProductId);
+            }
+            inserted++;
             imported++;
           }
         } catch (err) {
-          errors.push({ row, error: err.message });
+          errors.push({ 
+            row: i + 2,
+            productName: row.name || row.Name || row['Product Name'] || 'N/A',
+            error: err.message 
+          });
         }
       }
     });
 
     transaction(data);
 
+    // Build response message
+    let message = `Successfully imported ${imported} products (${updated} updated, ${inserted} new)`;
+    if (errors.length > 0) {
+      message += `. ${errors.length} rows had errors`;
+    }
+
+    console.log(`Import Summary: Total=${data.length}, Updated=${updated}, Inserted=${inserted}, Errors=${errors.length}`);
+
     res.json({
-      success: true,
-      message: `Imported ${imported} products`,
-      data: { imported, errors: errors.length, errorDetails: errors }
+      success: errors.length === 0 || imported > 0,
+      message: message,
+      data: { 
+        imported, 
+        updated,
+        inserted,
+        totalRows: data.length,
+        errors: errors.length, 
+        errorDetails: errors 
+      }
     });
   } catch (error) {
     console.error('Import error:', error);
@@ -501,24 +613,132 @@ export const exportProducts = async (req, res) => {
   try {
     const products = db.prepare('SELECT * FROM products').all();
     
-    const productList = products.map(p => ({
-      'Product ID': p.productId,
-      'Product Name': p.name,
-      'Barcode': p.barcode || '',
-      'Category': p.category,
-      'Description': p.description,
-      'Unit Price': p.unitPrice,
-      'Cost Price': p.costPrice,
-      'Stock Quantity': p.stockQuantity,
-      'Low Stock Alert': p.lowStockAlert,
-      'Status': p.status
-    }));
+    // Get enabled categories from settings
+    const settings = db.prepare('SELECT categories FROM settings WHERE id = 1').get();
+    let categories = ['General'];
+    if (settings && settings.categories) {
+      const allCategories = JSON.parse(settings.categories);
+      categories = allCategories
+        .filter(cat => cat.enabled)
+        .map(cat => cat.name);
+      if (categories.length === 0) {
+        categories = ['General'];
+      }
+    }
 
-    const worksheet = XLSX.utils.json_to_sheet(productList);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, 'Products');
+    // Create workbook with ExcelJS
+    const workbook = new ExcelJS.Workbook();
+    const worksheet = workbook.addWorksheet('Products');
 
-    const buffer = XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
+    // Define columns (Product ID removed)
+    worksheet.columns = [
+      { header: 'Product Name', key: 'name', width: 30 },
+      { header: 'Barcode', key: 'barcode', width: 20 },
+      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Description', key: 'description', width: 40 },
+      { header: 'Unit Price', key: 'unitPrice', width: 12 },
+      { header: 'Cost Price', key: 'costPrice', width: 12 },
+      { header: 'Stock Quantity', key: 'stockQuantity', width: 15 },
+      { header: 'Low Stock Alert', key: 'lowStockAlert', width: 15 },
+      { header: 'Status', key: 'status', width: 12 }
+    ];
+
+    // Add product rows (Product ID removed)
+    products.forEach(p => {
+      worksheet.addRow({
+        name: p.name,
+        barcode: p.barcode || '',
+        category: p.category,
+        description: p.description,
+        unitPrice: p.unitPrice,
+        costPrice: p.costPrice,
+        stockQuantity: p.stockQuantity,
+        lowStockAlert: p.lowStockAlert,
+        status: p.status
+      });
+    });
+
+    // Format Barcode column as TEXT to prevent scientific notation
+    worksheet.getColumn('barcode').numFmt = '@'; // @ means text format
+    worksheet.getColumn('barcode').eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+      if (rowNumber > 1) { // Skip header
+        cell.numFmt = '@';
+        cell.alignment = { horizontal: 'left' };
+      }
+    });
+
+    // Add data validation for Category column (column C now, since Product ID removed)
+    worksheet.getColumn('category').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
+      if (rowNumber > 1) { // Skip header row
+        cell.dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${categories.join(',')}"`],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Category',
+          error: `Please select a category from the list: ${categories.join(', ')}`
+        };
+      }
+    });
+
+    // Add data validation for Status column (column I - last column)
+    worksheet.getColumn('status').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
+      if (rowNumber > 1) { // Skip header row
+        cell.dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          formulae: ['"active,inactive"'],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Status',
+          error: 'Please select either "active" or "inactive"'
+        };
+      }
+    });
+
+    // Apply validation to empty cells too (100 extra rows for new entries)
+    for (let i = products.length + 2; i <= products.length + 102; i++) {
+      // Format Barcode cell as text (column B now)
+      const barcodeCell = worksheet.getCell(`B${i}`);
+      barcodeCell.numFmt = '@';
+      barcodeCell.alignment = { horizontal: 'left' };
+      
+      // Category dropdown validation (column C now)
+      const categoryCell = worksheet.getCell(`C${i}`);
+      categoryCell.dataValidation = {
+        type: 'list',
+        allowBlank: true,
+        formulae: [`"${categories.join(',')}"`],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Category',
+        error: `Please select a category from the list: ${categories.join(', ')}`
+      };
+      
+      // Status dropdown validation (column I - last column)
+      const statusCell = worksheet.getCell(`I${i}`);
+      statusCell.dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: ['"active,inactive"'],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Status',
+        error: 'Please select either "active" or "inactive"'
+      };
+    }
+
+    // Style the header row
+    worksheet.getRow(1).font = { bold: true };
+    worksheet.getRow(1).fill = {
+      type: 'pattern',
+      pattern: 'solid',
+      fgColor: { argb: 'FFE0E0E0' }
+    };
+
+    // Generate buffer
+    const buffer = await workbook.xlsx.writeBuffer();
 
     res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     res.setHeader('Content-Disposition', 'attachment; filename=products.xlsx');

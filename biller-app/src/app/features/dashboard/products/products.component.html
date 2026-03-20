@@ -11,11 +11,11 @@
              accept=".xlsx,.xls,.csv"
              (change)="onFileSelected($event)">
       <button mat-stroked-button (click)="fileInput.click()">
-        <mat-icon>upload</mat-icon>
+        <mat-icon>arrow_downward</mat-icon>
         Import
       </button>
       <button mat-stroked-button (click)="exportProducts()">
-        <mat-icon>download</mat-icon>
+        <mat-icon>arrow_upward</mat-icon>
         Export
       </button>
       <button mat-raised-button color="primary" (click)="openAddDialog()">
