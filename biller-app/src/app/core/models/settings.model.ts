@@ -18,6 +18,18 @@ export interface Category {
   enabled: boolean;
 }
 
+export interface TableColumn {
+  key: string;
+  label: string;
+  visible: boolean;
+}
+
+export interface TableColumnPreferences {
+  products: TableColumn[];
+  bills: TableColumn[];
+  customers: TableColumn[];
+}
+
 export interface Settings {
   businessName: string;
   logo: string;
@@ -40,6 +52,7 @@ export interface Settings {
   footerText: string;
   lowStockAlertEnabled: boolean;
   lowStockThreshold: number;
+  tableColumns?: TableColumnPreferences;
   updatedAt: string;
 }
 

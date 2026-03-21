@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, AfterViewInit, ElementRef, OnDestroy } from '@angular/core';
+import { Component, OnInit, signal, effect, ViewChild, AfterViewInit, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -49,7 +49,10 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
-  displayedColumns = ['name', 'phone', 'totalDebt', 'actions'];
+  // All available columns
+  private allColumns = ['name', 'phone', 'totalDebt', 'actions'];
+  displayedColumns: string[] = [];
+  
   dataSource = new MatTableDataSource<Customer>([]);
   loading = signal(false);
   loadingMore = signal(false);
@@ -69,7 +72,22 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
     private snackBar: MatSnackBar,
     private customerService: CustomerService,
     public settingsService: SettingsService
-  ) {}
+  ) {
+    // Update displayedColumns based on settings
+    effect(() => {
+      const settings = this.settingsService.settings();
+      const tableColumns = settings.tableColumns?.customers;
+      
+      if (!tableColumns) {
+        this.displayedColumns = [...this.allColumns];
+      } else {
+        this.displayedColumns = this.allColumns.filter(col => {
+          const columnSetting = tableColumns.find(tc => tc.key === col);
+          return columnSetting ? columnSetting.visible : true;
+        });
+      }
+    });
+  }
 
   ngOnInit(): void {
     this.loadCustomers(true);

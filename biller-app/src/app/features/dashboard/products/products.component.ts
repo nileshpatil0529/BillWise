@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, effect, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -58,7 +58,10 @@ export class ProductsComponent implements OnInit, OnDestroy {
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
-  displayedColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'status', 'actions'];
+  // All available columns
+  private allColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'status', 'actions'];
+  displayedColumns: string[] = [];
+  
   dataSource = new MatTableDataSource<Product>([]);
   loading = signal(false);
   loadingMore = signal(false);
@@ -80,7 +83,22 @@ export class ProductsComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private beepService: BeepService
-  ) {}
+  ) {
+    // Update displayedColumns based on settings
+    effect(() => {
+      const settings = this.settingsService.settings();
+      const tableColumns = settings.tableColumns?.products;
+      
+      if (!tableColumns) {
+        this.displayedColumns = [...this.allColumns];
+      } else {
+        this.displayedColumns = this.allColumns.filter(col => {
+          const columnSetting = tableColumns.find(tc => tc.key === col);
+          return columnSetting ? columnSetting.visible : true;
+        });
+      }
+    });
+  }
 
   ngOnInit(): void {
     // Load categories and initial products

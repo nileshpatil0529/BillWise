@@ -231,6 +231,11 @@ const initializeDatabase = () => {
       db.exec('ALTER TABLE settings ADD COLUMN categories TEXT DEFAULT \'[{"name":"General","enabled":true}]\'');
       console.log('✅ Migration: Added categories column');
     }
+    const hasTableColumns = columns.some(col => col.name === 'tableColumns');
+    if (!hasTableColumns) {
+      db.exec('ALTER TABLE settings ADD COLUMN tableColumns TEXT');
+      console.log('✅ Migration: Added tableColumns column');
+    }
   } catch (e) {
     // Column might already exist
   }

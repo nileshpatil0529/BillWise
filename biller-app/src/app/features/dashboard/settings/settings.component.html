@@ -437,4 +437,146 @@
         </mat-card>
       </div>
     </mat-tab>
+
+    <!-- Table Columns Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>view_column</mat-icon>
+        <span>Table Columns</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-card class="settings-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>table_chart</mat-icon>
+            <mat-card-title>Manage Table Columns</mat-card-title>
+            <mat-card-subtitle>Show or hide columns for different tables</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <div class="table-columns-section">
+              <!-- Products Table Columns -->
+              <mat-expansion-panel class="column-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon>inventory_2</mat-icon>
+                    <span>Products Table</span>
+                  </mat-panel-title>
+                  <mat-panel-description>
+                  {{ getVisibleProductsCount() }} of {{ productsColumns().length }} columns visible
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <div class="columns-list">
+                  @for (column of productsColumns(); track column.key; let i = $index) {
+                    <div class="column-item">
+                      <mat-checkbox 
+                        [checked]="column.visible"
+                        (change)="toggleProductColumn(i)"
+                        [disabled]="column.key === 'actions'">
+                        <div class="column-content">
+                          <span class="column-label">{{ column.label }}</span>
+                          <span class="column-key">{{ column.key }}</span>
+                        </div>
+                      </mat-checkbox>
+                      @if (column.key === 'actions') {
+                        <mat-icon class="lock-icon" matTooltip="Actions column cannot be hidden">lock</mat-icon>
+                      }
+                    </div>
+                  }
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Bills Table Columns -->
+              <mat-expansion-panel class="column-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon>receipt</mat-icon>
+                    <span>Bills Table</span>
+                  </mat-panel-title>
+                  <mat-panel-description>
+                  {{ getVisibleBillsCount() }} of {{ billsColumns().length }} columns visible
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <div class="columns-list">
+                  @for (column of billsColumns(); track column.key; let i = $index) {
+                    <div class="column-item">
+                      <mat-checkbox 
+                        [checked]="column.visible"
+                        (change)="toggleBillColumn(i)"
+                        [disabled]="column.key === 'actions'">
+                        <div class="column-content">
+                          <span class="column-label">{{ column.label }}</span>
+                          <span class="column-key">{{ column.key }}</span>
+                        </div>
+                      </mat-checkbox>
+                      @if (column.key === 'actions') {
+                        <mat-icon class="lock-icon" matTooltip="Actions column cannot be hidden">lock</mat-icon>
+                      }
+                    </div>
+                  }
+                </div>
+              </mat-expansion-panel>
+
+              <!-- Customers Table Columns -->
+              <mat-expansion-panel class="column-panel">
+                <mat-expansion-panel-header>
+                  <mat-panel-title>
+                    <mat-icon>people</mat-icon>
+                    <span>Customers Table</span>
+                  </mat-panel-title>
+                  <mat-panel-description>
+                  {{ getVisibleCustomersCount() }} of {{ customersColumns().length }} columns visible
+                  </mat-panel-description>
+                </mat-expansion-panel-header>
+
+                <div class="columns-list">
+                  @for (column of customersColumns(); track column.key; let i = $index) {
+                    <div class="column-item">
+                      <mat-checkbox 
+                        [checked]="column.visible"
+                        (change)="toggleCustomerColumn(i)"
+                        [disabled]="column.key === 'actions'">
+                        <div class="column-content">
+                          <span class="column-label">{{ column.label }}</span>
+                          <span class="column-key">{{ column.key }}</span>
+                        </div>
+                      </mat-checkbox>
+                      @if (column.key === 'actions') {
+                        <mat-icon class="lock-icon" matTooltip="Actions column cannot be hidden">lock</mat-icon>
+                      }
+                    </div>
+                  }
+                </div>
+              </mat-expansion-panel>
+
+              <div class="reset-section">
+                <button mat-stroked-button color="warn" (click)="resetTableColumns()">
+                  <mat-icon>refresh</mat-icon>
+                  Reset to Default
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" (click)="saveTableColumns()" [disabled]="saving()">
+              @if (saving()) {
+                <span class="button-content">
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Saving...
+                </span>
+              } @else {
+                <span class="button-content">
+                  <mat-icon>save</mat-icon>
+                  Save Preferences
+                </span>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </mat-tab>
   </mat-tab-group>
+</div>

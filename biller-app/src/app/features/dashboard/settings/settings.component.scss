@@ -683,3 +683,216 @@ mat-tab-group {
   }
 }
 
+// Table Columns Management
+.table-columns-section {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-md;
+
+  .column-panel {
+    background: white;
+    border: 1px solid v.$light-divider;
+    border-radius: v.$radius-md;
+    box-shadow: v.$shadow-sm;
+
+    @include m.dark-theme {
+      background: v.$dark-surface;
+      border-color: v.$dark-divider;
+    }
+
+    ::ng-deep {
+      .mat-expansion-panel-header {
+        padding: v.$spacing-md v.$spacing-lg;
+        height: auto;
+        min-height: 64px;
+
+        @include m.mobile {
+          padding: v.$spacing-sm v.$spacing-md;
+          min-height: 56px;
+        }
+
+        &:hover {
+          background: rgba(v.$light-primary, 0.04) !important;
+
+          @include m.dark-theme {
+            background: rgba(v.$dark-primary, 0.08) !important;
+          }
+        }
+      }
+
+      .mat-expansion-panel-body {
+        padding: 0 v.$spacing-lg v.$spacing-md;
+
+        @include m.mobile {
+          padding: 0 v.$spacing-md v.$spacing-sm;
+        }
+      }
+    }
+
+    mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      font-weight: 600;
+      font-size: 16px;
+      color: v.$light-text-primary;
+      flex-shrink: 0;
+
+      @include m.dark-theme {
+        color: white;
+      }
+
+      @include m.mobile {
+        font-size: 14px;
+      }
+
+      mat-icon {
+        color: v.$light-primary;
+        font-size: 24px;
+        width: 24px;
+        height: 24px;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+
+        @include m.mobile {
+          font-size: 20px;
+          width: 20px;
+          height: 20px;
+        }
+      }
+    }
+
+    mat-panel-description {
+      font-size: 13px;
+      color: v.$light-text-secondary;
+      margin-left: auto;
+
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      @include m.mobile {
+        font-size: 11px;
+      }
+    }
+  }
+
+  .columns-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: v.$spacing-sm;
+    padding-top: v.$spacing-sm;
+
+    @include m.mobile {
+      grid-template-columns: 1fr;
+    }
+
+    .column-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: v.$spacing-sm v.$spacing-md;
+      background: rgba(v.$light-primary, 0.02);
+      border: 1px solid v.$light-divider;
+      border-radius: v.$radius-sm;
+      transition: all 0.2s ease;
+
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.05);
+        border-color: v.$dark-divider;
+      }
+
+      &:hover {
+        background: rgba(v.$light-primary, 0.05);
+        border-color: v.$light-primary;
+
+        @include m.dark-theme {
+          background: rgba(v.$dark-primary, 0.1);
+          border-color: v.$dark-primary;
+        }
+      }
+
+      mat-checkbox {
+        flex: 1;
+        min-width: 0;
+
+        ::ng-deep {
+          .mdc-form-field {
+            width: 100%;
+          }
+
+          .mdc-label {
+            width: 100%;
+          }
+        }
+
+        &[disabled] {
+          opacity: 0.6;
+        }
+      }
+
+      .column-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+
+        .column-label {
+          font-size: 14px;
+          font-weight: 500;
+          color: v.$light-text-primary;
+
+          @include m.dark-theme {
+            color: white;
+          }
+        }
+
+        .column-key {
+          font-size: 11px;
+          font-family: 'Roboto Mono', monospace;
+          color: v.$light-text-secondary;
+          opacity: 0.7;
+
+          @include m.dark-theme {
+            color: rgba(255, 255, 255, 0.5);
+          }
+        }
+      }
+
+      .lock-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: v.$light-text-secondary;
+        flex-shrink: 0;
+        margin-left: v.$spacing-xs;
+
+        @include m.dark-theme {
+          color: rgba(255, 255, 255, 0.4);
+        }
+      }
+    }
+  }
+
+  .reset-section {
+    display: flex;
+    justify-content: flex-end;
+    padding-top: v.$spacing-md;
+    border-top: 1px solid v.$light-divider;
+    margin-top: v.$spacing-md;
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+
+    button {
+      min-width: 160px;
+
+      @include m.mobile {
+        width: 100%;
+      }
+    }
+  }
+}
