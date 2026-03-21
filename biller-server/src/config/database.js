@@ -283,6 +283,11 @@ const initializeDatabase = () => {
       db.exec('ALTER TABLE users ADD COLUMN permissions TEXT');
       console.log('✅ Migration: Added permissions column to users');
     }
+    const hasProfilePhoto = userColumns.some(col => col.name === 'profilePhoto');
+    if (!hasProfilePhoto) {
+      db.exec('ALTER TABLE users ADD COLUMN profilePhoto TEXT');
+      console.log('✅ Migration: Added profilePhoto column to users');
+    }
   } catch (e) {
     // Columns might already exist
   }

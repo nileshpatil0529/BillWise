@@ -78,6 +78,11 @@ export class DashboardComponent implements OnInit {
       items.push({ icon: 'account_balance_wallet', label: 'Customers', route: '/dashboard/customers' });
     }
     
+    // Manage Users - Admin only
+    if (user?.role === 'admin') {
+      items.push({ icon: 'group', label: 'Manage Users', route: '/dashboard/users' });
+    }
+    
     if (hasPermission('settings')) {
       items.push({ icon: 'settings', label: 'Settings', route: '/dashboard/settings' });
     }

@@ -121,6 +121,24 @@ export class AuthService {
     });
   }
 
+  updateProfile(profileData: { displayName?: string; profilePhoto?: string }): Observable<any> {
+    return this.http.put(`${this.API_URL}/auth/profile`, profileData).pipe(
+      tap((response: any) => {
+        if (response.success) {
+          const currentUser = this.authState().user;
+          if (currentUser) {
+            const updatedUser = { ...currentUser, ...profileData };
+            localStorage.setItem(this.USER_KEY, JSON.stringify(updatedUser));
+            this.authState.update(state => ({
+              ...state,
+              user: updatedUser
+            }));
+          }
+        }
+      })
+    );
+  }
+
   isAdmin(): boolean {
     return this.authState().user?.role === 'admin';
   }

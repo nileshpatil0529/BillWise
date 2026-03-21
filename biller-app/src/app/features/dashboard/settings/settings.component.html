@@ -6,11 +6,11 @@
   </div>
 
   <mat-tab-group animationDuration="200ms">
-    <!-- General Settings Tab -->
+    <!-- Business Settings Tab -->
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>settings</mat-icon>
-        <span>General</span>
+        <span>Business</span>
       </ng-template>
 
       <div class="tab-content">
@@ -22,7 +22,7 @@
           </mat-card-header>
 
           <mat-card-content>
-            <form [formGroup]="generalForm">
+            <form [formGroup]="businessForm">
               <!-- Logo Upload -->
               <div class="logo-section">
                 <label>Business Logo</label>
@@ -57,7 +57,7 @@
                   <mat-label>Business Name</mat-label>
                   <input matInput formControlName="businessName" placeholder="Enter business name">
                   <mat-icon matPrefix>store</mat-icon>
-                  @if (generalForm.get('businessName')?.hasError('required')) {
+                  @if (businessForm.get('businessName')?.hasError('required')) {
                     <mat-error>Business name is required</mat-error>
                   }
                 </mat-form-field>
@@ -76,7 +76,7 @@
                   <mat-label>Phone Number</mat-label>
                   <input matInput formControlName="phone" placeholder="+91 XXXXXXXXXX">
                   <mat-icon matPrefix>phone</mat-icon>
-                  @if (generalForm.get('phone')?.hasError('pattern')) {
+                  @if (businessForm.get('phone')?.hasError('pattern')) {
                     <mat-error>Invalid phone number</mat-error>
                   }
                 </mat-form-field>
@@ -85,7 +85,7 @@
                   <mat-label>Email Address</mat-label>
                   <input matInput formControlName="email" placeholder="business@example.com">
                   <mat-icon matPrefix>email</mat-icon>
-                  @if (generalForm.get('email')?.hasError('email')) {
+                  @if (businessForm.get('email')?.hasError('email')) {
                     <mat-error>Invalid email address</mat-error>
                   }
                 </mat-form-field>
@@ -102,8 +102,8 @@
                 @for (type of applicationTypes; track type.value) {
                   <div 
                     class="app-type-card" 
-                    [class.selected]="generalForm.get('applicationType')?.value === type.value"
-                    (click)="generalForm.patchValue({ applicationType: type.value })"
+                    [class.selected]="businessForm.get('applicationType')?.value === type.value"
+                    (click)="businessForm.patchValue({ applicationType: type.value })"
                   >
                     <mat-icon>{{ type.icon }}</mat-icon>
                     <span>{{ type.label }}</span>
@@ -113,7 +113,7 @@
 
               <mat-divider></mat-divider>
 
-              <div class="form-row two-col">
+              <div class="form-row">
                 <mat-form-field appearance="outline">
                   <mat-label>Currency</mat-label>
                   <mat-select formControlName="currencyCode">
@@ -123,19 +123,6 @@
                   </mat-select>
                   <mat-icon matPrefix>currency_rupee</mat-icon>
                 </mat-form-field>
-
-                <div class="theme-toggle">
-                  <span class="toggle-label">
-                    <mat-icon>{{ generalForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
-                    Theme Mode
-                  </span>
-                  <mat-slide-toggle
-                    [checked]="generalForm.get('theme')?.value === 'dark'"
-                    (change)="onThemeChange($event.checked)"
-                  >
-                    {{ generalForm.get('theme')?.value === 'dark' ? 'Dark' : 'Light' }}
-                  </mat-slide-toggle>
-                </div>
               </div>
 
               <mat-divider></mat-divider>
@@ -164,7 +151,7 @@
           </mat-card-content>
 
           <mat-card-actions align="end">
-            <button mat-flat-button color="primary" (click)="saveGeneralSettings()" [disabled]="saving()">
+            <button mat-flat-button color="primary" (click)="saveBusinessSettings()" [disabled]="saving()">
               @if (saving()) {
                 <span class="button-content">
                   <mat-spinner diameter="20"></mat-spinner>
@@ -579,151 +566,100 @@
       </div>
     </mat-tab>
 
-    <!-- User Management Tab (Admin Only) -->
-    @if (isAdmin()) {
-      <mat-tab>
-        <ng-template mat-tab-label>
-          <mat-icon>people</mat-icon>
-          <span>Manage Users</span>
-        </ng-template>
+    <!-- Account Tab -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>account_circle</mat-icon>
+        <span>Account</span>
+      </ng-template>
 
-        <div class="tab-content">
-          <mat-card class="settings-card">
-            <mat-card-header>
-              <mat-icon mat-card-avatar>people</mat-icon>
-              <mat-card-title>User Management</mat-card-title>
-              <mat-card-subtitle>Create and manage user accounts with role-based access</mat-card-subtitle>
-            </mat-card-header>
+      <div class="tab-content">
+        <mat-card class="settings-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>account_circle</mat-icon>
+            <mat-card-title>Account Settings</mat-card-title>
+            <mat-card-subtitle>Manage your profile and preferences</mat-card-subtitle>
+          </mat-card-header>
 
-            <mat-card-content>
-              <div class="users-actions">
-                <button mat-raised-button color="primary" (click)="openCreateUserDialog()">
-                  <mat-icon>person_add</mat-icon>
-                  <span class="button-text">Create New User</span>
-                </button>
-              </div>
-
-              <div class="users-table-container">
-                @if (loadingUsers()) {
-                  <div class="loading-users">
-                    <mat-spinner diameter="40"></mat-spinner>
-                    <p>Loading users...</p>
-                  </div>
-                } @else if (userService.users().length > 0) {
-                  <div class="table-wrapper">
-                    <table mat-table [dataSource]="userService.users()" class="users-table">
-                      <!-- Name Column -->
-                      <ng-container matColumnDef="displayName">
-                        <th mat-header-cell *matHeaderCellDef>Name</th>
-                        <td mat-cell *matCellDef="let user">
-                          <div class="user-cell">
-                            <mat-icon class="user-icon">account_circle</mat-icon>
-                            <span>{{ user.displayName }}</span>
-                          </div>
-                        </td>
-                      </ng-container>
-
-                      <!-- Phone Column -->
-                      <ng-container matColumnDef="phone">
-                        <th mat-header-cell *matHeaderCellDef>Phone</th>
-                        <td mat-cell *matCellDef="let user">{{ user.phone || '-' }}</td>
-                      </ng-container>
-
-                      <!-- Role Column -->
-                      <ng-container matColumnDef="role">
-                        <th mat-header-cell *matHeaderCellDef>Role</th>
-                        <td mat-cell *matCellDef="let user">
-                          <mat-chip [class]="'role-' + user.role">
-                            {{ user.role | titlecase }}
-                          </mat-chip>
-                        </td>
-                      </ng-container>
-
-                      <!-- Status Column -->
-                      <ng-container matColumnDef="status">
-                        <th mat-header-cell *matHeaderCellDef>Status</th>
-                        <td mat-cell *matCellDef="let user">
-                          <mat-chip [class.active]="user.isActive" [class.inactive]="!user.isActive">
-                            {{ user.isActive ? 'Active' : 'Inactive' }}
-                          </mat-chip>
-                        </td>
-                      </ng-container>
-
-                      <!-- Last Login Column -->
-                      <ng-container matColumnDef="lastLogin">
-                        <th mat-header-cell *matHeaderCellDef class="hide-mobile">Last Login</th>
-                        <td mat-cell *matCellDef="let user" class="hide-mobile">
-                          {{ user.lastLogin ? (user.lastLogin | date: 'dd/MM/yyyy HH:mm') : 'Never' }}
-                        </td>
-                      </ng-container>
-
-                      <!-- Actions Column -->
-                      <ng-container matColumnDef="actions">
-                        <th mat-header-cell *matHeaderCellDef>Actions</th>
-                        <td mat-cell *matCellDef="let user">
-                          <button mat-icon-button [matMenuTriggerFor]="userMenu">
-                            <mat-icon>more_vert</mat-icon>
-                          </button>
-                          <mat-menu #userMenu="matMenu">
-                            <button mat-menu-item (click)="openEditUserDialog(user)">
-                              <mat-icon>edit</mat-icon>
-                              <span>Edit</span>
-                            </button>
-                            <button mat-menu-item (click)="resetUserPassword(user)">
-                              <mat-icon>lock_reset</mat-icon>
-                              <span>Reset Password</span>
-                            </button>
-                            <button mat-menu-item (click)="toggleUserStatus(user)">
-                              <mat-icon>{{ user.isActive ? 'block' : 'check_circle' }}</mat-icon>
-                              <span>{{ user.isActive ? 'Deactivate' : 'Activate' }}</span>
-                            </button>
-                            @if (user.uid !== authService.currentUser()?.uid) {
-                              <button mat-menu-item (click)="deleteUser(user)" class="delete-action">
-                                <mat-icon>delete</mat-icon>
-                                <span>Delete</span>
-                              </button>
-                            }
-                          </mat-menu>
-                        </td>
-                      </ng-container>
-
-                      <tr mat-header-row *matHeaderRowDef="userColumns()"></tr>
-                      <tr mat-row *matRowDef="let row; columns: userColumns();"></tr>
-                    </table>
+          <mat-card-content>
+            <!-- Profile Photo Section -->
+            <div class="account-section">
+              <label>Profile Photo</label>
+              <div class="profile-photo-upload">
+                @if (profilePhotoPreview()) {
+                  <div class="photo-preview-small">
+                    <img [src]="profilePhotoPreview()" alt="Profile Photo">
+                    <button mat-icon-button color="warn" (click)="removeProfilePhoto()" class="remove-photo">
+                      <mat-icon>close</mat-icon>
+                    </button>
                   </div>
                 } @else {
-                  <div class="no-users">
-                    <mat-icon>people_outline</mat-icon>
-                    <p>No users found</p>
+                  <div class="photo-placeholder" (click)="profilePhotoInput.click()">
+                    <mat-icon>account_circle</mat-icon>
+                    <span>Upload Photo</span>
                   </div>
                 }
+                <input type="file" #profilePhotoInput hidden accept="image/*" (change)="onProfilePhotoSelected($event)">
+                @if (profilePhotoPreview()) {
+                  <button mat-stroked-button (click)="profilePhotoInput.click()">
+                    <mat-icon>edit</mat-icon>
+                    Change Photo
+                  </button>
+                }
               </div>
-            </mat-card-content>
-          </mat-card>
+              <p class="hint-text">Max size: 2MB. Formats: JPG, PNG, GIF</p>
+            </div>
 
-          <!-- Change Password Section -->
-          <mat-card class="settings-card">
-            <mat-card-header>
-              <mat-icon mat-card-avatar>lock</mat-icon>
-              <mat-card-title>Change Password</mat-card-title>
-              <mat-card-subtitle>Update your account password</mat-card-subtitle>
-            </mat-card-header>
+            <mat-divider></mat-divider>
 
-            <mat-card-content>
-              <p class="password-info">
-                For security reasons, we recommend changing your password regularly.
-              </p>
-            </mat-card-content>
+            <!-- Theme Mode Section -->
+            <div class="account-section">
+              <label>Theme Mode</label>
+              <div class="theme-toggle">
+                <span class="toggle-label">
+                  <mat-icon>{{ businessForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
+                  {{ businessForm.get('theme')?.value === 'dark' ? 'Dark Mode' : 'Light Mode' }}
+                </span>
+                <mat-slide-toggle
+                  [checked]="businessForm.get('theme')?.value === 'dark'"
+                  (change)="onThemeChange($event.checked)"
+                >
+                </mat-slide-toggle>
+              </div>
+            </div>
 
-            <mat-card-actions>
-              <button mat-raised-button color="primary" (click)="openChangePasswordDialog()">
-                <mat-icon>lock</mat-icon>
-                Change Password
-              </button>
-            </mat-card-actions>
-          </mat-card>
-        </div>
-      </mat-tab>
-    }
+            <mat-divider></mat-divider>
+
+            <!-- Change Password Section -->
+            <div class="account-section">
+              <label>Password</label>
+              <div class="password-row">
+                <span class="password-hint">Change your account password for security</span>
+                <button mat-stroked-button color="primary" (click)="openChangePasswordDialog()">
+                  <mat-icon>lock</mat-icon>
+                  Change Password
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" (click)="saveProfilePhoto()" [disabled]="saving() || !profilePhotoChanged()">
+              @if (saving()) {
+                <span class="button-content">
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Saving...
+                </span>
+              } @else {
+                <span class="button-content">
+                  <mat-icon>save</mat-icon>
+                  Save Changes
+                </span>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </mat-tab>
   </mat-tab-group>
 </div>

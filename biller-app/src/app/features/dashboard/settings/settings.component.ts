@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject, computed } from '@angular/core';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -22,11 +22,8 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { SettingsService } from '../../../core/services/settings.service';
-import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn } from '../../../core/models/settings.model';
-import { User } from '../../../core/models/user.model';
-import { UserDialogComponent } from './user-dialog/user-dialog.component';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
 @Component({
@@ -61,12 +58,11 @@ import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog
 export class SettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
   settingsService = inject(SettingsService);
-  userService = inject(UserService);
-  authService = inject(AuthService);
+  private authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
-  generalForm!: FormGroup;
+  businessForm!: FormGroup;
   taxForm!: FormGroup;
   receiptForm!: FormGroup;
 
@@ -75,21 +71,14 @@ export class SettingsComponent implements OnInit {
   categories = signal<Category[]>([]);
   newCategoryName = signal<string>('');
   
+  // Profile Photo
+  profilePhotoPreview = signal<string | null>(null);
+  profilePhotoChanged = signal(false);
+  
   // Table column preferences
   productsColumns = signal<TableColumn[]>([]);
   billsColumns = signal<TableColumn[]>([]);
   customersColumns = signal<TableColumn[]>([]);
-
-  // User management
-  loadingUsers = signal(false);
-  userColumns = computed(() => {
-    // Show fewer columns on mobile
-    if (window.innerWidth < 768) {
-      return ['displayName', 'role', 'actions'];
-    }
-    return ['displayName', 'phone', 'role', 'status', 'lastLogin', 'actions'];
-  });
-  isAdmin = computed(() => this.authService.currentUser()?.role === 'admin');
 
   // Default table columns configuration
   private defaultProductsColumns: TableColumn[] = [
@@ -144,15 +133,18 @@ export class SettingsComponent implements OnInit {
   ngOnInit(): void {
     this.initForms();
     this.loadSettings();
-    
-    // Load users if admin
-    if (this.isAdmin()) {
-      this.loadUsers();
+    this.loadProfilePhoto();
+  }
+
+  private loadProfilePhoto(): void {
+    const currentUser = this.authService.currentUser();
+    if (currentUser?.profilePhoto) {
+      this.profilePhotoPreview.set(currentUser.profilePhoto);
     }
   }
 
   private initForms(): void {
-    this.generalForm = this.fb.group({
+    this.businessForm = this.fb.group({
       businessName: ['', [Validators.required, Validators.maxLength(100)]],
       address: ['', [Validators.maxLength(200)]],
       phone: ['', [Validators.pattern(/^[+]?[\d\s-]{10,15}$/)]],
@@ -183,7 +175,7 @@ export class SettingsComponent implements OnInit {
   private loadSettings(): void {
     const settings = this.settingsService.settings();
     
-    this.generalForm.patchValue({
+    this.businessForm.patchValue({
       businessName: settings.businessName,
       address: settings.address,
       phone: settings.phone,
@@ -232,7 +224,7 @@ export class SettingsComponent implements OnInit {
 
   onThemeChange(isDark: boolean): void {
     const theme: ThemeType = isDark ? 'dark' : 'light';
-    this.generalForm.patchValue({ theme });
+    this.businessForm.patchValue({ theme });
     this.settingsService.currentTheme.set(theme);
   }
 
@@ -265,14 +257,14 @@ export class SettingsComponent implements OnInit {
     this.logoPreview.set(null);
   }
 
-  saveGeneralSettings(): void {
-    if (this.generalForm.invalid) {
-      this.generalForm.markAllAsTouched();
+  saveBusinessSettings(): void {
+    if (this.businessForm.invalid) {
+      this.businessForm.markAllAsTouched();
       return;
     }
 
     this.saving.set(true);
-    const formValue = this.generalForm.value;
+    const formValue = this.businessForm.value;
     const currency = this.currencies.find(c => c.value === formValue.currencyCode);
     
     const settings: Partial<Settings> = {
@@ -290,7 +282,7 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
-        this.snackBar.open('General settings saved successfully', 'Close', { duration: 3000 });
+        this.snackBar.open('Business settings saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
       error: () => {
@@ -482,102 +474,58 @@ export class SettingsComponent implements OnInit {
     });
   }
 
-  // User Management Methods
-  loadUsers(): void {
-    if (!this.isAdmin()) return;
-    
-    this.loadingUsers.set(true);
-    this.userService.getUsers().subscribe({
-      next: () => {
-        this.loadingUsers.set(false);
-      },
-      error: () => {
-        this.snackBar.open('Failed to load users', 'Close', { duration: 3000 });
-        this.loadingUsers.set(false);
-      }
-    });
-  }
-
-  openCreateUserDialog(): void {
-    const dialogRef = this.dialog.open(UserDialogComponent, {
-      width: '600px',
-      data: {}
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadUsers();
-      }
-    });
-  }
-
-  openEditUserDialog(user: User): void {
-    const dialogRef = this.dialog.open(UserDialogComponent, {
-      width: '600px',
-      data: { user }
-    });
-
-    dialogRef.afterClosed().subscribe(result => {
-      if (result) {
-        this.loadUsers();
-      }
-    });
-  }
-
-  resetUserPassword(user: User): void {
-    if (confirm(`Reset password for ${user.displayName}? They will be required to change it on next login.`)) {
-      this.userService.resetPassword(user.uid).subscribe({
-        next: (response) => {
-          if (response.success) {
-            this.snackBar.open(
-              `Password reset successfully. New password: ${response.data?.defaultPassword}`,
-              'Close',
-              { duration: 5000 }
-            );
-          }
-        },
-        error: (error) => {
-          this.snackBar.open(error.error?.message || 'Failed to reset password', 'Close', { duration: 3000 });
-        }
-      });
-    }
-  }
-
-  toggleUserStatus(user: User): void {
-    const newStatus = !user.isActive;
-    const action = newStatus ? 'activate' : 'deactivate';
-    
-    if (confirm(`Are you sure you want to ${action} ${user.displayName}?`)) {
-      this.userService.updateUser(user.uid, { isActive: newStatus }).subscribe({
-        next: () => {
-          this.snackBar.open(`User ${action}d successfully`, 'Close', { duration: 3000 });
-          this.loadUsers();
-        },
-        error: (error) => {
-          this.snackBar.open(error.error?.message || `Failed to ${action} user`, 'Close', { duration: 3000 });
-        }
-      });
-    }
-  }
-
-  deleteUser(user: User): void {
-    if (confirm(`Are you sure you want to delete ${user.displayName}? This action cannot be undone.`)) {
-      this.userService.deleteUser(user.uid).subscribe({
-        next: () => {
-          this.snackBar.open('User deleted successfully', 'Close', { duration: 3000 });
-          this.loadUsers();
-        },
-        error: (error) => {
-          this.snackBar.open(error.error?.message || 'Failed to delete user', 'Close', { duration: 3000 });
-        }
-      });
-    }
-  }
-
   openChangePasswordDialog(): void {
     this.dialog.open(ChangePasswordDialogComponent, {
       width: '450px',
       data: { requirePasswordChange: false }
+    });
+  }
+
+  // Profile Photo Methods
+  onProfilePhotoSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files[0]) {
+      const file = input.files[0];
+      
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        this.snackBar.open('Please select an image file', 'Close', { duration: 3000 });
+        return;
+      }
+
+      // Validate file size (max 2MB)
+      if (file.size > 2 * 1024 * 1024) {
+        this.snackBar.open('Profile photo must be less than 2MB', 'Close', { duration: 3000 });
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => {
+        this.profilePhotoPreview.set(reader.result as string);
+        this.profilePhotoChanged.set(true);
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  removeProfilePhoto(): void {
+    this.profilePhotoPreview.set(null);
+    this.profilePhotoChanged.set(true);
+  }
+
+  saveProfilePhoto(): void {
+    this.saving.set(true);
+    
+    this.authService.updateProfile({ profilePhoto: this.profilePhotoPreview() || '' }).subscribe({
+      next: () => {
+        this.snackBar.open('Profile photo saved successfully', 'Close', { duration: 3000 });
+        this.saving.set(false);
+        this.profilePhotoChanged.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Failed to save profile photo', 'Close', { duration: 3000 });
+        this.saving.set(false);
+      }
     });
   }
 }

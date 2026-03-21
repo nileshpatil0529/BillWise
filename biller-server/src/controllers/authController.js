@@ -87,7 +87,8 @@ export const login = async (req, res) => {
           displayName: user.displayName,
           role: user.role,
           requirePasswordChange: Boolean(user.requirePasswordChange),
-          permissions
+          permissions,
+          profilePhoto: user.profilePhoto
         }
       }
     });
@@ -219,19 +220,73 @@ export const changePassword = async (req, res) => {
 
 export const getProfile = async (req, res) => {
   try {
+    const user = db.prepare('SELECT * FROM users WHERE uid = ?').get(req.user.uid);
+    
     res.json({
       success: true,
       data: {
-        uid: req.user.uid,
-        email: req.user.email,
-        displayName: req.user.displayName,
-        role: req.user.role
+        uid: user.uid,
+        email: user.email,
+        displayName: user.displayName,
+        role: user.role,
+        profilePhoto: user.profilePhoto
       }
     });
   } catch (error) {
     res.status(500).json({
       success: false,
       message: 'Failed to get profile'
+    });
+  }
+};
+
+export const updateProfile = async (req, res) => {
+  try {
+    const { displayName, profilePhoto } = req.body;
+    const { uid } = req.user;
+
+    const updates = [];
+    const params = [];
+
+    if (displayName !== undefined) {
+      updates.push('displayName = ?');
+      params.push(displayName);
+    }
+
+    if (profilePhoto !== undefined) {
+      // Validate profile photo size (base64 string max ~2MB)
+      if (profilePhoto && profilePhoto.length > 2 * 1024 * 1024) {
+        return res.status(400).json({
+          success: false,
+          message: 'Profile photo must be less than 2MB'
+        });
+      }
+      updates.push('profilePhoto = ?');
+      params.push(profilePhoto);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No valid fields to update'
+      });
+    }
+
+    updates.push('updatedAt = ?');
+    params.push(new Date().toISOString());
+    params.push(uid);
+
+    db.prepare(`UPDATE users SET ${updates.join(', ')} WHERE uid = ?`).run(...params);
+
+    res.json({
+      success: true,
+      message: 'Profile updated successfully'
+    });
+  } catch (error) {
+    console.error('Update profile error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update profile'
     });
   }
 };
@@ -280,4 +335,4 @@ export const register = async (req, res) => {
   }
 };
 
-export default { login, logout, refreshToken, changePassword, getProfile, register };
+export default { login, logout, refreshToken, changePassword, getProfile, updateProfile, register };

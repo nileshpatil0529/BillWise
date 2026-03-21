@@ -1,0 +1,246 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+:host {
+  display: block;
+}
+
+.users-container {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-md;
+}
+
+// Page Header
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: v.$spacing-md;
+
+  .header-title {
+    h1 {
+      margin-bottom: v.$spacing-xs;
+      
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+  }
+
+  .header-actions {
+    button {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-xs;
+    }
+  }
+  
+  @include m.mobile {
+    flex-direction: column;
+    align-items: stretch;
+    
+    .header-actions {
+      button {
+        width: 100%;
+        justify-content: center;
+      }
+    }
+  }
+}
+
+// Search Card
+.search-card {
+  padding: v.$spacing-md;
+
+  .search-field {
+    width: 100%;
+    margin-bottom: 0;
+
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+  }
+}
+
+// Table Card
+.table-card {
+  padding: 0;
+  position: relative;
+
+  .loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.8);
+    z-index: 10;
+
+    @include m.dark-theme {
+      background: rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  .table-container {
+    max-height: calc(100vh - 280px);
+    overflow-x: auto;
+    overflow-y: auto;
+    @include m.custom-scrollbar;
+    
+    @include m.mobile {
+      max-height: calc(100vh - 240px);
+    }
+  }
+
+  .users-table {
+    width: 100%;
+    min-width: 600px;
+    
+    @include m.mobile {
+      min-width: 350px;
+    }
+
+    th.mat-mdc-header-cell {
+      background-color: white;
+      font-weight: 600;
+
+      @include m.dark-theme {
+        color: white;
+        background-color: v.$dark-surface-light;
+      }
+    }
+
+    td.mat-mdc-cell {
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+
+    .user-name-cell {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+
+      .user-avatar {
+        color: v.$light-text-secondary;
+        font-size: 32px;
+        width: 32px;
+        height: 32px;
+
+        @include m.dark-theme {
+          color: v.$dark-text-secondary;
+        }
+      }
+
+      .user-name {
+        font-weight: 500;
+        color: v.$light-primary;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+      }
+    }
+  }
+
+  .no-data {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: v.$spacing-xl * 3;
+    gap: v.$spacing-md;
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: v.$light-text-secondary;
+      opacity: 0.5;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+      
+      @include m.mobile {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    p {
+      margin: 0;
+      color: v.$light-text-secondary;
+      font-size: 16px;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+  }
+}
+
+// Role chips
+.role-chip {
+  &.role-admin {
+    --mdc-chip-elevated-container-color: #{rgba(156, 39, 176, 0.15)};
+    --mdc-chip-label-text-color: #9c27b0;
+    
+    @include m.dark-theme {
+      --mdc-chip-elevated-container-color: #{rgba(156, 39, 176, 0.25)};
+      --mdc-chip-label-text-color: #ce93d8;
+    }
+  }
+
+  &.role-manager {
+    --mdc-chip-elevated-container-color: #{rgba(33, 150, 243, 0.15)};
+    --mdc-chip-label-text-color: #2196f3;
+    
+    @include m.dark-theme {
+      --mdc-chip-elevated-container-color: #{rgba(33, 150, 243, 0.25)};
+      --mdc-chip-label-text-color: #90caf9;
+    }
+  }
+
+  &.role-staff {
+    --mdc-chip-elevated-container-color: #{rgba(76, 175, 80, 0.15)};
+    --mdc-chip-label-text-color: #4caf50;
+    
+    @include m.dark-theme {
+      --mdc-chip-elevated-container-color: #{rgba(76, 175, 80, 0.25)};
+      --mdc-chip-label-text-color: #81c784;
+    }
+  }
+}
+
+// Status chips
+.status-active {
+  --mdc-chip-elevated-container-color: #{rgba(v.$light-success, 0.15)};
+  --mdc-chip-label-text-color: #{v.$light-success};
+  
+  @include m.dark-theme {
+    --mdc-chip-elevated-container-color: #{rgba(v.$dark-success, 0.25)};
+    --mdc-chip-label-text-color: #{v.$dark-success};
+  }
+}
+
+.status-inactive {
+  --mdc-chip-elevated-container-color: #{rgba(v.$light-error, 0.15)};
+  --mdc-chip-label-text-color: #{v.$light-error};
+  
+  @include m.dark-theme {
+    --mdc-chip-elevated-container-color: #{rgba(v.$dark-error, 0.25)};
+    --mdc-chip-label-text-color: #{v.$dark-error};
+  }
+}
+
+// Delete action
+.delete-action {
+  color: v.$light-error !important;
+}

@@ -1,196 +1,325 @@
-.user-dialog {
+.user-dialog-card {
   width: 100%;
-  max-width: 550px;
+  max-width: 100%;
+  margin: 0;
+  padding: 0;
+  box-shadow: none !important;
 
-  h2 {
+  ::ng-deep .mdc-card {
+    padding: 0 !important;
+  }
+
+  mat-card-header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin: 0;
-    font-size: 20px;
-    
-    mat-icon {
-      color: var(--primary-color);
-    }
-  }
+    padding: 16px 24px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+    margin-bottom: 0;
 
-  mat-dialog-content {
-    padding: 24px 0;
-    min-height: 200px;
-    
-    form {
+    ::ng-deep .mat-mdc-card-header-text {
       display: flex;
-      flex-direction: column;
-      gap: 16px;
-
-      mat-form-field {
-        width: 100%;
-      }
-
-      .permissions-section {
-        margin-top: 8px;
-        
-        label {
-          display: block;
-          font-weight: 600;
-          margin-bottom: 8px;
-          color: rgba(0, 0, 0, 0.87);
-          font-size: 14px;
-        }
-
-        .permissions-hint {
-          font-size: 12px;
-          color: rgba(0, 0, 0, 0.6);
-          margin: 0 0 12px 0;
-        }
-
-        .permissions-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
-          gap: 10px;
-          padding: 16px;
-          background: rgba(0, 0, 0, 0.02);
-          border-radius: 8px;
-
-          mat-checkbox {
-            display: flex;
-            align-items: center;
-            font-size: 13px;
-
-            ::ng-deep .mdc-label {
-              display: flex;
-              align-items: center;
-              gap: 6px;
-            }
-
-            mat-icon {
-              font-size: 18px;
-              width: 18px;
-              height: 18px;
-            }
-          }
-        }
-      }
-
-      mat-slide-toggle {
-        margin-top: 12px;
-
-        .toggle-label {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-          font-size: 14px;
-
-          mat-icon {
-            font-size: 20px;
-            width: 20px;
-            height: 20px;
-          }
-        }
-      }
-    }
-
-    .default-password-info {
-      display: flex;
+      align-items: center;
       gap: 12px;
-      padding: 16px;
-      margin-top: 20px;
-      background: rgba(76, 175, 80, 0.08);
-      border-radius: 8px;
-      border-left: 4px solid #4caf50;
-
-      mat-icon {
-        color: #4caf50;
-        flex-shrink: 0;
-      }
-
-      div {
-        flex: 1;
-
-        p {
-          margin: 0 0 4px 0;
-          font-size: 13px;
-          
-          &.hint {
-            font-size: 12px;
-            color: rgba(0, 0, 0, 0.6);
-          }
-        }
-
-        strong {
-          color: #388e3c;
-          font-weight: 600;
-        }
-      }
+      margin: 0;
     }
-  }
 
-  mat-dialog-actions {
-    padding: 16px 0 0 0;
-    margin: 0;
-    gap: 8px;
-    
-    button {
-      mat-spinner {
-        display: inline-block;
-        margin-right: 8px;
-      }
+    [mat-card-avatar] {
+      background: var(--mat-primary);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 10px;
+      width: 36px;
+      height: 36px;
+      font-size: 20px;
+      margin: 0;
     }
-  }
-}
 
-@media (max-width: 600px) {
-  .user-dialog {
-    max-width: 100%;
-
-    h2 {
+    mat-card-title {
       font-size: 18px;
+      font-weight: 600;
+      margin: 0 !important;
+      line-height: 1;
+    }
+  }
+
+  mat-card-content {
+    padding: 24px;
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+
+  mat-card-actions {
+    padding: 16px 24px;
+    margin: 0 !important;
+    border-top: 1px solid rgba(0, 0, 0, 0.08);
+    gap: 12px;
+
+    button {
+      display: flex;
+      align-items: center;
       gap: 8px;
-      
+
+      mat-spinner {
+        margin-right: 4px;
+      }
+
       mat-icon {
         font-size: 20px;
         width: 20px;
         height: 20px;
       }
     }
+  }
+}
 
-    mat-dialog-content {
-      padding: 16px 0;
+.user-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
 
-      form {
-        gap: 12px;
+.form-row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
 
-        .permissions-section {
-          .permissions-grid {
-            grid-template-columns: 1fr;
-            gap: 8px;
-            padding: 12px;
-            
-            mat-checkbox {
-              font-size: 12px;
-            }
-          }
+  > * {
+    flex: 1;
+  }
+}
+
+.full-width {
+  width: 100%;
+}
+
+.toggle-field {
+  display: flex;
+  align-items: center;
+  padding-top: 16px;
+  
+  .toggle-label {
+    font-size: 14px;
+    font-weight: 500;
+  }
+}
+
+.role-icon {
+  font-size: 20px;
+  width: 20px;
+  height: 20px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
+.permissions-section {
+  margin-top: 8px;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 14px;
+    color: rgba(0, 0, 0, 0.87);
+    margin-bottom: 4px;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      color: var(--mat-primary);
+    }
+  }
+
+  .section-hint {
+    font-size: 12px;
+    color: rgba(0, 0, 0, 0.6);
+    margin: 0 0 16px 0;
+  }
+
+  .permissions-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+
+    mat-checkbox {
+      .permission-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+          color: rgba(0, 0, 0, 0.54);
         }
-      }
 
-      .default-password-info {
-        padding: 12px;
-        margin-top: 16px;
-
-        div {
-          p {
-            font-size: 12px;
-          }
+        span {
+          font-size: 13px;
         }
       }
     }
+  }
+}
 
-    mat-dialog-actions {
+.info-box {
+  display: flex;
+  gap: 12px;
+  padding: 16px;
+  margin-top: 16px;
+  border-radius: 12px;
+  align-items: flex-start;
+
+  &.success {
+    background: rgba(76, 175, 80, 0.08);
+    border: 1px solid rgba(76, 175, 80, 0.2);
+
+    > mat-icon {
+      color: #4caf50;
+    }
+  }
+
+  > mat-icon {
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .info-content {
+    flex: 1;
+
+    .info-title {
+      margin: 0 0 4px 0;
+      font-size: 14px;
+
+      strong {
+        color: #388e3c;
+        font-family: 'Roboto Mono', monospace;
+        font-size: 15px;
+      }
+    }
+
+    .info-hint {
+      margin: 0;
+      font-size: 12px;
+      color: rgba(0, 0, 0, 0.6);
+    }
+  }
+}
+
+// Dark theme support
+:host-context(.dark-theme) {
+  .user-dialog-card {
+    mat-card-header {
+      border-bottom-color: rgba(255, 255, 255, 0.1);
+    }
+
+    mat-card-actions {
+      border-top-color: rgba(255, 255, 255, 0.1);
+    }
+  }
+
+  .permissions-section {
+    background: rgba(255, 255, 255, 0.04);
+    border-color: rgba(255, 255, 255, 0.08);
+
+    .section-header {
+      color: rgba(255, 255, 255, 0.87);
+    }
+
+    .section-hint {
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .permissions-grid mat-checkbox .permission-item mat-icon {
+      color: rgba(255, 255, 255, 0.54);
+    }
+  }
+
+  .info-box {
+    &.success {
+      background: rgba(76, 175, 80, 0.12);
+      border-color: rgba(76, 175, 80, 0.3);
+    }
+
+    .info-content {
+      .info-hint {
+        color: rgba(255, 255, 255, 0.6);
+      }
+
+      .info-title strong {
+        color: #81c784;
+      }
+    }
+  }
+}
+
+// Responsive styles
+@media (max-width: 600px) {
+  .user-dialog-card {
+    width: 100%;
+    height: 100%;
+    border-radius: 0 !important;
+    display: flex;
+    flex-direction: column;
+
+    mat-card-header {
+      padding: 12px 16px;
+      flex-shrink: 0;
+
+      [mat-card-avatar] {
+        width: 32px;
+        height: 32px;
+        font-size: 18px;
+        border-radius: 8px;
+      }
+
+      mat-card-title {
+        font-size: 16px;
+      }
+    }
+
+    mat-card-content {
+      padding: 16px;
+      flex: 1;
+      max-height: none;
+      overflow-y: auto;
+    }
+
+    mat-card-actions {
+      padding: 12px 16px;
+      flex-shrink: 0;
       flex-direction: column-reverse;
-      
+
       button {
         width: 100%;
+        justify-content: center;
       }
+    }
+  }
+
+  .form-row {
+    flex-direction: column;
+    gap: 0;
+  }
+
+  .toggle-field {
+    padding-top: 0;
+    padding-bottom: 8px;
+  }
+
+  .permissions-section {
+    padding: 12px;
+
+    .permissions-grid {
+      grid-template-columns: 1fr;
+      gap: 8px;
     }
   }
 }

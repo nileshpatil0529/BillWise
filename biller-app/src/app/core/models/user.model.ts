@@ -7,6 +7,7 @@ export interface User {
   isActive?: boolean;
   requirePasswordChange?: boolean;
   permissions?: string[];
+  profilePhoto?: string;
   createdAt?: string;
   lastLogin?: string;
 }

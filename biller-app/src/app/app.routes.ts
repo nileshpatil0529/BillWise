@@ -46,6 +46,11 @@ export const routes: Routes = [
         path: 'customers',
         data: { permission: 'customers' },
         loadComponent: () => import('./features/dashboard/customers/customers.component').then(m => m.CustomersComponent)
+      },
+      {
+        path: 'users',
+        data: { permission: 'users' },
+        loadComponent: () => import('./features/dashboard/users/users.component').then(m => m.UsersComponent)
       }
     ]
   },
