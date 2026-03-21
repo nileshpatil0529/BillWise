@@ -30,10 +30,13 @@ const initializeDatabase = () => {
     CREATE TABLE IF NOT EXISTS users (
       uid TEXT PRIMARY KEY,
       email TEXT UNIQUE NOT NULL,
+      phone TEXT UNIQUE,
       password TEXT NOT NULL,
       displayName TEXT,
-      role TEXT DEFAULT 'user',
+      role TEXT DEFAULT 'staff',
       isActive INTEGER DEFAULT 1,
+      requirePasswordChange INTEGER DEFAULT 0,
+      permissions TEXT,
       lastLogin TEXT,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
@@ -205,6 +208,19 @@ const initializeDatabase = () => {
     )
   `);
 
+  // User-specific settings table
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_settings (
+      userId TEXT PRIMARY KEY,
+      tableColumns TEXT,
+      theme TEXT DEFAULT 'light',
+      preferences TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users(uid) ON DELETE CASCADE
+    )
+  `);
+
   // Insert default settings if not exists
   const settingsExist = db.prepare('SELECT COUNT(*) as count FROM settings').get();
   if (settingsExist.count === 0) {
@@ -240,13 +256,58 @@ const initializeDatabase = () => {
     // Column might already exist
   }
 
+  // Migration: Add new columns to users table if they don't exist
+  try {
+    const userColumns = db.prepare('PRAGMA table_info(users)').all();
+    const hasPhone = userColumns.some(col => col.name === 'phone');
+    if (!hasPhone) {
+      db.exec('ALTER TABLE users ADD COLUMN phone TEXT');
+      // Create unique index separately (ALTER TABLE doesn't support inline UNIQUE)
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL');
+      console.log('✅ Migration: Added phone column to users');
+    } else {
+      // Ensure unique index exists even if column was added before
+      try {
+        db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL');
+      } catch (e) {
+        // Index might already exist
+      }
+    }
+    const hasRequirePasswordChange = userColumns.some(col => col.name === 'requirePasswordChange');
+    if (!hasRequirePasswordChange) {
+      db.exec('ALTER TABLE users ADD COLUMN requirePasswordChange INTEGER DEFAULT 0');
+      console.log('✅ Migration: Added requirePasswordChange column to users');
+    }
+    const hasPermissions = userColumns.some(col => col.name === 'permissions');
+    if (!hasPermissions) {
+      db.exec('ALTER TABLE users ADD COLUMN permissions TEXT');
+      console.log('✅ Migration: Added permissions column to users');
+    }
+  } catch (e) {
+    // Columns might already exist
+  }
+
+  // Update existing admin users to have all permissions if they don't have any
+  try {
+    const allPermissions = JSON.stringify(['dashboard', 'products', 'bills', 'customers', 'settings']);
+    db.prepare(`
+      UPDATE users 
+      SET permissions = ?
+      WHERE role = 'admin' AND (permissions IS NULL OR permissions = '')
+    `).run(allPermissions);
+    console.log('✅ Migration: Updated admin users with default permissions');
+  } catch (e) {
+    // Already updated
+  }
+
   // Insert default admin user if not exists
   const adminExists = db.prepare('SELECT COUNT(*) as count FROM users WHERE email = ?').get(config.admin.email);
   if (adminExists.count === 0) {
+    const allPermissions = JSON.stringify(['dashboard', 'products', 'bills', 'customers', 'settings']);
     db.prepare(`
-      INSERT INTO users (uid, email, password, displayName, role, isActive)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `).run('admin-001', config.admin.email, config.admin.password, 'Administrator', 'admin', 1);
+      INSERT INTO users (uid, email, phone, password, displayName, role, isActive, requirePasswordChange, permissions)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run('admin-001', config.admin.email, null, config.admin.password, 'Administrator', 'admin', 1, 0, allPermissions);
     console.log('✅ Default admin user created');
   }
 

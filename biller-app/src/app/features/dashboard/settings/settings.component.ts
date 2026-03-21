@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -16,9 +16,18 @@ import { MatRadioModule } from '@angular/material/radio';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatListModule } from '@angular/material/list';
 import { MatExpansionModule } from '@angular/material/expansion';
+import { MatTableModule } from '@angular/material/table';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatMenuModule } from '@angular/material/menu';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { SettingsService } from '../../../core/services/settings.service';
+import { UserService } from '../../../core/services/user.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn } from '../../../core/models/settings.model';
+import { User } from '../../../core/models/user.model';
+import { UserDialogComponent } from './user-dialog/user-dialog.component';
+import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
 @Component({
   selector: 'app-settings',
@@ -40,7 +49,11 @@ import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColum
     MatRadioModule,
     MatCheckboxModule,
     MatListModule,
-    MatExpansionModule
+    MatExpansionModule,
+    MatTableModule,
+    MatChipsModule,
+    MatMenuModule,
+    MatDialogModule
   ],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss']
@@ -48,7 +61,10 @@ import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColum
 export class SettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
   settingsService = inject(SettingsService);
+  userService = inject(UserService);
+  authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
+  private dialog = inject(MatDialog);
 
   generalForm!: FormGroup;
   taxForm!: FormGroup;
@@ -63,6 +79,17 @@ export class SettingsComponent implements OnInit {
   productsColumns = signal<TableColumn[]>([]);
   billsColumns = signal<TableColumn[]>([]);
   customersColumns = signal<TableColumn[]>([]);
+
+  // User management
+  loadingUsers = signal(false);
+  userColumns = computed(() => {
+    // Show fewer columns on mobile
+    if (window.innerWidth < 768) {
+      return ['displayName', 'role', 'actions'];
+    }
+    return ['displayName', 'phone', 'role', 'status', 'lastLogin', 'actions'];
+  });
+  isAdmin = computed(() => this.authService.currentUser()?.role === 'admin');
 
   // Default table columns configuration
   private defaultProductsColumns: TableColumn[] = [
@@ -117,6 +144,11 @@ export class SettingsComponent implements OnInit {
   ngOnInit(): void {
     this.initForms();
     this.loadSettings();
+    
+    // Load users if admin
+    if (this.isAdmin()) {
+      this.loadUsers();
+    }
   }
 
   private initForms(): void {
@@ -447,6 +479,105 @@ export class SettingsComponent implements OnInit {
         this.snackBar.open('Failed to save table columns', 'Close', { duration: 3000 });
         this.saving.set(false);
       }
+    });
+  }
+
+  // User Management Methods
+  loadUsers(): void {
+    if (!this.isAdmin()) return;
+    
+    this.loadingUsers.set(true);
+    this.userService.getUsers().subscribe({
+      next: () => {
+        this.loadingUsers.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Failed to load users', 'Close', { duration: 3000 });
+        this.loadingUsers.set(false);
+      }
+    });
+  }
+
+  openCreateUserDialog(): void {
+    const dialogRef = this.dialog.open(UserDialogComponent, {
+      width: '600px',
+      data: {}
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.loadUsers();
+      }
+    });
+  }
+
+  openEditUserDialog(user: User): void {
+    const dialogRef = this.dialog.open(UserDialogComponent, {
+      width: '600px',
+      data: { user }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.loadUsers();
+      }
+    });
+  }
+
+  resetUserPassword(user: User): void {
+    if (confirm(`Reset password for ${user.displayName}? They will be required to change it on next login.`)) {
+      this.userService.resetPassword(user.uid).subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.snackBar.open(
+              `Password reset successfully. New password: ${response.data?.defaultPassword}`,
+              'Close',
+              { duration: 5000 }
+            );
+          }
+        },
+        error: (error) => {
+          this.snackBar.open(error.error?.message || 'Failed to reset password', 'Close', { duration: 3000 });
+        }
+      });
+    }
+  }
+
+  toggleUserStatus(user: User): void {
+    const newStatus = !user.isActive;
+    const action = newStatus ? 'activate' : 'deactivate';
+    
+    if (confirm(`Are you sure you want to ${action} ${user.displayName}?`)) {
+      this.userService.updateUser(user.uid, { isActive: newStatus }).subscribe({
+        next: () => {
+          this.snackBar.open(`User ${action}d successfully`, 'Close', { duration: 3000 });
+          this.loadUsers();
+        },
+        error: (error) => {
+          this.snackBar.open(error.error?.message || `Failed to ${action} user`, 'Close', { duration: 3000 });
+        }
+      });
+    }
+  }
+
+  deleteUser(user: User): void {
+    if (confirm(`Are you sure you want to delete ${user.displayName}? This action cannot be undone.`)) {
+      this.userService.deleteUser(user.uid).subscribe({
+        next: () => {
+          this.snackBar.open('User deleted successfully', 'Close', { duration: 3000 });
+          this.loadUsers();
+        },
+        error: (error) => {
+          this.snackBar.open(error.error?.message || 'Failed to delete user', 'Close', { duration: 3000 });
+        }
+      });
+    }
+  }
+
+  openChangePasswordDialog(): void {
+    this.dialog.open(ChangePasswordDialogComponent, {
+      width: '450px',
+      data: { requirePasswordChange: false }
     });
   }
 }

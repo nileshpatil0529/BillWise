@@ -43,4 +43,18 @@ export const authorize = (...roles) => {
   };
 };
 
-export default { authenticate, authorize };
+// Alias for authenticate
+export const verifyToken = authenticate;
+
+// Require admin role
+export const requireAdmin = (req, res, next) => {
+  if (!req.user || req.user.role !== 'admin') {
+    return res.status(403).json({ 
+      success: false, 
+      message: 'Access denied. Admin privileges required.' 
+    });
+  }
+  next();
+};
+
+export default { authenticate, authorize, verifyToken, requireAdmin };

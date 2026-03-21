@@ -51,11 +51,37 @@ export class DashboardComponent implements OnInit {
   ];
 
   menuItems = computed(() => {
-    const items = [...this.baseMenuItems];
-    if (this.settingsService.settings().debtEnabled) {
+    const user = this.authService.currentUser();
+    const permissions = user?.permissions || [];
+    
+    // Admin gets all permissions by default
+    const hasPermission = (permission: string) => {
+      return user?.role === 'admin' || permissions.includes(permission);
+    };
+    
+    // Filter menu items based on user permissions
+    let items: MenuItem[] = [];
+    
+    if (hasPermission('dashboard')) {
+      items.push({ icon: 'home', label: 'Home', route: '/dashboard/home' });
+    }
+    
+    if (hasPermission('products')) {
+      items.push({ icon: 'inventory_2', label: 'Products', route: '/dashboard/products' });
+    }
+    
+    if (hasPermission('bills')) {
+      items.push({ icon: 'receipt_long', label: 'Bills & Reports', route: '/dashboard/bills' });
+    }
+    
+    if (hasPermission('customers') && this.settingsService.settings().debtEnabled) {
       items.push({ icon: 'account_balance_wallet', label: 'Customers', route: '/dashboard/customers' });
     }
-    items.push({ icon: 'settings', label: 'Settings', route: '/dashboard/settings' });
+    
+    if (hasPermission('settings')) {
+      items.push({ icon: 'settings', label: 'Settings', route: '/dashboard/settings' });
+    }
+    
     return items;
   });
 

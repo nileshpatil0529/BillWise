@@ -1,9 +1,12 @@
 export interface User {
   uid: string;
   email: string;
+  phone?: string;
   displayName: string;
-  role: 'admin' | 'manager' | 'cashier';
+  role: 'admin' | 'manager' | 'staff';
   isActive?: boolean;
+  requirePasswordChange?: boolean;
+  permissions?: string[];
   createdAt?: string;
   lastLogin?: string;
 }
@@ -26,4 +29,23 @@ export interface AuthState {
   isAuthenticated: boolean;
   user: User | null;
   token: string | null;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface CreateUserRequest {
+  phone: string;
+  displayName: string;
+  role: 'admin' | 'manager' | 'staff';
+  permissions?: string[];
+}
+
+export interface UpdateUserRequest {
+  displayName?: string;
+  role?: 'admin' | 'manager' | 'staff';
+  permissions?: string[];
+  isActive?: boolean;
 }

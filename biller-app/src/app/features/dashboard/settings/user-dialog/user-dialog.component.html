@@ -1,0 +1,95 @@
+<div class="user-dialog">
+  <h2 mat-dialog-title>
+    <mat-icon>{{ data.user ? 'edit' : 'person_add' }}</mat-icon>
+    {{ data.user ? 'Edit User' : 'Create New User' }}
+  </h2>
+
+  <mat-dialog-content>
+    <form [formGroup]="userForm">
+      <mat-form-field appearance="outline">
+        <mat-label>Display Name</mat-label>
+        <input matInput formControlName="displayName" required>
+        <mat-icon matPrefix>person</mat-icon>
+        @if (userForm.get('displayName')?.hasError('required') && userForm.get('displayName')?.touched) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+
+      @if (!data.user) {
+        <mat-form-field appearance="outline">
+          <mat-label>Phone Number</mat-label>
+          <input matInput formControlName="phone" type="tel" required>
+          <mat-icon matPrefix>phone</mat-icon>
+          @if (userForm.get('phone')?.hasError('required') && userForm.get('phone')?.touched) {
+            <mat-error>Phone number is required</mat-error>
+          }
+          @if (userForm.get('phone')?.hasError('pattern')) {
+            <mat-error>Please enter a valid phone number</mat-error>
+          }
+        </mat-form-field>
+      }
+
+      <mat-form-field appearance="outline">
+        <mat-label>Role</mat-label>
+        <mat-select formControlName="role" required (selectionChange)="onRoleChange($event.value)">
+          <mat-option value="admin">Admin</mat-option>
+          <mat-option value="manager">Manager</mat-option>
+         <mat-option value="staff">Staff</mat-option>
+        </mat-select>
+        <mat-icon matPrefix>badge</mat-icon>
+        @if (userForm.get('role')?.hasError('required') && userForm.get('role')?.touched) {
+          <mat-error>Role is required</mat-error>
+        }
+      </mat-form-field>
+
+      <div class="permissions-section">
+        <label>Permissions</label>
+        <p class="permissions-hint">Select which sections this user can access</p>
+        
+        <div class="permissions-grid">
+          @for (permission of availablePermissions; track permission.value) {
+            <mat-checkbox 
+              [checked]="isPermissionChecked(permission.value)"
+              (change)="togglePermission(permission.value, $event.checked)">
+              <mat-icon>{{ permission.icon }}</mat-icon>
+              <span>{{ permission.label }}</span>
+            </mat-checkbox>
+          }
+        </div>
+      </div>
+
+      @if (data.user) {
+        <mat-slide-toggle formControlName="isActive" color="primary">
+          <span class="toggle-label">
+            <mat-icon>{{ userForm.get('isActive')?.value ? 'check_circle' : 'cancel' }}</mat-icon>
+            {{ userForm.get('isActive')?.value ? 'Active' : 'Inactive' }}
+          </span>
+        </mat-slide-toggle>
+      }
+    </form>
+
+    @if (!data.user && defaultPassword) {
+      <div class="default-password-info">
+        <mat-icon>info</mat-icon>
+        <div>
+          <p><strong>Default Password:</strong> {{ defaultPassword }}</p>
+          <p class="hint">User will be required to change this password on first login</p>
+        </div>
+      </div>
+    }
+  </mat-dialog-content>
+
+  <mat-dialog-actions align="end">
+    <button mat-button mat-dialog-close>Cancel</button>
+    <button 
+      mat-raised-button 
+      color="primary" 
+      (click)="onSubmit()"
+      [disabled]="userForm.invalid || loading()">
+      @if (loading()) {
+        <mat-spinner diameter="20"></mat-spinner>
+      }
+      {{ data.user ? 'Update' : 'Create' }} User
+    </button>
+  </mat-dialog-actions>
+</div>

@@ -7,6 +7,16 @@ export const authGuard: CanActivateFn = (route, state) => {
   const router = inject(Router);
 
   if (authService.isAuthenticated()) {
+    // Check route permissions
+    const requiredPermission = route.data?.['permission'] as string;
+    if (requiredPermission) {
+      const user = authService.currentUser();
+      // Admin has access to all routes
+      if (user?.role !== 'admin' && !user?.permissions?.includes(requiredPermission)) {
+        router.navigate(['/dashboard']);
+        return false;
+      }
+    }
     return true;
   }
 

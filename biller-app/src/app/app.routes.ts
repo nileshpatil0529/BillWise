@@ -24,22 +24,27 @@ export const routes: Routes = [
       },
       {
         path: 'home',
+        data: { permission: 'dashboard' },
         loadComponent: () => import('./features/dashboard/home/home.component').then(m => m.HomeComponent)
       },
       {
         path: 'products',
+        data: { permission: 'products' },
         loadComponent: () => import('./features/dashboard/products/products.component').then(m => m.ProductsComponent)
       },
       {
         path: 'bills',
+        data: { permission: 'bills' },
         loadComponent: () => import('./features/dashboard/bills/bills.component').then(m => m.BillsComponent)
       },
       {
         path: 'settings',
+        data: { permission: 'settings' },
         loadComponent: () => import('./features/dashboard/settings/settings.component').then(m => m.SettingsComponent)
       },
       {
         path: 'customers',
+        data: { permission: 'customers' },
         loadComponent: () => import('./features/dashboard/customers/customers.component').then(m => m.CustomersComponent)
       }
     ]

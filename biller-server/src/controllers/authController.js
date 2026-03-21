@@ -10,17 +10,22 @@ export const login = async (req, res) => {
     if (!email || !password) {
       return res.status(400).json({
         success: false,
-        message: 'Email and password are required'
+        message: 'Email/Phone and password are required'
       });
     }
 
-    // Get user from SQLite
-    const user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    // Get user from SQLite - support login with email or phone
+    let user = db.prepare('SELECT * FROM users WHERE email = ?').get(email);
+    
+    // If not found by email, try phone number
+    if (!user) {
+      user = db.prepare('SELECT * FROM users WHERE phone = ?').get(email);
+    }
 
     if (!user) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email/phone or password'
       });
     }
 
@@ -37,7 +42,7 @@ export const login = async (req, res) => {
     if (!passwordValid) {
       return res.status(401).json({
         success: false,
-        message: 'Invalid email or password'
+        message: 'Invalid email/phone or password'
       });
     }
 
@@ -64,6 +69,12 @@ export const login = async (req, res) => {
     db.prepare('UPDATE users SET lastLogin = ? WHERE uid = ?')
       .run(new Date().toISOString(), user.uid);
 
+    // Parse permissions - admin gets all permissions by default
+    let permissions = user.permissions ? JSON.parse(user.permissions) : [];
+    if (user.role === 'admin' && permissions.length === 0) {
+      permissions = ['dashboard', 'products', 'bills', 'customers', 'settings'];
+    }
+
     res.json({
       success: true,
       message: 'Login successful',
@@ -72,8 +83,11 @@ export const login = async (req, res) => {
         user: {
           uid: user.uid,
           email: user.email,
+          phone: user.phone,
           displayName: user.displayName,
-          role: user.role
+          role: user.role,
+          requirePasswordChange: Boolean(user.requirePasswordChange),
+          permissions
         }
       }
     });

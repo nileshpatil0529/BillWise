@@ -12,6 +12,7 @@ export default {
     email: process.env.ADMIN_EMAIL || 'admin@biller.com',
     password: process.env.ADMIN_PASSWORD || 'Admin@123'
   },
+  defaultPassword: 'User@123',
   cors: {
     origin: process.env.CORS_ORIGIN || 'http://localhost:4200'
   }

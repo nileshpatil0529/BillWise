@@ -9,6 +9,7 @@ import productRoutes from './routes/productRoutes.js';
 import billRoutes from './routes/billRoutes.js';
 import settingsRoutes from './routes/settingsRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
+import userRoutes from './routes/userRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // Load environment variables
@@ -47,6 +48,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/bills', billRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/customers', customerRoutes);
+app.use('/api/users', userRoutes);
 
 // Error handling
 app.use(notFound);

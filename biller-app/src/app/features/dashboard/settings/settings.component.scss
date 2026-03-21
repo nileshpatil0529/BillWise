@@ -65,7 +65,19 @@ mat-tab-group {
 }
 
 .tab-content {
-  // padding-top removed
+  padding: v.$spacing-md;
+  
+  @include m.mobile {
+    padding: v.$spacing-sm;
+  }
+  
+  .settings-card {
+    margin-bottom: v.$spacing-md;
+    
+    &:last-child {
+      margin-bottom: 0;
+    }
+  }
 }
 
 // Settings Card
@@ -113,9 +125,17 @@ mat-tab-group {
     padding: v.$spacing-md;
     margin: 0;
     border-top: 1px solid v.$light-divider;
+    display: flex;
+    gap: v.$spacing-sm;
+    flex-wrap: wrap;
     
     @include m.dark-theme {
       border-color: v.$dark-divider;
+    }
+    
+    @include m.mobile {
+      padding: v.$spacing-sm;
+      flex-direction: column;
     }
 
     button {
@@ -127,6 +147,11 @@ mat-tab-group {
       padding: 10px 24px;
       line-height: 24px;
       height: 44px;
+      
+      @include m.mobile {
+        width: 100%;
+        padding: 10px 16px;
+      }
 
       .button-content {
         display: inline-flex;
@@ -894,5 +919,256 @@ mat-tab-group {
         width: 100%;
       }
     }
+  }
+}
+
+// User Management Styles
+.users-actions {
+  margin-bottom: v.$spacing-lg;
+  display: flex;
+  justify-content: flex-end;
+  gap: v.$spacing-md;
+
+  button {
+    .button-text {
+      margin-left: v.$spacing-xs;
+      
+      @include m.mobile {
+        display: none;
+      }
+    }
+  }
+
+  @include m.mobile {
+    justify-content: stretch;
+
+    button {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+}
+
+.users-table-container {
+  margin-top: v.$spacing-md;
+  
+  .table-wrapper {
+    overflow-x: auto;
+    border-radius: v.$radius-md;
+    border: 1px solid v.$light-divider;
+    
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+    
+    @include m.mobile {
+      border-radius: v.$radius-sm;
+    }
+  }
+
+  .loading-users {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: v.$spacing-xl * 2;
+    gap: v.$spacing-md;
+
+    p {
+      margin: 0;
+      color: v.$light-text-secondary;
+      font-size: 14px;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+  }
+
+  .no-users {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: v.$spacing-xl * 2;
+    gap: v.$spacing-md;
+
+    mat-icon {
+      font-size: 64px;
+      width: 64px;
+      height: 64px;
+      color: rgba(0, 0, 0, 0.2);
+
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.2);
+      }
+      
+      @include m.mobile {
+        font-size: 48px;
+        width: 48px;
+        height: 48px;
+      }
+    }
+
+    p {
+      margin: 0;
+      color: v.$light-text-secondary;
+      font-size: 16px;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+      
+      @include m.mobile {
+        font-size: 14px;
+      }
+    }
+  }
+}
+
+.users-table {
+  width: 100%;
+  min-width: 600px;
+  
+  @include m.mobile {
+    min-width: 100%;
+  }
+  
+  th.mat-header-cell,
+  td.mat-cell {
+    padding: v.$spacing-md v.$spacing-sm;
+    
+    @include m.mobile {
+      padding: v.$spacing-sm v.$spacing-xs;
+    }
+    
+    &.hide-mobile {
+      @include m.mobile {
+        display: none;
+      }
+    }
+  }
+  
+  th.mat-header-cell {
+    font-weight: 600;
+    font-size: 14px;
+    background: rgba(v.$light-primary, 0.05);
+    
+    @include m.dark-theme {
+      background: rgba(v.$dark-primary, 0.1);
+      color: v.$dark-text-primary;
+    }
+    
+    @include m.mobile {
+      font-size: 12px;
+    }
+  }
+  
+  td.mat-cell {
+    font-size: 14px;
+    
+    @include m.mobile {
+      font-size: 13px;
+    }
+  }
+  
+  .user-cell {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    
+    .user-icon {
+      color: v.$light-primary;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+      
+      @include m.mobile {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+    }
+    
+    span {
+      @include m.mobile {
+        font-size: 13px;
+        max-width: 100px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+    }
+  }
+  
+  mat-chip {
+    font-size: 12px;
+    min-height: 24px;
+    padding: 4px 8px;
+    
+    @include m.mobile {
+      font-size: 11px;
+      min-height: 20px;
+      padding: 2px 6px;
+    }
+    
+    &.role-admin {
+      background: #f44336;
+      color: white;
+    }
+
+    &.role-manager {
+      background: #ff9800;
+      color: white;
+    }
+
+    &.role-staff {
+      background: #2196f3;
+      color: white;
+    }
+
+    &.active {
+      background: #4caf50;
+      color: white;
+    }
+
+    &.inactive {
+      background: #9e9e9e;
+      color: white;
+    }
+  }
+
+  .delete-action {
+    color: #f44336;
+  }
+  
+  tr.mat-row {
+    &:hover {
+      background: rgba(v.$light-primary, 0.02);
+      
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.05);
+      }
+    }
+  }
+}
+
+.password-info {
+  color: v.$light-text-secondary;
+  line-height: 1.8;
+  margin: 0;
+  font-size: 14px;
+
+  @include m.dark-theme {
+    color: v.$dark-text-secondary;
+  }
+  
+  @include m.mobile {
+    font-size: 13px;
+    line-height: 1.6;
   }
 }
