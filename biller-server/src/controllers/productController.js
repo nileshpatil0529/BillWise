@@ -100,11 +100,12 @@ export const getAllProducts = async (req, res) => {
       products = db.prepare(query).all(...params);
     }
 
-    // Parse metadata JSON and isLooseItem for each product
+    // Parse metadata JSON and boolean fields for each product
     const productsWithMetadata = products.map(p => ({
       ...p,
       metadata: p.metadata ? JSON.parse(p.metadata) : {},
-      isLooseItem: Boolean(p.isLooseItem)
+      isLooseItem: Boolean(p.isLooseItem),
+      warrantyMonths: p.warrantyMonths || 0
     }));
 
     res.json({
@@ -142,7 +143,8 @@ export const getProductById = async (req, res) => {
       data: {
         ...product,
         metadata: product.metadata ? JSON.parse(product.metadata) : {},
-        isLooseItem: Boolean(product.isLooseItem)
+        isLooseItem: Boolean(product.isLooseItem),
+        warrantyMonths: product.warrantyMonths || 0
       }
     });
   } catch (error) {
@@ -199,8 +201,8 @@ export const createProduct = async (req, res) => {
       const now = new Date().toISOString();
       
       db.prepare(`
-        INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, isLooseItem, unit, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         productId,
         productName,
@@ -216,6 +218,7 @@ export const createProduct = async (req, res) => {
         JSON.stringify(productData.metadata || {}),
         productData.isLooseItem ? 1 : 0,
         productData.unit || null,
+        parseInt(productData.warrantyMonths) || 0,
         now,
         now
       );
@@ -227,7 +230,8 @@ export const createProduct = async (req, res) => {
         message: 'Product created successfully',
         data: {
           ...newProduct,
-          isLooseItem: Boolean(newProduct.isLooseItem)
+          isLooseItem: Boolean(newProduct.isLooseItem),
+          warrantyMonths: newProduct.warrantyMonths || 0
         }
       });
     }
@@ -271,6 +275,7 @@ export const updateProduct = async (req, res) => {
         metadata = COALESCE(?, metadata),
         isLooseItem = COALESCE(?, isLooseItem),
         unit = COALESCE(?, unit),
+        warrantyMonths = COALESCE(?, warrantyMonths),
         updatedAt = ?
       WHERE productId = ?
     `).run(
@@ -287,6 +292,7 @@ export const updateProduct = async (req, res) => {
       updates.metadata ? JSON.stringify(updates.metadata) : null,
       updates.isLooseItem !== undefined ? (updates.isLooseItem ? 1 : 0) : null,
       updates.unit !== undefined ? updates.unit : null,
+      updates.warrantyMonths !== undefined ? parseInt(updates.warrantyMonths) : null,
       now,
       id
     );
@@ -298,7 +304,8 @@ export const updateProduct = async (req, res) => {
       message: 'Product updated successfully',
       data: {
         ...updatedProduct,
-        isLooseItem: Boolean(updatedProduct.isLooseItem)
+        isLooseItem: Boolean(updatedProduct.isLooseItem),
+        warrantyMonths: updatedProduct.warrantyMonths || 0
       }
     });
   } catch (error) {
@@ -466,13 +473,13 @@ export const importProducts = async (req, res) => {
     let errors = [];
 
     const insertProduct = db.prepare(`
-      INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, isLooseItem, unit, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
+      INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
     `);
 
     const updateProduct = db.prepare(`
       UPDATE products 
-      SET name = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, isLooseItem = ?, unit = ?, updatedAt = ? 
+      SET name = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, isLooseItem = ?, unit = ?, warrantyMonths = ?, updatedAt = ? 
       WHERE productId = ?
     `);
 
@@ -541,6 +548,9 @@ export const importProducts = async (req, res) => {
           const isLooseItem = isLooseItemValue === 'yes' || isLooseItemValue === '1' || isLooseItemValue === 'true' ? 1 : 0;
           const unit = (row.unit || row.Unit || 'pcs').toString().trim();
 
+          // Parse warranty months (for electronics mode)
+          const warrantyMonths = parseInt(row.warrantyMonths || row.WarrantyMonths || row['Warranty (Months)'] || row['Warranty'] || 0) || 0;
+
           console.log(`Row ${i + 2}: Name="${productName}", Barcode="${productBarcode}", Exists=${!!existingProduct}`);
 
           if (existingProduct) {
@@ -556,6 +566,7 @@ export const importProducts = async (req, res) => {
               parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
               isLooseItem,
               unit,
+              warrantyMonths,
               now,
               existingProduct.productId
             );
@@ -581,6 +592,7 @@ export const importProducts = async (req, res) => {
               parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
               isLooseItem,
               unit,
+              warrantyMonths,
               now,
               now
             );
@@ -657,6 +669,7 @@ export const exportProducts = async (req, res) => {
     }
 
     const isGroceryMode = settings && settings.applicationType === 'grocery';
+    const isElectronicsMode = settings && settings.applicationType === 'electronics';
 
     // Create workbook with ExcelJS
     const workbook = new ExcelJS.Workbook();
@@ -681,6 +694,11 @@ export const exportProducts = async (req, res) => {
       columns.push({ header: 'Unit', key: 'unit', width: 10 });
     }
 
+    // Add warranty column for electronics mode
+    if (isElectronicsMode) {
+      columns.push({ header: 'Warranty (Months)', key: 'warrantyMonths', width: 18 });
+    }
+
     worksheet.columns = columns;
 
     // Add product rows
@@ -700,6 +718,10 @@ export const exportProducts = async (req, res) => {
       if (isGroceryMode) {
         row.isLooseItem = p.isLooseItem ? 'Yes' : 'No';
         row.unit = p.unit || 'pcs';
+      }
+
+      if (isElectronicsMode) {
+        row.warrantyMonths = p.warrantyMonths || 0;
       }
       
       worksheet.addRow(row);

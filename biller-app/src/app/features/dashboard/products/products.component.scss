@@ -324,6 +324,38 @@
       }
     }
 
+    .warranty-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 4px 8px;
+      border-radius: 16px;
+      background: rgba(v.$light-primary, 0.1);
+      color: v.$light-primary;
+      font-size: 12px;
+      font-weight: 500;
+      white-space: nowrap;
+
+      .warranty-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.2);
+        color: v.$dark-primary;
+      }
+    }
+
+    .no-warranty {
+      color: v.$light-text-secondary;
+      
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.5);
+      }
+    }
+
     .delete-action {
       color: v.$light-error;
 

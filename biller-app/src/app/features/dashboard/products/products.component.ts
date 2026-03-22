@@ -59,7 +59,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   // All available columns
-  private allColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'status', 'actions'];
+  private allColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'warranty', 'status', 'actions'];
   displayedColumns: string[] = [];
   
   dataSource = new MatTableDataSource<Product>([]);
@@ -88,11 +88,15 @@ export class ProductsComponent implements OnInit, OnDestroy {
     effect(() => {
       const settings = this.settingsService.settings();
       const tableColumns = settings.tableColumns?.products;
+      const isElectronics = settings.applicationType === 'electronics';
+      
+      // Filter out warranty column if not electronics mode
+      const baseColumns = this.allColumns.filter(col => col !== 'warranty' || isElectronics);
       
       if (!tableColumns) {
-        this.displayedColumns = [...this.allColumns];
+        this.displayedColumns = [...baseColumns];
       } else {
-        this.displayedColumns = this.allColumns.filter(col => {
+        this.displayedColumns = baseColumns.filter(col => {
           const columnSetting = tableColumns.find(tc => tc.key === col);
           return columnSetting ? columnSetting.visible : true;
         });

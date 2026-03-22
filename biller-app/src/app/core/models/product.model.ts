@@ -14,6 +14,8 @@ export interface Product {
   // Loose item fields (grocery mode)
   isLooseItem?: boolean;  // Whether this is a loose item (sold by weight/volume)
   unit?: string;          // Unit symbol (kg, ltr, g, ml, pcs)
+  // Electronics fields
+  warrantyMonths?: number; // Warranty period in months (0 = no warranty)
   createdAt?: string;
   updatedAt?: string;
 }

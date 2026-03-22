@@ -131,10 +131,13 @@ export class HomeComponent implements OnInit {
   // Business type specific fields
   businessTypeForm: FormGroup;
 
-  // Cart table columns - dynamically includes 'note' for hotel mode
+  // Cart table columns - dynamically includes 'note' for hotel mode, 'warranty' for electronics mode
   get displayedColumns(): string[] {
     if (this.isHotelMode()) {
       return ['sno', 'name', 'price', 'quantity', 'note', 'total', 'actions'];
+    }
+    if (this.isElectronicsMode()) {
+      return ['sno', 'name', 'price', 'quantity', 'warranty', 'total', 'actions'];
     }
     return ['sno', 'name', 'price', 'quantity', 'total', 'actions'];
   }
@@ -283,6 +286,11 @@ export class HomeComponent implements OnInit {
   // Check if current application type is hotel
   isHotelMode(): boolean {
     return this.settingsService.settings().applicationType === 'hotel';
+  }
+
+  // Check if current application type is electronics
+  isElectronicsMode(): boolean {
+    return this.settingsService.settings().applicationType === 'electronics';
   }
 
   // Check if table selection is required (hotel mode without selected table)

@@ -405,6 +405,12 @@ const initializeDatabase = () => {
       db.exec('ALTER TABLE products ADD COLUMN unit TEXT');
       console.log('✅ Migration: Added unit column to products');
     }
+    // Electronics mode: warranty in months
+    const hasWarrantyMonths = productColumns.some(col => col.name === 'warrantyMonths');
+    if (!hasWarrantyMonths) {
+      db.exec('ALTER TABLE products ADD COLUMN warrantyMonths INTEGER DEFAULT 0');
+      console.log('✅ Migration: Added warrantyMonths column to products');
+    }
   } catch (e) {
     // Columns might already exist
   }

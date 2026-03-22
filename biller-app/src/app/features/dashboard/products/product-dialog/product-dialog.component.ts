@@ -158,6 +158,17 @@ interface DialogData {
             }
           </div>
         }
+
+        <!-- Warranty Section (Electronics Mode Only) -->
+        @if (isElectronicsMode()) {
+          <div class="warranty-section">
+            <mat-form-field appearance="outline">
+              <mat-label>Warranty (months)</mat-label>
+              <input matInput type="number" formControlName="warrantyMonths" min="0" placeholder="0 for no warranty">
+              <mat-icon matSuffix>verified_user</mat-icon>
+            </mat-form-field>
+          </div>
+        }
       </form>
     </mat-dialog-content>
 
@@ -218,6 +229,14 @@ interface DialogData {
       background: rgba(255, 255, 255, 0.02);
     }
 
+    .warranty-section {
+      margin-top: 8px;
+      
+      mat-form-field {
+        width: 100%;
+      }
+    }
+
     @media (max-width: 600px) {
       mat-dialog-content {
         min-width: auto;
@@ -267,7 +286,8 @@ export class ProductDialogComponent {
       lowStockAlert: [product?.lowStockAlert || 10, Validators.min(0)],
       status: [product?.status !== 'inactive'], // Default to active for new products
       isLooseItem: [product?.isLooseItem || false],
-      unit: [product?.unit || 'pcs']
+      unit: [product?.unit || 'pcs'],
+      warrantyMonths: [product?.warrantyMonths || 0, Validators.min(0)]
     });
 
     // Add barcode match validator
@@ -286,6 +306,10 @@ export class ProductDialogComponent {
 
   isGroceryMode(): boolean {
     return this.settingsService.settings().applicationType === 'grocery';
+  }
+
+  isElectronicsMode(): boolean {
+    return this.settingsService.settings().applicationType === 'electronics';
   }
 
   onLooseItemChange(isLooseItem: boolean): void {
@@ -357,7 +381,9 @@ export class ProductDialogComponent {
         status: formValue.status ? 'active' : 'inactive',
         // Include loose item fields for grocery mode
         isLooseItem: this.isGroceryMode() ? formValue.isLooseItem : false,
-        unit: this.isGroceryMode() && formValue.isLooseItem ? formValue.unit : 'pcs'
+        unit: this.isGroceryMode() && formValue.isLooseItem ? formValue.unit : 'pcs',
+        // Include warranty for electronics mode
+        warrantyMonths: this.isElectronicsMode() ? (formValue.warrantyMonths || 0) : 0
       });
     }
   }

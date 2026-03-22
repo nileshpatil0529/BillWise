@@ -133,6 +133,21 @@
           </td>
         </ng-container>
 
+        <!-- Warranty Column (Electronics Mode) -->
+        <ng-container matColumnDef="warranty">
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>Warranty</th>
+          <td mat-cell *matCellDef="let product">
+            @if (product.warrantyMonths > 0) {
+              <span class="warranty-badge">
+                <mat-icon class="warranty-icon">verified_user</mat-icon>
+                {{ product.warrantyMonths }} mo
+              </span>
+            } @else {
+              <span class="no-warranty">-</span>
+            }
+          </td>
+        </ng-container>
+
         <!-- Actions Column -->
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>Actions</th>
