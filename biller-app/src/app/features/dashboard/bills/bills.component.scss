@@ -567,6 +567,28 @@
           --mdc-chip-label-text-color: #{v.$dark-primary};
         }
       }
+      
+      &.table-chip {
+        --mdc-chip-elevated-container-color: #{rgba(#607d8b, 0.15)};
+        --mdc-chip-label-text-color: #455a64;
+        
+        @include m.dark-theme {
+          --mdc-chip-elevated-container-color: #{rgba(#90a4ae, 0.2)};
+          --mdc-chip-label-text-color: #b0bec5;
+        }
+        
+        mat-icon {
+          color: inherit;
+        }
+      }
+    }
+    
+    .no-table {
+      color: v.$light-text-secondary;
+      
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
     }
   }
 

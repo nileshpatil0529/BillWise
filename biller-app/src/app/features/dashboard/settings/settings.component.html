@@ -126,6 +126,8 @@
                 </mat-form-field>
               </div>
 
+              <!-- Barcode Scanner (Hidden for Hotel) -->
+              @if (!isHotelMode()) {
               <mat-divider></mat-divider>
 
               <div class="section-title">
@@ -148,6 +150,83 @@
                   }
                 </mat-radio-group>
               </div>
+              }
+
+              <!-- Hotel Settings (Tables & Tips) -->
+              @if (isHotelMode()) {
+              <mat-divider></mat-divider>
+
+              <div class="section-title">
+                <mat-icon>table_restaurant</mat-icon>
+                <span>Table / Parcel Management</span>
+              </div>
+
+              <div class="hotel-tables-section">
+                <div class="add-tables-form">
+                  <mat-form-field appearance="outline" class="table-type-select">
+                    <mat-label>Type</mat-label>
+                    <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
+                      <mat-option value="dine-in">Dine-In Tables</mat-option>
+                      <mat-option value="parcel">Parcel/Takeaway</mat-option>
+                    </mat-select>
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="number-input">
+                    <mat-label>From</mat-label>
+                    <input matInput type="number" [value]="newTableStartNumber()" 
+                           (input)="newTableStartNumber.set(+$any($event.target).value)" min="1">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="number-input">
+                    <mat-label>To</mat-label>
+                    <input matInput type="number" [value]="newTableEndNumber()" 
+                           (input)="newTableEndNumber.set(+$any($event.target).value)" min="1">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="addTables()" [disabled]="saving()">
+                    <mat-icon>add</mat-icon>
+                    Add
+                  </button>
+                </div>
+
+                <!-- Dine-In Tables List -->
+                @if (getDineInTables().length > 0) {
+                <div class="tables-list">
+                  <h4>Dine-In Tables ({{ getDineInTables().length }})</h4>
+                  <div class="tables-chips">
+                    @for (table of getDineInTables(); track table.id) {
+                      <mat-chip [class.occupied]="table.status === 'occupied'">
+                        {{ table.tableNumber }}
+                        @if (table.status !== 'occupied') {
+                          <button matChipRemove (click)="deleteTable(table)">
+                            <mat-icon>cancel</mat-icon>
+                          </button>
+                        }
+                      </mat-chip>
+                    }
+                  </div>
+                </div>
+                }
+
+                <!-- Parcel List -->
+                @if (getParcelTables().length > 0) {
+                <div class="tables-list">
+                  <h4>Parcel Numbers ({{ getParcelTables().length }})</h4>
+                  <div class="tables-chips">
+                    @for (table of getParcelTables(); track table.id) {
+                      <mat-chip [class.occupied]="table.status === 'occupied'">
+                        {{ table.tableNumber }}
+                        @if (table.status !== 'occupied') {
+                          <button matChipRemove (click)="deleteTable(table)">
+                            <mat-icon>cancel</mat-icon>
+                          </button>
+                        }
+                      </mat-chip>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+
+
+              }
             </form>
           </mat-card-content>
 

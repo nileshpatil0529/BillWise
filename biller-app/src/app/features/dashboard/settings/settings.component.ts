@@ -23,7 +23,9 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { HotelService } from '../../../core/services/hotel.service';
 import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn } from '../../../core/models/settings.model';
+import { RestaurantTable } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
 @Component({
@@ -59,6 +61,7 @@ export class SettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
   settingsService = inject(SettingsService);
   authService = inject(AuthService);
+  hotelService = inject(HotelService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
@@ -74,6 +77,11 @@ export class SettingsComponent implements OnInit {
   // Profile Photo
   profilePhotoPreview = signal<string | null>(null);
   profilePhotoChanged = signal(false);
+  
+  // Hotel Management
+  newTableStartNumber = signal<number>(1);
+  newTableEndNumber = signal<number>(10);
+  newTableType = signal<'dine-in' | 'parcel'>('dine-in');
   
   // Table column preferences
   productsColumns = signal<TableColumn[]>([]);
@@ -95,6 +103,7 @@ export class SettingsComponent implements OnInit {
   private defaultBillsColumns: TableColumn[] = [
     { key: 'billNumber', label: 'Bill Number', visible: true },
     { key: 'createdAt', label: 'Date', visible: true },
+    { key: 'table', label: 'Table', visible: true },
     { key: 'itemsCount', label: 'Items', visible: true },
     { key: 'grandTotal', label: 'Total', visible: true },
     { key: 'paymentMethod', label: 'Payment Method', visible: true },
@@ -134,6 +143,7 @@ export class SettingsComponent implements OnInit {
     this.initForms();
     this.loadSettings();
     this.loadProfilePhoto();
+    this.loadHotelData();
   }
 
   private loadProfilePhoto(): void {
@@ -141,6 +151,16 @@ export class SettingsComponent implements OnInit {
     if (currentUser?.profilePhoto) {
       this.profilePhotoPreview.set(currentUser.profilePhoto);
     }
+  }
+
+  private loadHotelData(): void {
+    // Load hotel-specific data (tables)
+    this.hotelService.loadTables().subscribe();
+  }
+
+  // Check if current application type is hotel
+  isHotelMode(): boolean {
+    return this.businessForm?.get('applicationType')?.value === 'hotel';
   }
 
   private initForms(): void {
@@ -527,5 +547,61 @@ export class SettingsComponent implements OnInit {
         this.saving.set(false);
       }
     });
+  }
+
+  // ==================== HOTEL MANAGEMENT ====================
+
+  // Tables Management
+  addTables(): void {
+    const start = this.newTableStartNumber();
+    const end = this.newTableEndNumber();
+    const tableType = this.newTableType();
+
+    if (start > end) {
+      this.snackBar.open('Start number must be less than or equal to end number', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.saving.set(true);
+    this.hotelService.createTables({
+      startNumber: start,
+      endNumber: end,
+      tableType: tableType
+    }).subscribe({
+      next: (response) => {
+        this.snackBar.open(response.message || 'Tables created successfully', 'Close', { duration: 3000 });
+        this.saving.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Failed to create tables', 'Close', { duration: 3000 });
+        this.saving.set(false);
+      }
+    });
+  }
+
+  deleteTable(table: RestaurantTable): void {
+    if (table.status === 'occupied') {
+      this.snackBar.open('Cannot delete occupied table', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete ${table.tableNumber}?`)) {
+      this.hotelService.deleteTable(table.id).subscribe({
+        next: () => {
+          this.snackBar.open('Table deleted successfully', 'Close', { duration: 3000 });
+        },
+        error: () => {
+          this.snackBar.open('Failed to delete table', 'Close', { duration: 3000 });
+        }
+      });
+    }
+  }
+
+  getDineInTables(): RestaurantTable[] {
+    return this.hotelService.tables().filter(t => t.tableType === 'dine-in');
+  }
+
+  getParcelTables(): RestaurantTable[] {
+    return this.hotelService.tables().filter(t => t.tableType === 'parcel');
   }
 }

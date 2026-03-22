@@ -1016,3 +1016,449 @@
 .full-width {
   width: 100%;
 }
+
+// Hotel Mode Styles
+.hidden {
+  display: none !important;
+}
+
+.table-selection-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 500;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: v.$spacing-lg;
+  background: rgba(0, 0, 0, 0.3);
+  
+  @include m.dark-theme {
+    background: rgba(0, 0, 0, 0.5);
+  }
+}
+
+.table-selection-card {
+  width: 100%;
+  max-width: 800px;
+  max-height: calc(100vh - 200px);
+  overflow-y: auto;
+  
+  mat-card-header {
+    padding: v.$spacing-md v.$spacing-lg;
+    
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      font-size: 1.25rem;
+      
+      mat-icon {
+        color: var(--mat-primary);
+      }
+    }
+  }
+  
+  mat-card-content {
+    padding: v.$spacing-md v.$spacing-lg v.$spacing-lg;
+  }
+}
+
+.table-section {
+  margin-bottom: v.$spacing-lg;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  h3 {
+    margin: 0 0 v.$spacing-md 0;
+    font-size: 1rem;
+    font-weight: 500;
+    color: v.$light-text-secondary;
+    
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}
+
+.table-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: v.$spacing-md;
+  
+  @include m.mobile {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: v.$spacing-sm;
+  }
+}
+
+.table-btn {
+  min-height: 80px;
+  border-radius: v.$radius-md !important;
+  transition: all 0.2s ease;
+  
+  &.available {
+    background: linear-gradient(135deg, #4caf50 0%, #45a049 100%) !important;
+    color: white !important;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+    }
+  }
+  
+  &.occupied {
+    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%) !important;
+    color: white !important;
+    cursor: pointer;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+    }
+    
+    .table-status {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+    }
+  }
+  
+  &.parcel.available {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%) !important;
+    
+    &:hover {
+      box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+    }
+  }
+  
+  &.parcel.occupied {
+    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%) !important;
+    
+    &:hover {
+      box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
+    }
+  }
+  
+  .table-content {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    
+    mat-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+    
+    .table-number {
+      font-weight: 600;
+      font-size: 1rem;
+    }
+    
+    .table-status {
+      font-size: 0.7rem;
+      opacity: 0.8;
+    }
+  }
+  
+  &.current {
+    background: linear-gradient(135deg, #607d8b 0%, #455a64 100%) !important;
+    color: white !important;
+    cursor: default;
+    border: 2px solid white;
+    
+    .table-status {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+  }
+  
+  &:disabled:not(.current) {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+}
+
+.change-table-hint {
+  margin: 0 0 v.$spacing-md 0;
+  color: v.$light-text-secondary;
+  font-size: 0.9rem;
+  
+  @include m.dark-theme {
+    color: v.$dark-text-secondary;
+  }
+  
+  strong {
+    color: var(--mat-primary);
+  }
+}
+
+.change-table-overlay {
+  mat-card-header {
+    display: flex;
+    align-items: center;
+    
+    .spacer {
+      flex: 1;
+    }
+  }
+}
+
+.no-tables-message {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+  color: v.$light-text-secondary;
+  
+  @include m.dark-theme {
+    color: v.$dark-text-secondary;
+  }
+  
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: v.$spacing-md;
+    color: v.$light-text-secondary;
+    
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+  
+  p {
+    margin: 0;
+    text-align: center;
+  }
+}
+
+// Selected Table Info in Cart Header
+.selected-table-info {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-xs;
+  margin-left: v.$spacing-xl;
+  
+  mat-chip {
+    font-weight: 500;
+    
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
+    }
+  }
+}
+
+// New Items Badge
+.new-items-badge {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+// KOT Sent Icon for cart items
+.product-name-row {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-xs;
+}
+
+.kot-sent-icon {
+  font-size: 16px !important;
+  width: 16px !important;
+  height: 16px !important;
+  color: #4caf50;
+}
+
+// KOT count badge in button
+.kot-count {
+  margin-left: 4px;
+  font-weight: 600;
+}
+
+// Hotel mode card actions
+.bill-summary-card mat-card-actions {
+  flex-wrap: wrap;
+  
+  @include m.mobile {
+    button {
+      min-width: 0;
+      
+      &:not(:first-child) {
+        flex: 1;
+      }
+    }
+  }
+}
+
+// Attended Tables Container
+.attended-tables-container {
+  position: relative;
+  
+  .attended-tables-btn {
+    mat-icon {
+      font-size: 24px;
+    }
+  }
+}
+
+.attended-tables-menu {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  min-width: 280px;
+  max-width: 320px;
+  background: white;
+  border-radius: v.$radius-md;
+  box-shadow: v.$shadow-lg;
+  z-index: 1000;
+  overflow: hidden;
+  
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border: 1px solid v.$dark-divider;
+  }
+  
+  .menu-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: v.$spacing-sm v.$spacing-md;
+    border-bottom: 1px solid v.$light-divider;
+    font-weight: 600;
+    
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+      color: white;
+    }
+  }
+  
+  .menu-content {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+  
+  .no-tables {
+    padding: v.$spacing-lg;
+    text-align: center;
+    color: v.$light-text-secondary;
+    
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+  
+  .attended-table-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: v.$spacing-sm v.$spacing-md;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    
+    &:hover:not(.current) {
+      background: rgba(v.$light-primary, 0.08);
+      
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.12);
+      }
+    }
+    
+    &.current {
+      background: rgba(v.$light-primary, 0.12);
+      cursor: default;
+      
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.15);
+      }
+    }
+    
+    .table-info {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: var(--mat-primary);
+      }
+      
+      span {
+        font-weight: 500;
+        
+        @include m.dark-theme {
+          color: white;
+        }
+      }
+    }
+    
+    .table-details {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      
+      .items-count {
+        font-size: 0.75rem;
+        color: v.$light-text-secondary;
+        
+        @include m.dark-theme {
+          color: v.$dark-text-secondary;
+        }
+      }
+      
+      .kot-icon {
+        font-size: 16px;
+        width: 16px;
+        height: 16px;
+        color: #4caf50;
+      }
+    }
+    
+    .current-badge {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      height: auto;
+      min-height: 0;
+      
+      --mdc-chip-elevated-container-color: #{rgba(v.$light-primary, 0.15)};
+      --mdc-chip-label-text-color: #{v.$light-primary};
+      
+      @include m.dark-theme {
+        --mdc-chip-elevated-container-color: #{rgba(v.$dark-primary, 0.2)};
+        --mdc-chip-label-text-color: #{v.$dark-primary};
+      }
+    }
+  }
+  
+  .add-table-row {
+    padding: v.$spacing-sm v.$spacing-md;
+    border-top: 1px solid v.$light-divider;
+    
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+    
+    button {
+      width: 100%;
+      
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
+  }
+}

@@ -859,6 +859,70 @@ mat-tab-group {
   }
 }
 
+// Hotel Tables Management Section
+.hotel-tables-section {
+  .add-tables-form {
+    display: flex;
+    gap: v.$spacing-sm;
+    align-items: flex-start;
+    flex-wrap: wrap;
+
+    .table-type-select {
+      min-width: 160px;
+    }
+
+    .number-input {
+      width: 80px;
+    }
+
+    button {
+      margin-top: 8px;
+    }
+
+    @include m.mobile {
+      flex-direction: column;
+      
+      .table-type-select,
+      .number-input {
+        width: 100%;
+      }
+    }
+  }
+
+  .tables-list {
+    margin-top: v.$spacing-md;
+
+    h4 {
+      margin: 0 0 v.$spacing-sm 0;
+      font-size: 14px;
+      font-weight: 500;
+      color: v.$light-text-secondary;
+
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
+
+    .tables-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: v.$spacing-xs;
+
+      mat-chip {
+        &.occupied {
+          background: rgba(v.$light-warning, 0.2);
+          color: v.$light-warning;
+
+          @include m.dark-theme {
+            background: rgba(v.$dark-warning, 0.2);
+            color: v.$dark-warning;
+          }
+        }
+      }
+    }
+  }
+}
+
 // Categories Section
 .category-add-section {
   display: flex;

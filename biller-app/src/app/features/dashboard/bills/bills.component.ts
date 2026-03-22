@@ -65,7 +65,7 @@ export class BillsComponent implements OnInit {
   @ViewChild('tableContainer') tableContainer!: ElementRef;
 
   // All available columns
-  private allColumns = ['billNumber', 'createdAt', 'itemsCount', 'grandTotal', 'paymentMethod', 'paymentStatus', 'actions'];
+  private allColumns = ['billNumber', 'createdAt', 'table', 'itemsCount', 'grandTotal', 'paymentMethod', 'paymentStatus', 'actions'];
   displayedColumns: string[] = [];
   
   dataSource = new MatTableDataSource<Bill>([]);

@@ -221,6 +221,37 @@ const initializeDatabase = () => {
     )
   `);
 
+  // Restaurant Tables/Parcels table (for hotel application type)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS restaurant_tables (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      tableNumber TEXT UNIQUE NOT NULL,
+      tableType TEXT DEFAULT 'dine-in',
+      capacity INTEGER DEFAULT 4,
+      status TEXT DEFAULT 'available',
+      currentBillId TEXT,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Create index for restaurant tables
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_restaurant_tables_status ON restaurant_tables(status)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_restaurant_tables_type ON restaurant_tables(tableType)`);
+
+  // Tips management table (for hotel application type)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS tip_options (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL,
+      value REAL,
+      tipType TEXT DEFAULT 'percentage',
+      isActive INTEGER DEFAULT 1,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Insert default settings if not exists
   const settingsExist = db.prepare('SELECT COUNT(*) as count FROM settings').get();
   if (settingsExist.count === 0) {
@@ -290,6 +321,45 @@ const initializeDatabase = () => {
     }
   } catch (e) {
     // Columns might already exist
+  }
+
+  // Migration: Add hotel-specific columns to bills table
+  try {
+    const billColumns = db.prepare('PRAGMA table_info(bills)').all();
+    const hasBillStatus = billColumns.some(col => col.name === 'billStatus');
+    if (!hasBillStatus) {
+      db.exec("ALTER TABLE bills ADD COLUMN billStatus TEXT DEFAULT 'completed'");
+      console.log('✅ Migration: Added billStatus column to bills');
+    }
+    const hasTableId = billColumns.some(col => col.name === 'tableId');
+    if (!hasTableId) {
+      db.exec('ALTER TABLE bills ADD COLUMN tableId INTEGER');
+      console.log('✅ Migration: Added tableId column to bills');
+    }
+    const hasKotPrintedAt = billColumns.some(col => col.name === 'kotPrintedAt');
+    if (!hasKotPrintedAt) {
+      db.exec('ALTER TABLE bills ADD COLUMN kotPrintedAt TEXT');
+      console.log('✅ Migration: Added kotPrintedAt column to bills');
+    }
+    const hasTipAmount = billColumns.some(col => col.name === 'tipAmount');
+    if (!hasTipAmount) {
+      db.exec('ALTER TABLE bills ADD COLUMN tipAmount REAL DEFAULT 0');
+      console.log('✅ Migration: Added tipAmount column to bills');
+    }
+  } catch (e) {
+    // Columns might already exist
+  }
+
+  // Migration: Add kotPrinted column to bill_items table
+  try {
+    const itemColumns = db.prepare('PRAGMA table_info(bill_items)').all();
+    const hasKotPrinted = itemColumns.some(col => col.name === 'kotPrinted');
+    if (!hasKotPrinted) {
+      db.exec('ALTER TABLE bill_items ADD COLUMN kotPrinted INTEGER DEFAULT 0');
+      console.log('✅ Migration: Added kotPrinted column to bill_items');
+    }
+  } catch (e) {
+    // Column might already exist
   }
 
   // Update existing admin users to have all permissions if they don't have any

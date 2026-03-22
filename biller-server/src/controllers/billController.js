@@ -164,12 +164,18 @@ export const createBill = async (req, res) => {
       ? (parseFloat(billData.amountPaid) || 0) 
       : (parseFloat(billData.amountPaid) || grandTotal);
 
+    // Hotel mode specific
+    const billStatus = billData.billStatus || 'completed';
+    const tableId = billData.tableId || null;
+    const kotPrintedAt = billData.kotItems?.length > 0 ? now : null;
+    const tipAmount = billData.tipAmount || 0;
+
     // Use transaction for inserting bill and items
     const insertBillAndItems = db.transaction(() => {
       // Insert bill
       db.prepare(`
-        INSERT INTO bills (billId, billNumber, subtotal, discountTotal, taxTotal, grandTotal, paymentMethod, paymentStatus, amountPaid, change, customerName, customerPhone, businessTypeData, notes, createdBy, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO bills (billId, billNumber, subtotal, discountTotal, taxTotal, grandTotal, paymentMethod, paymentStatus, amountPaid, change, customerName, customerPhone, businessTypeData, notes, createdBy, createdAt, updatedAt, billStatus, tableId, kotPrintedAt, tipAmount)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         billId,
         billNumber,
@@ -187,16 +193,23 @@ export const createBill = async (req, res) => {
         billData.notes || '',
         req.user?.uid || 'system',
         now,
-        now
+        now,
+        billStatus,
+        tableId,
+        kotPrintedAt,
+        tipAmount
       );
 
       // Insert items
       const insertItem = db.prepare(`
-        INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
+      const kotItemIds = billData.kotItems || [];
+
       for (const item of items) {
+        const isKotPrinted = kotItemIds.includes(item.productId) ? 1 : 0;
         insertItem.run(
           billId,
           item.productId || '',
@@ -204,7 +217,8 @@ export const createBill = async (req, res) => {
           item.quantity,
           item.unitPrice,
           item.itemTotal,
-          item.finalTotal
+          item.finalTotal,
+          isKotPrinted
         );
 
         // Update product stock if productId exists
@@ -253,9 +267,61 @@ export const updateBill = async (req, res) => {
       });
     }
 
-    // Only allow updating certain fields
-    const allowedUpdates = ['paymentStatus', 'amountPaid', 'notes', 'customerName', 'customerPhone'];
     const now = new Date().toISOString();
+
+    // Handle hotel mode updates
+    if (updates.billStatus !== undefined || updates.kotItems !== undefined) {
+      // Update bill status and KOT fields
+      if (updates.billStatus) {
+        db.prepare('UPDATE bills SET billStatus = ?, updatedAt = ? WHERE billId = ?')
+          .run(updates.billStatus, now, id);
+      }
+
+      if (updates.kotItems && updates.kotItems.length > 0) {
+        // Mark items as KOT printed
+        const updateKot = db.prepare('UPDATE bill_items SET kotPrinted = 1 WHERE billId = ? AND productId = ?');
+        for (const productId of updates.kotItems) {
+          updateKot.run(id, productId);
+        }
+        // Set KOT printed timestamp
+        db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
+          .run(now, now, id);
+      }
+
+      // If completing bill and items were added, recalculate totals
+      if (updates.items && updates.items.length > 0) {
+        // Add new items to bill
+        const insertItem = db.prepare(`
+          INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted)
+          VALUES (?, ?, ?, ?, ?, ?, ?, 0)
+        `);
+
+        for (const item of updates.items) {
+          const itemTotal = item.unitPrice * item.quantity;
+          insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal);
+          
+          // Update stock
+          if (item.productId) {
+            db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+              .run(item.quantity, item.productId);
+          }
+        }
+
+        // Recalculate totals
+        const allItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+        let subtotal = 0;
+        for (const item of allItems) {
+          subtotal += item.itemTotal;
+        }
+        const grandTotal = subtotal; // Add tax/discount logic if needed
+        
+        db.prepare('UPDATE bills SET subtotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
+          .run(subtotal, grandTotal, now, id);
+      }
+    }
+
+    // Update other allowed fields
+    const allowedUpdates = ['paymentStatus', 'paymentMethod', 'amountPaid', 'notes', 'customerName', 'customerPhone', 'tipAmount'];
 
     for (const key of allowedUpdates) {
       if (updates[key] !== undefined) {
@@ -277,6 +343,7 @@ export const updateBill = async (req, res) => {
       }
     });
   } catch (error) {
+    console.error('Update bill error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to update bill'

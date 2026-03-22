@@ -10,6 +10,7 @@ export interface BillItem {
   discountAmount: number;
   taxAmount: number;
   finalTotal: number;
+  kotPrinted?: boolean; // Hotel mode: item sent to kitchen
 }
 
 export interface Bill {
@@ -31,6 +32,13 @@ export interface Bill {
   createdBy: string;
   createdAt: string;
   updatedAt?: string;
+  
+  // Hotel/Restaurant specific fields
+  billStatus?: 'draft' | 'kot-printed' | 'completed';
+  tableId?: number;
+  kotPrintedAt?: string;
+  taxEnabled?: boolean;
+  kotItems?: string[];
 }
 
 export interface BillResponse {

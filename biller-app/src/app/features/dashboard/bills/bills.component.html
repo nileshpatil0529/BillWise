@@ -189,6 +189,26 @@
           </td>
         </ng-container>
 
+        <!-- Table Column -->
+        <ng-container matColumnDef="table">
+          <th mat-header-cell *matHeaderCellDef>Table</th>
+          <td mat-cell *matCellDef="let bill">
+            @if (bill.businessTypeData?.tableNumber) {
+              <mat-chip class="table-chip">
+                @if (bill.businessTypeData?.tableType === 'parcel') {
+                  <mat-icon>takeout_dining</mat-icon>
+                  P{{ bill.businessTypeData.tableNumber }}
+                } @else {
+                  <mat-icon>table_restaurant</mat-icon>
+                  T{{ bill.businessTypeData.tableNumber }}
+                }
+              </mat-chip>
+            } @else {
+              <span class="no-table">-</span>
+            }
+          </td>
+        </ng-container>
+
         <!-- Items Count Column -->
         <ng-container matColumnDef="itemsCount">
           <th mat-header-cell *matHeaderCellDef>Items</th>
