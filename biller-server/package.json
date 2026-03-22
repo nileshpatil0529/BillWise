@@ -7,6 +7,9 @@
   "scripts": {
     "start": "node src/app.js",
     "dev": "nodemon src/app.js",
+    "build": "cd ../biller-app && npm run build",
+    "build:prod": "cd ../biller-app && npx ng build --configuration=production",
+    "serve": "npm run build:prod && node src/app.js",
     "backup": "node src/scripts/backup.js"
   },
   "dependencies": {
