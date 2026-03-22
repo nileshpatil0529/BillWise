@@ -1,4 +1,4 @@
-import { Component, signal, computed, OnInit, ViewChild } from '@angular/core';
+import { Component, signal, computed, OnInit, ViewChild, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule, RouterOutlet } from '@angular/router';
 import { MatSidenavModule, MatSidenav } from '@angular/material/sidenav';
@@ -12,6 +12,7 @@ import { MatDividerModule } from '@angular/material/divider';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { AuthService } from '../../core/services/auth.service';
 import { SettingsService } from '../../core/services/settings.service';
+import { TranslateService } from '../../core/services/translate.service';
 
 interface MenuItem {
   icon: string;
@@ -43,16 +44,16 @@ export class DashboardComponent implements OnInit {
 
   sidenavOpened = signal(true);
   isMobile = signal(false);
-
-  private baseMenuItems: MenuItem[] = [
-    { icon: 'home', label: 'Home', route: '/dashboard/home' },
-    { icon: 'inventory_2', label: 'Products', route: '/dashboard/products' },
-    { icon: 'receipt_long', label: 'Bills & Reports', route: '/dashboard/bills' }
-  ];
+  
+  translateService = inject(TranslateService);
 
   menuItems = computed(() => {
     const user = this.authService.currentUser();
     const permissions = user?.permissions || [];
+    const t = this.translateService.t.bind(this.translateService);
+    
+    // Force recomputation when language changes
+    const _ = this.translateService.translations();
     
     // Admin gets all permissions by default
     const hasPermission = (permission: string) => {
@@ -63,28 +64,28 @@ export class DashboardComponent implements OnInit {
     let items: MenuItem[] = [];
     
     if (hasPermission('dashboard')) {
-      items.push({ icon: 'home', label: 'Home', route: '/dashboard/home' });
+      items.push({ icon: 'home', label: t('nav.home'), route: '/dashboard/home' });
     }
     
     if (hasPermission('products')) {
-      items.push({ icon: 'inventory_2', label: 'Products', route: '/dashboard/products' });
+      items.push({ icon: 'inventory_2', label: t('nav.products'), route: '/dashboard/products' });
     }
     
     if (hasPermission('bills')) {
-      items.push({ icon: 'receipt_long', label: 'Bills & Reports', route: '/dashboard/bills' });
+      items.push({ icon: 'receipt_long', label: t('nav.bills'), route: '/dashboard/bills' });
     }
     
     if (hasPermission('customers') && this.settingsService.settings().debtEnabled) {
-      items.push({ icon: 'account_balance_wallet', label: 'Customers', route: '/dashboard/customers' });
+      items.push({ icon: 'account_balance_wallet', label: t('nav.customers'), route: '/dashboard/customers' });
     }
     
     // Manage Users - Admin only
     if (user?.role === 'admin') {
-      items.push({ icon: 'group', label: 'Manage Users', route: '/dashboard/users' });
+      items.push({ icon: 'group', label: t('nav.users'), route: '/dashboard/users' });
     }
     
     if (hasPermission('settings')) {
-      items.push({ icon: 'settings', label: 'Settings', route: '/dashboard/settings' });
+      items.push({ icon: 'settings', label: t('nav.settings'), route: '/dashboard/settings' });
     }
     
     return items;

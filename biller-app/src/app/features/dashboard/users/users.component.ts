@@ -15,6 +15,7 @@ import { MatDividerModule } from '@angular/material/divider';
 
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { TranslateService } from '../../../core/services/translate.service';
 import { User } from '../../../core/models/user.model';
 import { UserDialogComponent } from '../settings/user-dialog/user-dialog.component';
 
@@ -42,6 +43,7 @@ import { UserDialogComponent } from '../settings/user-dialog/user-dialog.compone
 export class UsersComponent implements OnInit {
   userService = inject(UserService);
   authService = inject(AuthService);
+  translateService = inject(TranslateService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 

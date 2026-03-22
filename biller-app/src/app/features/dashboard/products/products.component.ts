@@ -22,6 +22,7 @@ import { Subject, debounceTime, distinctUntilChanged, takeUntil, fromEvent } fro
 import { ProductService } from '../../../core/services/product.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { BeepService } from '../../../core/services/beep.service';
+import { TranslateService } from '../../../core/services/translate.service';
 import { Product } from '../../../core/models/product.model';
 import { ProductDialogComponent } from './product-dialog/product-dialog.component';
 import { BarcodePrintDialogComponent } from './barcode-print-dialog/barcode-print-dialog.component';
@@ -82,6 +83,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   constructor(
     public productService: ProductService,
     public settingsService: SettingsService,
+    public translateService: TranslateService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private beepService: BeepService

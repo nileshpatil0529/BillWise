@@ -201,6 +201,7 @@ const initializeDatabase = () => {
       categories TEXT DEFAULT '[{"name":"General","enabled":true}]',
       tableColumns TEXT,
       viewMode TEXT DEFAULT 'desktop',
+      language TEXT DEFAULT 'en',
       invoicePrefix TEXT DEFAULT 'INV',
       invoiceStartNumber INTEGER DEFAULT 1,
       footerText TEXT DEFAULT 'Thank you for your business!',
@@ -300,6 +301,11 @@ const initializeDatabase = () => {
     if (!hasViewMode) {
       db.exec("ALTER TABLE settings ADD COLUMN viewMode TEXT DEFAULT 'desktop'");
       console.log('✅ Migration: Added viewMode column');
+    }
+    const hasLanguage = columns.some(col => col.name === 'language');
+    if (!hasLanguage) {
+      db.exec("ALTER TABLE settings ADD COLUMN language TEXT DEFAULT 'en'");
+      console.log('✅ Migration: Added language column');
     }
   } catch (e) {
     // Column might already exist

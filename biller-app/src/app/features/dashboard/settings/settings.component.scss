@@ -479,6 +479,54 @@ mat-tab-group {
   }
 }
 
+// Language Toggle
+.language-toggle {
+  display: flex;
+  gap: v.$spacing-sm;
+  margin-bottom: v.$spacing-sm;
+
+  button {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-xs;
+    padding: v.$spacing-sm v.$spacing-lg;
+    border-radius: v.$radius-lg;
+    transition: all 0.2s ease;
+    min-width: 120px;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    &.active {
+      background: v.$light-primary;
+      color: white;
+      border-color: v.$light-primary;
+
+      @include m.dark-theme {
+        background: v.$dark-primary;
+        border-color: v.$dark-primary;
+      }
+    }
+
+    &:not(.active) {
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.7);
+        border-color: rgba(255, 255, 255, 0.3);
+      }
+    }
+
+    @include m.mobile {
+      flex: 1;
+      min-width: auto;
+      padding: v.$spacing-sm;
+    }
+  }
+}
+
 // Profile Photo Section
 .profile-photo-section {
   display: flex;

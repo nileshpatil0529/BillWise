@@ -1,7 +1,7 @@
 <div class="settings-container">
   <div class="page-header">
     <div class="header-title">
-      <h1>Settings</h1>
+      <h1>{{ translateService.t('settings.title') }}</h1>
      </div>
   </div>
 
@@ -11,22 +11,22 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>settings</mat-icon>
-        <span>Business</span>
+        <span>{{ translateService.t('settings.business') }}</span>
       </ng-template>
 
       <div class="tab-content">
         <mat-card class="settings-card">
           <mat-card-header>
             <mat-icon mat-card-avatar>business</mat-icon>
-            <mat-card-title>Business Information</mat-card-title>
-            <mat-card-subtitle>Your business details for bills and receipts</mat-card-subtitle>
+            <mat-card-title>{{ translateService.t('settings.businessInfo') }}</mat-card-title>
+            <mat-card-subtitle>{{ translateService.t('settings.businessDetailsHint') }}</mat-card-subtitle>
           </mat-card-header>
 
           <mat-card-content>
             <form [formGroup]="businessForm">
               <!-- Logo Upload -->
               <div class="logo-section">
-                <label>Business Logo</label>
+                <label>{{ translateService.t('settings.logo') }}</label>
                 <div class="logo-upload">
                   @if (logoPreview()) {
                     <div class="logo-preview">
@@ -38,14 +38,14 @@
                   } @else {
                     <div class="logo-placeholder" (click)="logoInput.click()">
                       <mat-icon>add_photo_alternate</mat-icon>
-                      <span>Upload Logo</span>
+                      <span>{{ translateService.t('settings.uploadLogo') }}</span>
                     </div>
                   }
                   <input type="file" #logoInput hidden accept="image/*" (change)="onLogoSelected($event)">
                   @if (logoPreview()) {
                     <button mat-stroked-button (click)="logoInput.click()">
                       <mat-icon>edit</mat-icon>
-                      Change Logo
+                      {{ translateService.t('settings.changeLogo') }}
                     </button>
                   }
                 </div>
@@ -55,18 +55,18 @@
 
               <div class="form-row">
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Business Name</mat-label>
+                  <mat-label>{{ translateService.t('settings.businessName') }}</mat-label>
                   <input matInput formControlName="businessName" placeholder="Enter business name">
                   <mat-icon matPrefix>store</mat-icon>
                   @if (businessForm.get('businessName')?.hasError('required')) {
-                    <mat-error>Business name is required</mat-error>
+                    <mat-error>{{ translateService.t('msg.required') }}</mat-error>
                   }
                 </mat-form-field>
               </div>
 
               <div class="form-row">
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Business Address</mat-label>
+                  <mat-label>{{ translateService.t('settings.businessAddress') }}</mat-label>
                   <textarea matInput formControlName="address" rows="2" placeholder="Enter address"></textarea>
                   <mat-icon matPrefix>location_on</mat-icon>
                 </mat-form-field>
@@ -74,7 +74,7 @@
 
               <div class="form-row two-col">
                 <mat-form-field appearance="outline">
-                  <mat-label>Phone Number</mat-label>
+                  <mat-label>{{ translateService.t('settings.businessPhone') }}</mat-label>
                   <input matInput formControlName="phone" placeholder="+91 XXXXXXXXXX">
                   <mat-icon matPrefix>phone</mat-icon>
                   @if (businessForm.get('phone')?.hasError('pattern')) {
@@ -83,7 +83,7 @@
                 </mat-form-field>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Email Address</mat-label>
+                  <mat-label>{{ translateService.t('settings.businessEmail') }}</mat-label>
                   <input matInput formControlName="email" placeholder="business@example.com">
                   <mat-icon matPrefix>email</mat-icon>
                   @if (businessForm.get('email')?.hasError('email')) {
@@ -96,7 +96,7 @@
 
               <div class="section-title">
                 <mat-icon>category</mat-icon>
-                <span>Application Type</span>
+                <span>{{ translateService.t('settings.applicationType') }}</span>
               </div>
 
               <div class="app-type-grid">
@@ -116,7 +116,7 @@
 
               <div class="form-row">
                 <mat-form-field appearance="outline">
-                  <mat-label>Currency</mat-label>
+                  <mat-label>{{ translateService.t('settings.currency') }}</mat-label>
                   <mat-select formControlName="currencyCode">
                     @for (curr of currencies; track curr.value) {
                       <mat-option [value]="curr.value">{{ curr.label }}</mat-option>
@@ -132,22 +132,38 @@
 
               <div class="section-title">
                 <mat-icon>qr_code_scanner</mat-icon>
-                <span>Barcode Scanner</span>
+                <span>{{ translateService.t('settings.barcodeScanner') }}</span>
               </div>
 
               <div class="scanner-options">
                 <mat-radio-group formControlName="scannerType" class="scanner-radio-group">
-                  @for (scanner of scannerTypes; track scanner.value) {
-                    <mat-radio-button [value]="scanner.value" [disabled]="scanner.value === 'usb'">
-                      <div class="scanner-option">
-                        <mat-icon>{{ scanner.icon }}</mat-icon>
-                        <div class="scanner-info">
-                          <span class="scanner-label">{{ scanner.label }}</span>
-                          <span class="scanner-description">{{ scanner.description }}</span>
-                        </div>
+                  <mat-radio-button value="none">
+                    <div class="scanner-option">
+                      <mat-icon>block</mat-icon>
+                      <div class="scanner-info">
+                        <span class="scanner-label">{{ translateService.t('settings.scannerNone') }}</span>
+                        <span class="scanner-description">{{ translateService.t('settings.scannerNoneDesc') }}</span>
                       </div>
-                    </mat-radio-button>
-                  }
+                    </div>
+                  </mat-radio-button>
+                  <mat-radio-button value="camera">
+                    <div class="scanner-option">
+                      <mat-icon>camera_alt</mat-icon>
+                      <div class="scanner-info">
+                        <span class="scanner-label">{{ translateService.t('settings.scannerCamera') }}</span>
+                        <span class="scanner-description">{{ translateService.t('settings.scannerCameraDesc') }}</span>
+                      </div>
+                    </div>
+                  </mat-radio-button>
+                  <mat-radio-button value="usb" [disabled]="true">
+                    <div class="scanner-option">
+                      <mat-icon>usb</mat-icon>
+                      <div class="scanner-info">
+                        <span class="scanner-label">{{ translateService.t('settings.scannerUsb') }} <span class="coming-soon">({{ translateService.t('settings.comingSoon') }})</span></span>
+                        <span class="scanner-description">{{ translateService.t('settings.scannerUsbDesc') }}</span>
+                      </div>
+                    </div>
+                  </mat-radio-button>
                 </mat-radio-group>
               </div>
               }
@@ -158,51 +174,51 @@
 
               <div class="section-title">
                 <mat-icon>scale</mat-icon>
-                <span>Units Management</span>
+                <span>{{ translateService.t('settings.unitsManagement') }}</span>
               </div>
-              <p class="section-hint">Manage units for loose items like oil, grains, etc.</p>
+              <p class="section-hint">{{ translateService.t('settings.unitsHint') }}</p>
 
               <div class="units-section">
                 <div class="add-unit-form">
                   <mat-form-field appearance="outline" class="unit-name-input">
-                    <mat-label>Unit Name</mat-label>
+                    <mat-label>{{ translateService.t('settings.unitName') }}</mat-label>
                     <input matInput [value]="newUnitName()" 
                            (input)="newUnitName.set($any($event.target).value)"
                            placeholder="e.g., Kilogram">
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="unit-symbol-input">
-                    <mat-label>Symbol</mat-label>
+                    <mat-label>{{ translateService.t('settings.symbol') }}</mat-label>
                     <input matInput [value]="newUnitSymbol()" 
                            (input)="newUnitSymbol.set($any($event.target).value)"
                            placeholder="e.g., kg">
                   </mat-form-field>
                   <mat-slide-toggle [checked]="newUnitAllowDecimal()" 
                                     (change)="newUnitAllowDecimal.set($event.checked)">
-                    Allow Decimal
+                    {{ translateService.t('settings.allowDecimal') }}
                   </mat-slide-toggle>
                   <button mat-raised-button color="primary" (click)="addUnit()" [disabled]="saving()">
                     <mat-icon>add</mat-icon>
-                    Add
+                    {{ translateService.t('common.add') }}
                   </button>
                 </div>
 
                 @if (units().length > 0) {
                 <div class="units-list">
-                  <h4>Available Units ({{ units().length }})</h4>
+                  <h4>{{ translateService.t('settings.availableUnits') }} ({{ units().length }})</h4>
                   <div class="units-table">
                     <table mat-table [dataSource]="units()">
                       <ng-container matColumnDef="name">
-                        <th mat-header-cell *matHeaderCellDef>Name</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.name') }}</th>
                         <td mat-cell *matCellDef="let unit">{{ unit.name }}</td>
                       </ng-container>
                       <ng-container matColumnDef="symbol">
-                        <th mat-header-cell *matHeaderCellDef>Symbol</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ translateService.t('settings.symbol') }}</th>
                         <td mat-cell *matCellDef="let unit">
                           <mat-chip>{{ unit.symbol }}</mat-chip>
                         </td>
                       </ng-container>
                       <ng-container matColumnDef="decimal">
-                        <th mat-header-cell *matHeaderCellDef>Decimal</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ translateService.t('settings.decimal') }}</th>
                         <td mat-cell *matCellDef="let unit">
                           <mat-slide-toggle [checked]="unit.allowDecimal" 
                                             (change)="toggleUnitDecimal(unit)">
@@ -210,10 +226,10 @@
                         </td>
                       </ng-container>
                       <ng-container matColumnDef="actions">
-                        <th mat-header-cell *matHeaderCellDef>Actions</th>
+                        <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.actions') }}</th>
                         <td mat-cell *matCellDef="let unit">
                           <button mat-icon-button color="warn" (click)="deleteUnit(unit)" 
-                                  [disabled]="units().length <= 1" matTooltip="Delete">
+                                  [disabled]="units().length <= 1">
                             <mat-icon>delete</mat-icon>
                           </button>
                         </td>
@@ -233,38 +249,38 @@
 
               <div class="section-title">
                 <mat-icon>table_restaurant</mat-icon>
-                <span>Table / Parcel Management</span>
+                <span>{{ translateService.t('settings.tableParcelMgmt') }}</span>
               </div>
 
               <div class="hotel-tables-section">
                 <div class="add-tables-form">
                   <mat-form-field appearance="outline" class="table-type-select">
-                    <mat-label>Type</mat-label>
+                    <mat-label>{{ translateService.t('settings.type') }}</mat-label>
                     <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
-                      <mat-option value="dine-in">Dine-In Tables</mat-option>
-                      <mat-option value="parcel">Parcel/Takeaway</mat-option>
+                      <mat-option value="dine-in">{{ translateService.t('settings.dineInTables') }}</mat-option>
+                      <mat-option value="parcel">{{ translateService.t('settings.parcelTakeaway') }}</mat-option>
                     </mat-select>
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="number-input">
-                    <mat-label>From</mat-label>
+                    <mat-label>{{ translateService.t('settings.from') }}</mat-label>
                     <input matInput type="number" [value]="newTableStartNumber()" 
                            (input)="newTableStartNumber.set(+$any($event.target).value)" min="1">
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="number-input">
-                    <mat-label>To</mat-label>
+                    <mat-label>{{ translateService.t('settings.to') }}</mat-label>
                     <input matInput type="number" [value]="newTableEndNumber()" 
                            (input)="newTableEndNumber.set(+$any($event.target).value)" min="1">
                   </mat-form-field>
                   <button mat-raised-button color="primary" (click)="addTables()" [disabled]="saving()">
                     <mat-icon>add</mat-icon>
-                    Add
+                    {{ translateService.t('common.add') }}
                   </button>
                 </div>
 
                 <!-- Dine-In Tables List -->
                 @if (getDineInTables().length > 0) {
                 <div class="tables-list">
-                  <h4>Dine-In Tables ({{ getDineInTables().length }})</h4>
+                  <h4>{{ translateService.t('settings.dineInTables') }} ({{ getDineInTables().length }})</h4>
                   <div class="tables-chips">
                     @for (table of getDineInTables(); track table.id) {
                       <mat-chip [class.occupied]="table.status === 'occupied'">
@@ -283,7 +299,7 @@
                 <!-- Parcel List -->
                 @if (getParcelTables().length > 0) {
                 <div class="tables-list">
-                  <h4>Parcel Numbers ({{ getParcelTables().length }})</h4>
+                  <h4>{{ translateService.t('settings.parcelNumbers') }} ({{ getParcelTables().length }})</h4>
                   <div class="tables-chips">
                     @for (table of getParcelTables(); track table.id) {
                       <mat-chip [class.occupied]="table.status === 'occupied'">
@@ -305,13 +321,13 @@
               <!-- Item Notes Section -->
               <div class="section-title">
                 <mat-icon>note_add</mat-icon>
-                <span>Item Notes</span>
+                <span>{{ translateService.t('settings.itemNotes') }}</span>
               </div>
 
               <div class="notes-section">
                 <div class="add-note-form">
                   <mat-form-field appearance="outline" class="note-input">
-                    <mat-label>Note Label</mat-label>
+                    <mat-label>{{ translateService.t('settings.noteLabel') }}</mat-label>
                     <input matInput [value]="newNoteLabel()" 
                            (input)="newNoteLabel.set($any($event.target).value)"
                            (keyup.enter)="addItemNote()"
@@ -319,7 +335,7 @@
                   </mat-form-field>
                   <button mat-raised-button color="primary" (click)="addItemNote()" [disabled]="saving()">
                     <mat-icon>add</mat-icon>
-                    Add Note
+                    {{ translateService.t('settings.addNote') }}
                   </button>
                 </div>
 
@@ -349,12 +365,12 @@
               @if (saving()) {
                 <span class="button-content">
                   <mat-spinner diameter="20"></mat-spinner>
-                  Saving...
+                  {{ translateService.t('settings.saving') }}
                 </span>
               } @else {
                 <span class="button-content">
                   <mat-icon>save</mat-icon>
-                  Save Changes
+                  {{ translateService.t('settings.saveChanges') }}
                 </span>
               }
             </button>
@@ -368,21 +384,21 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>account_circle</mat-icon>
-        <span>Account</span>
+        <span>{{ translateService.t('settings.account') }}</span>
       </ng-template>
 
       <div class="tab-content">
         <mat-card class="settings-card">
           <mat-card-header>
             <mat-icon mat-card-avatar>account_circle</mat-icon>
-            <mat-card-title>Account Settings</mat-card-title>
-            <mat-card-subtitle>Manage your profile and preferences</mat-card-subtitle>
+            <mat-card-title>{{ translateService.t('settings.accountSettings') }}</mat-card-title>
+            <mat-card-subtitle>{{ translateService.t('settings.manageProfile') }}</mat-card-subtitle>
           </mat-card-header>
 
           <mat-card-content>
             <!-- Profile Photo Section -->
             <div class="account-section">
-              <label>Profile Photo</label>
+              <label>{{ translateService.t('settings.profilePhoto') }}</label>
               <div class="profile-photo-upload">
                 @if (profilePhotoPreview()) {
                   <div class="photo-preview-small">
@@ -394,14 +410,14 @@
                 } @else {
                   <div class="photo-placeholder" (click)="profilePhotoInput.click()">
                     <mat-icon>account_circle</mat-icon>
-                    <span>Upload Photo</span>
+                    <span>{{ translateService.t('settings.uploadPhoto') }}</span>
                   </div>
                 }
                 <input type="file" #profilePhotoInput hidden accept="image/*" (change)="onProfilePhotoSelected($event)">
                 @if (profilePhotoPreview()) {
                   <button mat-stroked-button (click)="profilePhotoInput.click()">
                     <mat-icon>edit</mat-icon>
-                    Change Photo
+                    {{ translateService.t('settings.changePhoto') }}
                   </button>
                 }
               </div>
@@ -412,11 +428,11 @@
 
             <!-- Theme Mode Section -->
             <div class="account-section">
-              <label>Theme Mode</label>
+              <label>{{ translateService.t('settings.themeMode') }}</label>
               <div class="theme-toggle">
                 <span class="toggle-label">
                   <mat-icon>{{ businessForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
-                  {{ businessForm.get('theme')?.value === 'dark' ? 'Dark Mode' : 'Light Mode' }}
+                  {{ businessForm.get('theme')?.value === 'dark' ? translateService.t('settings.darkMode') : translateService.t('settings.lightMode') }}
                 </span>
                 <mat-slide-toggle
                   [checked]="businessForm.get('theme')?.value === 'dark'"
@@ -428,14 +444,36 @@
 
             <mat-divider></mat-divider>
 
+            <!-- Language Section -->
+            <div class="account-section">
+              <label>Language / भाषा</label>
+              <div class="language-toggle">
+                <button mat-stroked-button 
+                        [class.active]="selectedLanguage() === 'en'"
+                        (click)="setLanguage('en')">
+                  <mat-icon>language</mat-icon>
+                  English
+                </button>
+                <button mat-stroked-button 
+                        [class.active]="selectedLanguage() === 'hi'"
+                        (click)="setLanguage('hi')">
+                  <mat-icon>translate</mat-icon>
+                  हिंदी
+                </button>
+              </div>
+              <p class="hint-text">{{ translateService.t('settings.languageHint') }}</p>
+            </div>
+
+            <mat-divider></mat-divider>
+
             <!-- Change Password Section -->
             <div class="account-section">
-              <label>Password</label>
+              <label>{{ translateService.t('settings.password') }}</label>
               <div class="password-row">
-                <span class="password-hint">Change your account password for security</span>
+                <span class="password-hint">{{ translateService.t('settings.passwordHint') }}</span>
                 <button mat-stroked-button color="primary" (click)="openChangePasswordDialog()">
                   <mat-icon>lock</mat-icon>
-                  Change Password
+                  {{ translateService.t('settings.changePassword') }}
                 </button>
               </div>
             </div>
@@ -446,12 +484,12 @@
               @if (saving()) {
                 <span class="button-content">
                   <mat-spinner diameter="20"></mat-spinner>
-                  Saving...
+                  {{ translateService.t('settings.saving') }}
                 </span>
               } @else {
                 <span class="button-content">
                   <mat-icon>save</mat-icon>
-                  Save Changes
+                  {{ translateService.t('settings.saveChanges') }}
                 </span>
               }
             </button>
@@ -465,23 +503,23 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>receipt_long</mat-icon>
-        <span>Tax</span>
+        <span>{{ translateService.t('settings.tax') }}</span>
       </ng-template>
 
       <div class="tab-content">
         <mat-card class="settings-card">
           <mat-card-header>
             <mat-icon mat-card-avatar>percent</mat-icon>
-            <mat-card-title>Tax Configuration</mat-card-title>
-            <mat-card-subtitle>Configure tax settings for your bills</mat-card-subtitle>
+            <mat-card-title>{{ translateService.t('settings.taxConfig') }}</mat-card-title>
+            <mat-card-subtitle>{{ translateService.t('settings.taxConfigHint') }}</mat-card-subtitle>
           </mat-card-header>
 
           <mat-card-content>
             <form [formGroup]="taxForm">
               <div class="toggle-row">
                 <div class="toggle-info">
-                  <span class="toggle-title">Enable Tax</span>
-                  <span class="toggle-description">Apply tax automatically to all bills</span>
+                  <span class="toggle-title">{{ translateService.t('settings.enableTax') }}</span>
+                  <span class="toggle-description">{{ translateService.t('settings.taxAutoApply') }}</span>
                 </div>
                 <mat-slide-toggle formControlName="taxEnabled"></mat-slide-toggle>
               </div>
@@ -491,13 +529,13 @@
               @if (taxForm.get('taxEnabled')?.value) {
                 <div class="form-row two-col">
                   <mat-form-field appearance="outline">
-                    <mat-label>Tax Name</mat-label>
+                    <mat-label>{{ translateService.t('settings.taxName') }}</mat-label>
                     <input matInput formControlName="taxName" placeholder="e.g., GST, VAT">
                     <mat-icon matPrefix>label</mat-icon>
                   </mat-form-field>
 
                   <mat-form-field appearance="outline">
-                    <mat-label>Tax Rate</mat-label>
+                    <mat-label>{{ translateService.t('settings.taxRate') }}</mat-label>
                     <input matInput type="number" formControlName="taxRate" min="0" max="100">
                     <mat-icon matPrefix>percent</mat-icon>
                     <span matSuffix>%</span>
@@ -506,10 +544,10 @@
 
                 <div class="form-row">
                   <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Tax Registration Number</mat-label>
+                    <mat-label>{{ translateService.t('settings.taxRegNumber') }}</mat-label>
                     <input matInput formControlName="taxNumber" placeholder="e.g., GSTIN">
                     <mat-icon matPrefix>tag</mat-icon>
-                    <mat-hint>Optional: Will be displayed on receipts</mat-hint>
+                    <mat-hint>{{ translateService.t('settings.taxRegHint') }}</mat-hint>
                   </mat-form-field>
                 </div>
               }
@@ -518,8 +556,8 @@
 
               <div class="toggle-row">
                 <div class="toggle-info">
-                  <span class="toggle-title">Enable Discount</span>
-                  <span class="toggle-description">Show discount input field in bill summary</span>
+                  <span class="toggle-title">{{ translateService.t('settings.enableDiscount') }}</span>
+                  <span class="toggle-description">{{ translateService.t('settings.discountHint') }}</span>
                 </div>
                 <mat-slide-toggle formControlName="discountEnabled"></mat-slide-toggle>
               </div>
@@ -528,8 +566,8 @@
 
               <div class="toggle-row">
                 <div class="toggle-info">
-                  <span class="toggle-title">Enable Debt</span>
-                  <span class="toggle-description">Allow debt payment method and manage borrowers</span>
+                  <span class="toggle-title">{{ translateService.t('settings.enableDebt') }}</span>
+                  <span class="toggle-description">{{ translateService.t('settings.debtHint') }}</span>
                 </div>
                 <mat-slide-toggle formControlName="debtEnabled"></mat-slide-toggle>
               </div>
@@ -541,12 +579,12 @@
               @if (saving()) {
                 <span class="button-content">
                   <mat-spinner diameter="20"></mat-spinner>
-                  Saving...
+                  {{ translateService.t('settings.saving') }}
                 </span>
               } @else {
                 <span class="button-content">
                   <mat-icon>save</mat-icon>
-                  Save Changes
+                  {{ translateService.t('settings.saveChanges') }}
                 </span>
               }
             </button>
@@ -561,23 +599,23 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>print</mat-icon>
-        <span>Receipt</span>
+        <span>{{ translateService.t('settings.receipt') }}</span>
       </ng-template>
 
       <div class="tab-content">
         <mat-card class="settings-card">
           <mat-card-header>
             <mat-icon mat-card-avatar>description</mat-icon>
-            <mat-card-title>Receipt Settings</mat-card-title>
-            <mat-card-subtitle>Customize your receipt format and content</mat-card-subtitle>
+            <mat-card-title>{{ translateService.t('settings.receiptSettings') }}</mat-card-title>
+            <mat-card-subtitle>{{ translateService.t('settings.receiptHint') }}</mat-card-subtitle>
           </mat-card-header>
 
           <mat-card-content>
             <form [formGroup]="receiptForm">
               <div class="toggle-row">
                 <div class="toggle-info">
-                  <span class="toggle-title">Show Logo on Receipt</span>
-                  <span class="toggle-description">Display your business logo at the top of receipts</span>
+                  <span class="toggle-title">{{ translateService.t('settings.showLogo') }}</span>
+                  <span class="toggle-description">{{ translateService.t('settings.logoHint') }}</span>
                 </div>
                 <mat-slide-toggle formControlName="showLogo"></mat-slide-toggle>
               </div>
@@ -586,13 +624,13 @@
 
               <div class="form-row two-col">
                 <mat-form-field appearance="outline">
-                  <mat-label>Invoice Prefix</mat-label>
+                  <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>
                   <input matInput formControlName="invoicePrefix" placeholder="INV">
                   <mat-icon matPrefix>tag</mat-icon>
                 </mat-form-field>
 
                 <mat-form-field appearance="outline">
-                  <mat-label>Invoice Start Number</mat-label>
+                  <mat-label>{{ translateService.t('settings.invoiceStart') }}</mat-label>
                   <input matInput type="number" formControlName="invoiceStartNumber" min="1">
                   <mat-icon matPrefix>numbers</mat-icon>
                 </mat-form-field>
@@ -600,10 +638,10 @@
 
               <div class="form-row">
                 <mat-form-field appearance="outline" class="full-width">
-                  <mat-label>Receipt Footer Message</mat-label>
+                  <mat-label>{{ translateService.t('settings.footerMessage') }}</mat-label>
                   <input matInput formControlName="footerText" placeholder="Thank you for your business!">
                   <mat-icon matPrefix>format_quote</mat-icon>
-                  <mat-hint>Displayed at the bottom of the receipt</mat-hint>
+                  <mat-hint>{{ translateService.t('settings.footerHint') }}</mat-hint>
                 </mat-form-field>
               </div>
             </form>
@@ -614,12 +652,12 @@
               @if (saving()) {
                 <span class="button-content">
                   <mat-spinner diameter="20"></mat-spinner>
-                  Saving...
+                  {{ translateService.t('settings.saving') }}
                 </span>
               } @else {
                 <span class="button-content">
                   <mat-icon>save</mat-icon>
-                  Save Changes
+                  {{ translateService.t('settings.saveChanges') }}
                 </span>
               }
             </button>
@@ -634,22 +672,22 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>category</mat-icon>
-        <span>Categories</span>
+        <span>{{ translateService.t('settings.categories') }}</span>
       </ng-template>
 
       <div class="tab-content">
         <mat-card class="settings-card">
           <mat-card-header>
             <mat-icon mat-card-avatar>category</mat-icon>
-            <mat-card-title>Product Categories</mat-card-title>
-            <mat-card-subtitle>Manage product categories for better organization</mat-card-subtitle>
+            <mat-card-title>{{ translateService.t('settings.productCategories') }}</mat-card-title>
+            <mat-card-subtitle>{{ translateService.t('settings.categoriesHint') }}</mat-card-subtitle>
           </mat-card-header>
 
           <mat-card-content>
             <!-- Add New Category -->
             <div class="category-add-section">
               <mat-form-field appearance="outline" class="category-input">
-                <mat-label>New Category Name</mat-label>
+                <mat-label>{{ translateService.t('settings.newCategory') }}</mat-label>
                 <input matInput 
                        [value]="newCategoryName()" 
                        (input)="newCategoryName.set($any($event.target).value)"
@@ -659,7 +697,7 @@
               </mat-form-field>
               <button mat-raised-button color="primary" (click)="addCategory()">
                 <mat-icon>add</mat-icon>
-                Add Category
+                {{ translateService.t('settings.addCategory') }}
               </button>
             </div>
 
@@ -667,8 +705,8 @@
 
             <!-- Categories List -->
             <div class="categories-list">
-              <h3>Categories</h3>
-              <p class="hint">Check categories to make them available in products. General category cannot be removed.</p>
+              <h3>{{ translateService.t('settings.categories') }}</h3>
+              <p class="hint">{{ translateService.t('settings.categoryHint') }}</p>
               
               @if (categories().length === 0) {
                 <div class="empty-state">
@@ -707,12 +745,12 @@
               @if (saving()) {
                 <span class="button-content">
                   <mat-spinner diameter="20"></mat-spinner>
-                  Saving...
+                  {{ translateService.t('settings.saving') }}
                 </span>
               } @else {
                 <span class="button-content">
                   <mat-icon>save</mat-icon>
-                  Save Categories
+                  {{ translateService.t('settings.saveChanges') }}
                 </span>
               }
             </button>
@@ -726,15 +764,15 @@
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>view_column</mat-icon>
-        <span>Table Columns</span>
+        <span>{{ translateService.t('settings.tableColumns') }}</span>
       </ng-template>
 
       <div class="tab-content">
         <mat-card class="settings-card">
           <mat-card-header>
             <mat-icon mat-card-avatar>table_chart</mat-icon>
-            <mat-card-title>Manage Table Columns</mat-card-title>
-            <mat-card-subtitle>Show or hide columns for different tables</mat-card-subtitle>
+            <mat-card-title>{{ translateService.t('settings.manageColumns') }}</mat-card-title>
+            <mat-card-subtitle>{{ translateService.t('settings.columnsHint') }}</mat-card-subtitle>
           </mat-card-header>
 
           <mat-card-content>
@@ -742,27 +780,27 @@
             <div class="view-mode-section">
               <div class="view-mode-header">
                 <mat-icon>devices</mat-icon>
-                <span>View Mode</span>
+                <span>{{ translateService.t('settings.viewMode') }}</span>
               </div>
               <div class="view-mode-toggle">
                 <button mat-stroked-button 
                         [class.active]="viewMode() === 'desktop'"
                         (click)="setViewMode('desktop')">
                   <mat-icon>desktop_windows</mat-icon>
-                  Desktop
+                  {{ translateService.t('settings.desktop') }}
                 </button>
                 <button mat-stroked-button 
                         [class.active]="viewMode() === 'mobile'"
                         (click)="setViewMode('mobile')">
                   <mat-icon>smartphone</mat-icon>
-                  Mobile
+                  {{ translateService.t('settings.mobile') }}
                 </button>
               </div>
               <p class="view-mode-hint">
                 @if (viewMode() === 'mobile') {
-                  Mobile mode: Compact display with truncated IDs and optimized columns for small screens.
+                  {{ translateService.t('settings.mobileHint') }}
                 } @else {
-                  Desktop mode: Full display with all details visible.
+                  {{ translateService.t('settings.desktopHint') }}
                 }
               </p>
             </div>
@@ -775,10 +813,10 @@
                 <mat-expansion-panel-header>
                   <mat-panel-title>
                     <mat-icon>inventory_2</mat-icon>
-                    <span>Products Table</span>
+                    <span>{{ translateService.t('settings.productsTable') }}</span>
                   </mat-panel-title>
                   <mat-panel-description>
-                  {{ getVisibleProductsCount() }} of {{ productsColumns().length }} columns visible
+                  {{ getVisibleProductsCount() }} of {{ productsColumns().length }} {{ translateService.t('settings.columnsVisible') }}
                   </mat-panel-description>
                 </mat-expansion-panel-header>
 
@@ -790,7 +828,7 @@
                         (change)="toggleProductColumn(i)"
                         [disabled]="column.key === 'actions'">
                         <div class="column-content">
-                          <span class="column-label">{{ column.label }}</span>
+                          <span class="column-label">{{ translateService.t('column.' + column.key) }}</span>
                           <span class="column-key">{{ column.key }}</span>
                         </div>
                       </mat-checkbox>
@@ -807,10 +845,10 @@
                 <mat-expansion-panel-header>
                   <mat-panel-title>
                     <mat-icon>receipt</mat-icon>
-                    <span>Bills Table</span>
+                    <span>{{ translateService.t('settings.billsTable') }}</span>
                   </mat-panel-title>
                   <mat-panel-description>
-                  {{ getVisibleBillsCount() }} of {{ billsColumns().length }} columns visible
+                  {{ getVisibleBillsCount() }} of {{ billsColumns().length }} {{ translateService.t('settings.columnsVisible') }}
                   </mat-panel-description>
                 </mat-expansion-panel-header>
 
@@ -822,7 +860,7 @@
                         (change)="toggleBillColumn(i)"
                         [disabled]="column.key === 'actions'">
                         <div class="column-content">
-                          <span class="column-label">{{ column.label }}</span>
+                          <span class="column-label">{{ translateService.t('column.' + column.key) }}</span>
                           <span class="column-key">{{ column.key }}</span>
                         </div>
                       </mat-checkbox>
@@ -839,10 +877,10 @@
                 <mat-expansion-panel-header>
                   <mat-panel-title>
                     <mat-icon>people</mat-icon>
-                    <span>Customers Table</span>
+                    <span>{{ translateService.t('settings.customersTable') }}</span>
                   </mat-panel-title>
                   <mat-panel-description>
-                  {{ getVisibleCustomersCount() }} of {{ customersColumns().length }} columns visible
+                  {{ getVisibleCustomersCount() }} of {{ customersColumns().length }} {{ translateService.t('settings.columnsVisible') }}
                   </mat-panel-description>
                 </mat-expansion-panel-header>
 
@@ -854,7 +892,7 @@
                         (change)="toggleCustomerColumn(i)"
                         [disabled]="column.key === 'actions'">
                         <div class="column-content">
-                          <span class="column-label">{{ column.label }}</span>
+                          <span class="column-label">{{ translateService.t('column.' + column.key) }}</span>
                           <span class="column-key">{{ column.key }}</span>
                         </div>
                       </mat-checkbox>
@@ -869,7 +907,7 @@
               <div class="reset-section">
                 <button mat-stroked-button color="warn" (click)="resetTableColumns()">
                   <mat-icon>refresh</mat-icon>
-                  Reset to Default
+                  {{ translateService.t('settings.resetDefault') }}
                 </button>
               </div>
             </div>
@@ -880,12 +918,12 @@
               @if (saving()) {
                 <span class="button-content">
                   <mat-spinner diameter="20"></mat-spinner>
-                  Saving...
+                  {{ translateService.t('common.loading') }}
                 </span>
               } @else {
                 <span class="button-content">
                   <mat-icon>save</mat-icon>
-                  Save Preferences
+                  {{ translateService.t('settings.savePreferences') }}
                 </span>
               }
             </button>

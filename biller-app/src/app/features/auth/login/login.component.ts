@@ -11,6 +11,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { AuthService } from '../../../core/services/auth.service';
+import { TranslateService } from '../../../core/services/translate.service';
 import { ChangePasswordDialogComponent } from '../change-password-dialog/change-password-dialog.component';
 
 @Component({
@@ -40,6 +41,7 @@ export class LoginComponent {
   constructor(
     private fb: FormBuilder,
     private authService: AuthService,
+    public translateService: TranslateService,
     private router: Router,
     private route: ActivatedRoute,
     private snackBar: MatSnackBar,

@@ -86,7 +86,7 @@ export const updateSettings = async (req, res) => {
     const allowedFields = [
       'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber',
       'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
-      'taxEnabled', 'taxRates', 'categories', 'tableColumns', 'units', 'viewMode', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
+      'taxEnabled', 'taxRates', 'categories', 'tableColumns', 'units', 'viewMode', 'language', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
       'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
     ];
 

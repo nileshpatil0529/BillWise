@@ -1,6 +1,7 @@
 export type ApplicationType = 'general' | 'hotel' | 'grocery' | 'clothing' | 'electronics' | 'restaurant';
 export type ThemeType = 'light' | 'dark';
 export type ScannerType = 'none' | 'camera' | 'usb';
+export type LanguageType = 'en' | 'hi';
 
 export interface TaxRate {
   name: string;
@@ -64,6 +65,7 @@ export interface Settings {
   lowStockThreshold: number;
   tableColumns?: TableColumnPreferences;
   viewMode?: ViewMode; // 'desktop' or 'mobile' - affects table display
+  language?: LanguageType; // 'en' or 'hi' - UI language
   units?: Unit[]; // Units for loose items (grocery mode)
   updatedAt: string;
 }

@@ -2,12 +2,12 @@
   <!-- Header -->
   <div class="page-header">
     <div class="header-title">
-      <h1>Bills & Reports</h1>
+      <h1>{{ translateService.t('bills.title') }}</h1>
     </div>
     <div class="header-actions">
       <button mat-raised-button color="primary" (click)="downloadReport()" [disabled]="!reportData()">
         <mat-icon>download</mat-icon>
-        Download Report
+        {{ translateService.t('bills.downloadReport') }}
       </button>
     </div>
   </div>
@@ -18,14 +18,14 @@
       <mat-expansion-panel-header>
         <mat-panel-title>
           <mat-icon>filter_list</mat-icon>
-          Filters & Summary
+          {{ translateService.t('bills.filters') }}
         </mat-panel-title>
         <mat-panel-description>
           @if (reportData(); as report) {
             <span class="summary-preview">
-              <span class="preview-item">Total: {{ formatCurrency(report.summary.totalSales) }}</span>
+              <span class="preview-item">{{ translateService.t('common.total') }}: {{ formatCurrency(report.summary.totalSales) }}</span>
               <span class="preview-divider">|</span>
-              <span class="preview-item">Bills: {{ report.summary.totalBills }}</span>
+              <span class="preview-item">{{ translateService.t('bills.totalBills') }}: {{ report.summary.totalBills }}</span>
             </span>
           }
         </mat-panel-description>
@@ -38,7 +38,7 @@
             <mat-icon>trending_up</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.totalSales) }}</span>
-              <span class="card-label">Total Sales</span>
+              <span class="card-label">{{ translateService.t('bills.totalSales') }}</span>
             </div>
           </mat-card>
 
@@ -46,7 +46,7 @@
             <mat-icon>receipt</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ report.summary.totalBills }}</span>
-              <span class="card-label">Total Bills</span>
+              <span class="card-label">{{ translateService.t('bills.totalBills') }}</span>
             </div>
           </mat-card>
 
@@ -54,7 +54,7 @@
             <mat-icon>payments</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.cashSales) }}</span>
-              <span class="card-label">Cash Sales</span>
+              <span class="card-label">{{ translateService.t('bills.cashSales') }}</span>
             </div>
           </mat-card>
 
@@ -62,7 +62,7 @@
             <mat-icon>credit_card</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.cardSales + report.summary.onlineSales) }}</span>
-              <span class="card-label">Card/Online</span>
+              <span class="card-label">{{ translateService.t('bills.cardOnline') }}</span>
             </div>
           </mat-card>
 
@@ -70,7 +70,7 @@
             <mat-icon>account_balance</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.debtAmount) }}</span>
-              <span class="card-label">Pending Debt</span>
+              <span class="card-label">{{ translateService.t('bills.pendingDebt') }}</span>
             </div>
           </mat-card>
 
@@ -78,7 +78,7 @@
             <mat-icon>check_circle</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.debtPaid) }}</span>
-              <span class="card-label">Debt Paid</span>
+              <span class="card-label">{{ translateService.t('bills.debtPaid') }}</span>
             </div>
           </mat-card>
 
@@ -86,7 +86,7 @@
             <mat-icon>receipt_long</mat-icon>
             <div class="card-content">
               <span class="card-value">{{ formatCurrency(report.summary.totalTax) }}</span>
-              <span class="card-label">Total Tax</span>
+              <span class="card-label">{{ translateService.t('bills.totalTax') }}</span>
             </div>
           </mat-card>
         </div>
@@ -110,7 +110,7 @@
             <!-- Date Range (Admin Only) -->
             @if (authService.isAdmin()) {
             <mat-form-field appearance="outline">
-              <mat-label>Start Date</mat-label>
+              <mat-label>{{ translateService.t('bills.startDate') }}</mat-label>
               <input matInput 
                      [matDatepicker]="startPicker" 
                      [value]="startDate()"
@@ -120,7 +120,7 @@
             </mat-form-field>
 
             <mat-form-field appearance="outline">
-              <mat-label>End Date</mat-label>
+              <mat-label>{{ translateService.t('bills.endDate') }}</mat-label>
               <input matInput 
                      [matDatepicker]="endPicker" 
                      [value]="endDate()"
@@ -131,30 +131,30 @@
 
             <!-- Payment Method -->
             <mat-form-field appearance="outline">
-              <mat-label>Payment Method</mat-label>
+              <mat-label>{{ translateService.t('bills.paymentMethod') }}</mat-label>
               <mat-select [value]="paymentMethod()" (selectionChange)="paymentMethod.set($event.value)">
-                <mat-option value="all">All Methods</mat-option>
-                <mat-option value="cash">Cash</mat-option>
-                <mat-option value="card">Card</mat-option>
-                <mat-option value="online">Online/UPI</mat-option>
-                <mat-option value="debt">Debt</mat-option>
+                <mat-option value="all">{{ translateService.t('bills.allMethods') }}</mat-option>
+                <mat-option value="cash">{{ translateService.t('home.cash') }}</mat-option>
+                <mat-option value="card">{{ translateService.t('home.card') }}</mat-option>
+                <mat-option value="online">{{ translateService.t('home.online') }}/UPI</mat-option>
+                <mat-option value="debt">{{ translateService.t('home.debt') }}</mat-option>
               </mat-select>
             </mat-form-field>
 
             <!-- Payment Status -->
             <mat-form-field appearance="outline">
-              <mat-label>Payment Status</mat-label>
+              <mat-label>{{ translateService.t('bills.paymentStatus') }}</mat-label>
               <mat-select [value]="paymentStatus()" (selectionChange)="paymentStatus.set($event.value)">
-                <mat-option value="all">All Status</mat-option>
-                <mat-option value="paid">Paid</mat-option>
-                <mat-option value="pending">Pending</mat-option>
-                <mat-option value="partial">Partial</mat-option>
+                <mat-option value="all">{{ translateService.t('bills.allStatus') }}</mat-option>
+                <mat-option value="paid">{{ translateService.t('bills.paid') }}</mat-option>
+                <mat-option value="pending">{{ translateService.t('bills.pending') }}</mat-option>
+                <mat-option value="partial">{{ translateService.t('bills.partial') }}</mat-option>
               </mat-select>
             </mat-form-field>
 
             <button mat-raised-button color="primary" (click)="applyFilters()">
               <mat-icon>filter_list</mat-icon>
-              Apply
+              {{ translateService.t('common.apply') }}
             </button>
             }
           </div>
@@ -175,7 +175,7 @@
       <table mat-table [dataSource]="dataSource" matSort class="bills-table">
         <!-- Bill Number Column -->
         <ng-container matColumnDef="billNumber">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Bill #</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('bills.billNumber') }}</th>
           <td mat-cell *matCellDef="let bill">
             <span class="bill-number" [matTooltip]="isMobileMode() ? bill.billNumber : ''">{{ formatBillNumber(bill.billNumber) }}</span>
           </td>
@@ -183,7 +183,7 @@
 
         <!-- Date Column -->
         <ng-container matColumnDef="createdAt">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ isMobileMode() ? 'Date' : 'Date & Time' }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ isMobileMode() ? translateService.t('common.date') : translateService.t('bills.dateTime') }}</th>
           <td mat-cell *matCellDef="let bill">
             @if (isMobileMode()) {
               {{ bill.createdAt | date:'dd/MM HH:mm' }}
@@ -195,7 +195,7 @@
 
         <!-- Table Column -->
         <ng-container matColumnDef="table">
-          <th mat-header-cell *matHeaderCellDef>Table</th>
+          <th mat-header-cell *matHeaderCellDef>{{ translateService.t('bills.table') }}</th>
           <td mat-cell *matCellDef="let bill">
             @if (bill.businessTypeData?.tableNumber) {
               <mat-chip class="table-chip">
@@ -215,7 +215,7 @@
 
         <!-- Items Count Column -->
         <ng-container matColumnDef="itemsCount">
-          <th mat-header-cell *matHeaderCellDef>Items</th>
+          <th mat-header-cell *matHeaderCellDef>{{ translateService.t('bills.itemsCount') }}</th>
           <td mat-cell *matCellDef="let bill">
             {{ bill.items?.length || 0 }}
           </td>
@@ -223,7 +223,7 @@
 
         <!-- Total Column -->
         <ng-container matColumnDef="grandTotal">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Total</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('common.total') }}</th>
           <td mat-cell *matCellDef="let bill" class="total-cell">
             {{ formatCurrency(bill.grandTotal) }}
           </td>
@@ -231,7 +231,7 @@
 
         <!-- Payment Method Column -->
         <ng-container matColumnDef="paymentMethod">
-          <th mat-header-cell *matHeaderCellDef>Payment</th>
+          <th mat-header-cell *matHeaderCellDef>{{ translateService.t('home.payment') }}</th>
           <td mat-cell *matCellDef="let bill">
             <mat-chip>
               <mat-icon>{{ getPaymentMethodIcon(bill.paymentMethod) }}</mat-icon>
@@ -242,7 +242,7 @@
 
         <!-- Payment Status Column -->
         <ng-container matColumnDef="paymentStatus">
-          <th mat-header-cell *matHeaderCellDef>Status</th>
+          <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.status') }}</th>
           <td mat-cell *matCellDef="let bill">
             <mat-chip [class]="getPaymentStatusClass(bill.paymentStatus)">
               {{ bill.paymentStatus | titlecase }}
@@ -252,7 +252,7 @@
 
         <!-- Actions Column -->
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.actions') }}</th>
           <td mat-cell *matCellDef="let bill">
             <button mat-icon-button (click)="printBill(bill); $event.stopPropagation()" matTooltip="Print">
               <mat-icon>print</mat-icon>
@@ -270,7 +270,7 @@
           <td colspan="7">
             <div class="no-data">
               <mat-icon>receipt_long</mat-icon>
-              <p>No bills found for the selected period</p>
+              <p>{{ translateService.t('bills.noBills') }}</p>
             </div>
           </td>
         </tr>

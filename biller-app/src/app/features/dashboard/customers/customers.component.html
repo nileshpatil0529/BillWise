@@ -2,12 +2,12 @@
   <!-- Header -->
   <div class="page-header">
     <div class="header-title">
-      <h1>Customers</h1>
+      <h1>{{ translateService.t('customers.title') }}</h1>
     </div>
     <div class="header-actions">
       <button mat-raised-button color="primary" (click)="openAddDialog()">
         <mat-icon>person_add</mat-icon>
-        Add customer
+        {{ translateService.t('customers.addCustomer') }}
       </button>
     </div>
   </div>
@@ -15,7 +15,7 @@
   <!-- Search Bar -->
   <mat-card class="search-card">
     <mat-form-field appearance="outline" class="search-field">
-      <mat-label>Search customers</mat-label>
+      <mat-label>{{ translateService.t('customers.searchCustomers') }}</mat-label>
       <input matInput 
              [value]="searchQuery()" 
              (input)="onSearchInput($event)"
@@ -41,7 +41,7 @@
       <table mat-table [dataSource]="dataSource" matSort class="customers-table">
         <!-- Name Column -->
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Name</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('common.name') }}</th>
           <td mat-cell *matCellDef="let customer">
             <span class="customer-name">{{ customer.name }}</span>
           </td>
@@ -49,7 +49,7 @@
 
         <!-- Phone Column -->
         <ng-container matColumnDef="phone">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Phone</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('common.phone') }}</th>
           <td mat-cell *matCellDef="let customer">
             @if (isMobileMode()) {
               {{ customer.phone?.slice(-10) }}
@@ -61,24 +61,24 @@
 
         <!-- Total Debt Column -->
         <ng-container matColumnDef="totalDebt">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Total Debt</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('customers.totalDebt') }}</th>
           <td mat-cell *matCellDef="let customer">
             @if (customer.totalDebt > 0) {
               <mat-chip class="status-pending">{{ formatCurrency(customer.totalDebt) }}</mat-chip>
             } @else {
-              <mat-chip class="status-paid">No Debt</mat-chip>
+              <mat-chip class="status-paid">{{ translateService.t('customers.noDebt') }}</mat-chip>
             }
           </td>
         </ng-container>
 
         <!-- Actions Column -->
         <ng-container matColumnDef="actions">
-          <th mat-header-cell *matHeaderCellDef>Actions</th>
+          <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.actions') }}</th>
           <td mat-cell *matCellDef="let customer">
-            <button mat-icon-button (click)="openEditDialog($event, customer)" matTooltip="Edit">
+            <button mat-icon-button (click)="openEditDialog($event, customer)" [matTooltip]="translateService.t('common.edit')">
               <mat-icon>edit</mat-icon>
             </button>
-            <button mat-icon-button color="warn" (click)="deleteCustomer($event, customer)" matTooltip="Delete">
+            <button mat-icon-button color="warn" (click)="deleteCustomer($event, customer)" [matTooltip]="translateService.t('common.delete')">
               <mat-icon>delete</mat-icon>
             </button>
           </td>
@@ -95,9 +95,9 @@
             <div class="no-data">
               <mat-icon>person_off</mat-icon>
               @if (searchQuery()) {
-                <p>No customers found matching "{{ searchQuery() }}"</p>
+                <p>{{ translateService.t('customers.noCustomers') }} "{{ searchQuery() }}"</p>
               } @else {
-                <p>No customers yet. Add your first customer to get started.</p>
+                <p>{{ translateService.t('customers.noCustomersYet') }}</p>
               }
             </div>
           </td>
@@ -108,13 +108,13 @@
       @if (loadingMore()) {
         <div class="loading-more">
           <mat-spinner diameter="24"></mat-spinner>
-          <span>Loading more customers...</span>
+          <span>{{ translateService.t('customers.loadingMore') }}</span>
         </div>
       }
       
       @if (!hasMore() && allCustomers().length > 0) {
         <div class="end-message">
-          <span>All customers loaded</span>
+          <span>{{ translateService.t('customers.allLoaded') }}</span>
         </div>
       }
     </div>

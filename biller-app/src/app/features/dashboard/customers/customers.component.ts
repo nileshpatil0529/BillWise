@@ -18,6 +18,7 @@ import { debounceTime, Subject, fromEvent, takeUntil } from 'rxjs';
 
 import { CustomerService } from '../../../core/services/customer.service';
 import { SettingsService } from '../../../core/services/settings.service';
+import { TranslateService } from '../../../core/services/translate.service';
 import { Customer } from '../../../core/models/customer.model';
 import { CustomerDialogComponent } from './customer-dialog/customer-dialog.component';
 import { CustomerDetailDialogComponent } from './customer-detail-dialog/customer-detail-dialog.component';
@@ -71,7 +72,8 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
     private customerService: CustomerService,
-    public settingsService: SettingsService
+    public settingsService: SettingsService,
+    public translateService: TranslateService
   ) {
     // Update displayedColumns based on settings
     effect(() => {

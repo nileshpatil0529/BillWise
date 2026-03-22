@@ -1,9 +1,10 @@
-import { Injectable, signal, effect, PLATFORM_ID, Inject } from '@angular/core';
+import { Injectable, signal, effect, PLATFORM_ID, Inject, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
 import { environment } from '../../../environments/environment';
 import { Settings, ApplicationTypes, Currency, ThemeType, ApplicationType, ScannerType } from '../models/settings.model';
+import { TranslateService } from './translate.service';
 
 @Injectable({
   providedIn: 'root'
@@ -43,6 +44,7 @@ export class SettingsService {
   currencies = signal<Currency[]>([]);
 
   private isBrowser: boolean;
+  private translateService = inject(TranslateService);
 
   constructor(
     private http: HttpClient,
@@ -87,6 +89,10 @@ export class SettingsService {
           if (response.success) {
             this.settings.set(response.data);
             this.currentTheme.set(response.data.theme);
+            // Initialize language
+            if (response.data.language) {
+              this.translateService.initLanguage(response.data.language);
+            }
             if (this.isBrowser) {
               localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(response.data));
             }

@@ -24,7 +24,8 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
-import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit, ViewMode } from '../../../core/models/settings.model';
+import { TranslateService } from '../../../core/services/translate.service';
+import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit, ViewMode, LanguageType } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
@@ -62,6 +63,7 @@ export class SettingsComponent implements OnInit {
   settingsService = inject(SettingsService);
   authService = inject(AuthService);
   hotelService = inject(HotelService);
+  translateService = inject(TranslateService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
@@ -77,6 +79,9 @@ export class SettingsComponent implements OnInit {
   // Profile Photo
   profilePhotoPreview = signal<string | null>(null);
   profilePhotoChanged = signal(false);
+  
+  // Language
+  selectedLanguage = signal<LanguageType>('en');
   
   // Hotel Management
   newTableStartNumber = signal<number>(1);
@@ -267,12 +272,32 @@ export class SettingsComponent implements OnInit {
     
     // Load view mode preference
     this.viewMode.set(settings.viewMode || 'desktop');
+    
+    // Load language preference
+    const lang = settings.language || 'en';
+    this.selectedLanguage.set(lang);
+    this.translateService.initLanguage(lang);
   }
 
   onThemeChange(isDark: boolean): void {
     const theme: ThemeType = isDark ? 'dark' : 'light';
     this.businessForm.patchValue({ theme });
     this.settingsService.currentTheme.set(theme);
+  }
+
+  setLanguage(lang: LanguageType): void {
+    this.selectedLanguage.set(lang);
+    this.translateService.setLanguage(lang);
+    
+    // Save to backend
+    this.settingsService.updateSettings({ language: lang }).subscribe({
+      next: () => {
+        this.snackBar.open(lang === 'hi' ? 'भाषा बदल गई' : 'Language changed', 'Close', { duration: 2000 });
+      },
+      error: () => {
+        this.snackBar.open('Failed to save language preference', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onLogoSelected(event: Event): void {

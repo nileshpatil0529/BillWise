@@ -86,11 +86,11 @@
         <mat-divider></mat-divider>
         <button mat-menu-item routerLink="/dashboard/settings">
           <mat-icon>settings</mat-icon>
-          <span>Settings</span>
+          <span>{{ translateService.t('nav.settings') }}</span>
         </button>
         <button mat-menu-item (click)="logout()">
           <mat-icon>logout</mat-icon>
-          <span>Logout</span>
+          <span>{{ translateService.t('nav.logout') }}</span>
         </button>
       </mat-menu>
     </mat-toolbar>

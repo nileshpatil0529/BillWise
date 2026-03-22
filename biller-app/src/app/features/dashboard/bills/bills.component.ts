@@ -25,6 +25,7 @@ import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { TranslateService } from '../../../core/services/translate.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
 import { BillDetailDialogComponent } from './bill-detail-dialog/bill-detail-dialog.component';
 
@@ -90,22 +91,30 @@ export class BillsComponent implements OnInit {
   // Report data
   reportData = signal<ReportData | null>(null);
 
-  // Quick date presets - all available
-  private allDatePresets = [
-    { label: 'Today', value: 'today' },
-    { label: 'Yesterday', value: 'yesterday' },
-    { label: 'This Week', value: 'week' },
-    { label: 'This Month', value: 'month' },
-    { label: 'Custom', value: 'custom' }
-  ];
+  // Quick date presets - values only (labels from translations)
+  private allPresetValues = ['today', 'yesterday', 'week', 'month', 'custom'];
   
-  // Filtered presets based on user role
+  // Filtered presets based on user role - with translated labels
   get datePresets() {
+    const t = this.translateService.t.bind(this.translateService);
+    const presetLabels: Record<string, string> = {
+      'today': t('bills.today'),
+      'yesterday': t('bills.yesterday'),
+      'week': t('bills.thisWeek'),
+      'month': t('bills.thisMonth'),
+      'custom': t('bills.custom')
+    };
+    
+    const allPresets = this.allPresetValues.map(value => ({
+      label: presetLabels[value],
+      value
+    }));
+    
     if (this.authService.isAdmin()) {
-      return this.allDatePresets;
+      return allPresets;
     }
     // Non-admin users only see Today and Yesterday
-    return this.allDatePresets.filter(p => p.value === 'today' || p.value === 'yesterday');
+    return allPresets.filter(p => p.value === 'today' || p.value === 'yesterday');
   }
   
   selectedPreset = signal('today');
@@ -114,6 +123,7 @@ export class BillsComponent implements OnInit {
     private billService: BillService,
     public settingsService: SettingsService,
     public authService: AuthService,
+    public translateService: TranslateService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {

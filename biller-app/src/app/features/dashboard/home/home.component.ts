@@ -24,6 +24,7 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { BeepService } from '../../../core/services/beep.service';
 import { CustomerService } from '../../../core/services/customer.service';
 import { HotelService } from '../../../core/services/hotel.service';
+import { TranslateService } from '../../../core/services/translate.service';
 import { Product, CartItem } from '../../../core/models/product.model';
 import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
@@ -162,6 +163,7 @@ export class HomeComponent implements OnInit {
     public billService: BillService,
     public settingsService: SettingsService,
     public hotelService: HotelService,
+    public translateService: TranslateService,
     private productService: ProductService,
     private snackBar: MatSnackBar,
     private fb: FormBuilder,
