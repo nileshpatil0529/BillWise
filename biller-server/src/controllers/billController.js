@@ -270,25 +270,14 @@ export const updateBill = async (req, res) => {
     const now = new Date().toISOString();
 
     // Handle hotel mode updates
-    if (updates.billStatus !== undefined || updates.kotItems !== undefined) {
+    if (updates.billStatus !== undefined || updates.kotItems !== undefined || updates.items !== undefined) {
       // Update bill status and KOT fields
       if (updates.billStatus) {
         db.prepare('UPDATE bills SET billStatus = ?, updatedAt = ? WHERE billId = ?')
           .run(updates.billStatus, now, id);
       }
 
-      if (updates.kotItems && updates.kotItems.length > 0) {
-        // Mark items as KOT printed
-        const updateKot = db.prepare('UPDATE bill_items SET kotPrinted = 1 WHERE billId = ? AND productId = ?');
-        for (const productId of updates.kotItems) {
-          updateKot.run(id, productId);
-        }
-        // Set KOT printed timestamp
-        db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
-          .run(now, now, id);
-      }
-
-      // If completing bill and items were added, recalculate totals
+      // Add new items FIRST (before marking as KOT printed)
       if (updates.items && updates.items.length > 0) {
         // Add new items to bill
         const insertItem = db.prepare(`
@@ -317,6 +306,18 @@ export const updateBill = async (req, res) => {
         
         db.prepare('UPDATE bills SET subtotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
           .run(subtotal, grandTotal, now, id);
+      }
+
+      // Mark items as KOT printed AFTER they've been added
+      if (updates.kotItems && updates.kotItems.length > 0) {
+        // Mark items as KOT printed
+        const updateKot = db.prepare('UPDATE bill_items SET kotPrinted = 1 WHERE billId = ? AND productId = ?');
+        for (const productId of updates.kotItems) {
+          updateKot.run(id, productId);
+        }
+        // Set KOT printed timestamp
+        db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
+          .run(now, now, id);
       }
     }
 

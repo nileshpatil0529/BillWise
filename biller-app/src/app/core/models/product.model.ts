@@ -43,6 +43,7 @@ export interface CartItem extends Product {
   discount: number;
   discountType: 'percentage' | 'fixed';
   lineTotal: number;
+  note?: string; // Optional note for hotel mode (e.g., Spicy, No salt)
 }
 
 export interface ProductResponse {

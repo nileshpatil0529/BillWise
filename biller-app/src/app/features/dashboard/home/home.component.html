@@ -23,7 +23,7 @@
                           (click)="selectTable(table)">
                     <div class="table-content">
                       <mat-icon>table_restaurant</mat-icon>
-                      <span class="table-number">T{{ table.tableNumber }}</span>
+                      <span class="table-number">{{ table.tableNumber }}</span>
                       @if (table.status === 'occupied') {
                         <span class="table-status">Open Order</span>
                       }
@@ -47,7 +47,7 @@
                           (click)="selectTable(table)">
                     <div class="table-content">
                       <mat-icon>takeout_dining</mat-icon>
-                      <span class="table-number">P{{ table.tableNumber }}</span>
+                      <span class="table-number">{{ table.tableNumber }}</span>
                       @if (table.status === 'occupied') {
                         <span class="table-status">Open Order</span>
                       }
@@ -85,13 +85,7 @@
         </mat-card-header>
         <mat-card-content>
           <p class="change-table-hint">Select a new table. Currently on: 
-            <strong>
-              @if (selectedTable()?.tableType === 'parcel') {
-                Parcel {{ selectedTable()?.tableNumber }}
-              } @else {
-                Table {{ selectedTable()?.tableNumber }}
-              }
-            </strong>
+            <strong>{{ selectedTable()?.tableNumber }}</strong>
           </p>
           
           <!-- Available Dine-in Tables -->
@@ -109,7 +103,7 @@
                           (click)="changeToTable(table)">
                     <div class="table-content">
                       <mat-icon>table_restaurant</mat-icon>
-                      <span class="table-number">T{{ table.tableNumber }}</span>
+                      <span class="table-number">{{ table.tableNumber }}</span>
                       @if (table.id === selectedTable()?.id) {
                         <span class="table-status">Current</span>
                       } @else if (table.status === 'occupied') {
@@ -137,7 +131,7 @@
                           (click)="changeToTable(table)">
                     <div class="table-content">
                       <mat-icon>takeout_dining</mat-icon>
-                      <span class="table-number">P{{ table.tableNumber }}</span>
+                      <span class="table-number">{{ table.tableNumber }}</span>
                       @if (table.id === selectedTable()?.id) {
                         <span class="table-status">Current</span>
                       } @else if (table.status === 'occupied') {
@@ -210,10 +204,10 @@
             <mat-chip [highlighted]="true">
               @if (selectedTable()?.tableType === 'dine-in') {
                 <mat-icon>table_restaurant</mat-icon>
-                Table {{ selectedTable()?.tableNumber }}
+                <span>T{{ selectedTable()?.tableNumber }}</span>
               } @else {
                 <mat-icon>takeout_dining</mat-icon>
-                Parcel {{ selectedTable()?.tableNumber }}
+                <span>P{{ selectedTable()?.tableNumber }}</span>
               }
             </mat-chip>
             <button mat-icon-button color="primary" (click)="startChangeTable()" matTooltip="Change Table">
@@ -228,9 +222,9 @@
             <button mat-icon-button 
                     color="primary" 
                     (click)="toggleAttendedTablesMenu()"
-                    [matTooltip]="'My Tables (' + getAttendedTableCount() + ')'"
+                    [matTooltip]="'Occupied Tables (' + getOccupiedTables().length + ')'"
                     class="attended-tables-btn">
-              <mat-icon [matBadge]="getAttendedTableCount()" matBadgeColor="accent" matBadgeSize="small">
+              <mat-icon [matBadge]="getOccupiedTables().length" matBadgeColor="accent" matBadgeSize="small">
                 grid_view
               </mat-icon>
             </button>
@@ -239,52 +233,39 @@
             @if (showAttendedTablesMenu()) {
               <div class="attended-tables-menu" (click)="$event.stopPropagation()">
                 <div class="menu-header">
-                  <span>My Tables</span>
+                  <span>Occupied Tables ({{ getOccupiedTables().length }})</span>
                   <button mat-icon-button (click)="closeAttendedTablesMenu()">
                     <mat-icon>close</mat-icon>
                   </button>
                 </div>
                 <div class="menu-content">
-                  @if (getAttendedTableCount() === 0) {
-                    <div class="no-tables">No tables attended</div>
+                  @if (getOccupiedTables().length === 0) {
+                    <div class="no-tables">No occupied tables</div>
                   } @else {
-                    <!-- Current Table -->
-                    @if (selectedTable()) {
-                      <div class="attended-table-item current">
+                    <!-- All Occupied Tables -->
+                    @for (table of getOccupiedTables(); track table.id) {
+                      <div class="attended-table-item" 
+                           [class.current]="table.id === selectedTable()?.id"
+                           (click)="table.id !== selectedTable()?.id && selectOccupiedTable(table)">
                         <div class="table-info">
-                          @if (selectedTable()?.tableType === 'parcel') {
+                          @if (table.tableType === 'parcel') {
                             <mat-icon>takeout_dining</mat-icon>
-                            <span>Parcel {{ selectedTable()?.tableNumber }}</span>
+                            <span>{{ table.tableNumber }}</span>
                           } @else {
                             <mat-icon>table_restaurant</mat-icon>
-                            <span>Table {{ selectedTable()?.tableNumber }}</span>
+                            <span>{{ table.tableNumber }}</span>
                           }
                         </div>
-                        <mat-chip class="current-badge">Current</mat-chip>
-                      </div>
-                    }
-                    
-                    <!-- Other Attended Tables -->
-                    @for (tableState of attendedTables(); track tableState.table.id) {
-                      @if (tableState.table.id !== selectedTable()?.id) {
-                        <div class="attended-table-item" (click)="switchToAttendedTable(tableState.table.id)">
-                          <div class="table-info">
-                            @if (tableState.table.tableType === 'parcel') {
-                              <mat-icon>takeout_dining</mat-icon>
-                              <span>Parcel {{ tableState.table.tableNumber }}</span>
-                            } @else {
-                              <mat-icon>table_restaurant</mat-icon>
-                              <span>Table {{ tableState.table.tableNumber }}</span>
-                            }
-                          </div>
+                        @if (table.id === selectedTable()?.id) {
+                          <mat-chip class="current-badge">Current</mat-chip>
+                        } @else {
                           <div class="table-details">
-                            <span class="items-count">{{ tableState.cartItems.length }} items</span>
-                            @if (tableState.billStatus === 'kot-printed') {
-                              <mat-icon class="kot-icon" matTooltip="KOT Printed">receipt_long</mat-icon>
+                            @if (table.grandTotal) {
+                              <span class="items-count">{{ formatCurrency(table.grandTotal) }}</span>
                             }
                           </div>
-                        </div>
-                      }
+                        }
+                      </div>
                     }
                   }
                   
@@ -386,6 +367,23 @@
                       <mat-icon>add</mat-icon>
                     </button>
                   </div>
+                </td>
+              </ng-container>
+
+              <!-- Note Column (Hotel Mode Only) -->
+              <ng-container matColumnDef="note">
+                <th mat-header-cell *matHeaderCellDef>Note</th>
+                <td mat-cell *matCellDef="let item">
+                  <mat-form-field appearance="outline" class="note-select">
+                    <mat-select [value]="item.note || ''" 
+                                (selectionChange)="updateItemNote(item, $event.value)"
+                                placeholder="Select">
+                      <mat-option value="">None</mat-option>
+                      @for (note of hotelService.itemNotes(); track note.id) {
+                        <mat-option [value]="note.label">{{ note.label }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
                 </td>
               </ng-container>
 

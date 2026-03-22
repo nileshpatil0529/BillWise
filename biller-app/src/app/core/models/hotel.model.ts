@@ -17,3 +17,15 @@ export interface CreateTablesRequest {
   tableType: 'dine-in' | 'parcel';
   capacity?: number;
 }
+
+export interface ItemNote {
+  id: number;
+  label: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt?: string;
+}
+
+export interface CreateNoteRequest {
+  label: string;
+}

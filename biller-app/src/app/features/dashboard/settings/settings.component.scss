@@ -923,6 +923,43 @@ mat-tab-group {
   }
 }
 
+// Item Notes Section
+.notes-section {
+  .add-note-form {
+    display: flex;
+    gap: v.$spacing-sm;
+    align-items: flex-start;
+
+    .note-input {
+      flex: 1;
+      max-width: 300px;
+    }
+
+    button {
+      margin-top: 8px;
+    }
+
+    @include m.mobile {
+      flex-direction: column;
+      
+      .note-input {
+        width: 100%;
+        max-width: none;
+      }
+    }
+  }
+
+  .notes-list {
+    margin-top: v.$spacing-md;
+
+    .notes-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: v.$spacing-xs;
+    }
+  }
+}
+
 // Categories Section
 .category-add-section {
   display: flex;

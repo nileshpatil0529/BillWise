@@ -25,7 +25,7 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
 import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn } from '../../../core/models/settings.model';
-import { RestaurantTable } from '../../../core/models/hotel.model';
+import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
 @Component({
@@ -82,6 +82,7 @@ export class SettingsComponent implements OnInit {
   newTableStartNumber = signal<number>(1);
   newTableEndNumber = signal<number>(10);
   newTableType = signal<'dine-in' | 'parcel'>('dine-in');
+  newNoteLabel = signal<string>('');
   
   // Table column preferences
   productsColumns = signal<TableColumn[]>([]);
@@ -154,8 +155,9 @@ export class SettingsComponent implements OnInit {
   }
 
   private loadHotelData(): void {
-    // Load hotel-specific data (tables)
+    // Load hotel-specific data (tables and notes)
     this.hotelService.loadTables().subscribe();
+    this.hotelService.loadItemNotes().subscribe();
   }
 
   // Check if current application type is hotel
@@ -603,5 +605,41 @@ export class SettingsComponent implements OnInit {
 
   getParcelTables(): RestaurantTable[] {
     return this.hotelService.tables().filter(t => t.tableType === 'parcel');
+  }
+
+  // Item Notes Management
+  addItemNote(): void {
+    const label = this.newNoteLabel().trim();
+    if (!label) {
+      this.snackBar.open('Please enter a note label', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.saving.set(true);
+    this.hotelService.createItemNote({ label }).subscribe({
+      next: () => {
+        this.snackBar.open('Note added successfully', 'Close', { duration: 3000 });
+        this.newNoteLabel.set('');
+        this.saving.set(false);
+      },
+      error: (err) => {
+        const message = err.error?.message || 'Failed to add note';
+        this.snackBar.open(message, 'Close', { duration: 3000 });
+        this.saving.set(false);
+      }
+    });
+  }
+
+  deleteItemNote(note: ItemNote): void {
+    if (confirm(`Are you sure you want to delete "${note.label}"?`)) {
+      this.hotelService.deleteItemNote(note.id).subscribe({
+        next: () => {
+          this.snackBar.open('Note deleted successfully', 'Close', { duration: 3000 });
+        },
+        error: () => {
+          this.snackBar.open('Failed to delete note', 'Close', { duration: 3000 });
+        }
+      });
+    }
   }
 }

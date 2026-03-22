@@ -9,7 +9,7 @@ export const getTables = async (req, res) => {
       SELECT rt.*, b.billNumber, b.grandTotal
       FROM restaurant_tables rt
       LEFT JOIN bills b ON rt.currentBillId = b.billId AND b.billStatus != 'completed'
-      ORDER BY rt.tableType, rt.tableNumber
+      ORDER BY rt.tableType, CAST(SUBSTR(rt.tableNumber, 2) AS INTEGER)
     `).all();
     
     res.json({
@@ -330,6 +330,128 @@ export const deleteTipOption = async (req, res) => {
   }
 };
 
+// ==================== ITEM NOTES ====================
+
+// Get all item notes
+export const getItemNotes = async (req, res) => {
+  try {
+    const notes = db.prepare(`
+      SELECT * FROM item_notes 
+      WHERE isActive = 1
+      ORDER BY sortOrder, id
+    `).all();
+    
+    res.json({
+      success: true,
+      data: notes
+    });
+  } catch (error) {
+    console.error('Get item notes error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch item notes'
+    });
+  }
+};
+
+// Create item note
+export const createItemNote = async (req, res) => {
+  try {
+    const { label } = req.body;
+
+    if (!label) {
+      return res.status(400).json({
+        success: false,
+        message: 'Label is required'
+      });
+    }
+
+    const maxOrder = db.prepare('SELECT MAX(sortOrder) as maxOrder FROM item_notes').get();
+    const sortOrder = (maxOrder.maxOrder || 0) + 1;
+
+    const result = db.prepare(`
+      INSERT INTO item_notes (label, sortOrder)
+      VALUES (?, ?)
+    `).run(label.trim(), sortOrder);
+
+    res.status(201).json({
+      success: true,
+      message: 'Item note created successfully',
+      data: { id: result.lastInsertRowid, label: label.trim() }
+    });
+  } catch (error) {
+    if (error.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+      return res.status(400).json({
+        success: false,
+        message: 'Note with this label already exists'
+      });
+    }
+    console.error('Create item note error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to create item note'
+    });
+  }
+};
+
+// Update item note
+export const updateItemNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { label, isActive, sortOrder } = req.body;
+
+    const existing = db.prepare('SELECT * FROM item_notes WHERE id = ?').get(id);
+    if (!existing) {
+      return res.status(404).json({
+        success: false,
+        message: 'Item note not found'
+      });
+    }
+
+    db.prepare(`
+      UPDATE item_notes 
+      SET label = ?, isActive = ?, sortOrder = ?
+      WHERE id = ?
+    `).run(
+      label ?? existing.label,
+      isActive ?? existing.isActive,
+      sortOrder ?? existing.sortOrder,
+      id
+    );
+
+    res.json({
+      success: true,
+      message: 'Item note updated successfully'
+    });
+  } catch (error) {
+    console.error('Update item note error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update item note'
+    });
+  }
+};
+
+// Delete item note
+export const deleteItemNote = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    db.prepare('DELETE FROM item_notes WHERE id = ?').run(id);
+
+    res.json({
+      success: true,
+      message: 'Item note deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete item note error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete item note'
+    });
+  }
+};
+
 export default {
   getTables,
   getTable,
@@ -340,5 +462,9 @@ export default {
   getTipOptions,
   createTipOption,
   updateTipOption,
-  deleteTipOption
+  deleteTipOption,
+  getItemNotes,
+  createItemNote,
+  updateItemNote,
+  deleteItemNote
 };

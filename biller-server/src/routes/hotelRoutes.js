@@ -9,7 +9,11 @@ import {
   getTipOptions,
   createTipOption,
   updateTipOption,
-  deleteTipOption
+  deleteTipOption,
+  getItemNotes,
+  createItemNote,
+  updateItemNote,
+  deleteItemNote
 } from '../controllers/hotelController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -31,5 +35,11 @@ router.get('/tips', getTipOptions);
 router.post('/tips', createTipOption);
 router.put('/tips/:id', updateTipOption);
 router.delete('/tips/:id', deleteTipOption);
+
+// Item Notes routes
+router.get('/notes', getItemNotes);
+router.post('/notes', createItemNote);
+router.put('/notes/:id', updateItemNote);
+router.delete('/notes/:id', deleteItemNote);
 
 export default router;

@@ -460,6 +460,37 @@
     .total-cell {
       font-weight: 600;
     }
+
+    .note-select {
+      width: 100px;
+      font-size: 12px;
+      
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+      
+      .mat-mdc-text-field-wrapper {
+        padding: 0 8px;
+      }
+      
+      .mat-mdc-form-field-infix {
+        padding: 6px 0;
+        min-height: 32px;
+      }
+      
+      .mat-mdc-select-trigger {
+        font-size: 12px;
+      }
+      
+      @include m.mobile {
+        width: 80px;
+        font-size: 11px;
+        
+        .mat-mdc-select-trigger {
+          font-size: 11px;
+        }
+      }
+    }
     
     // Responsive table
     @include m.mobile {
@@ -1030,7 +1061,7 @@
   bottom: 0;
   z-index: 500;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
   padding: v.$spacing-lg;
   background: rgba(0, 0, 0, 0.3);
@@ -1041,10 +1072,15 @@
 }
 
 .table-selection-card {
-  width: 100%;
-  max-width: 800px;
-  max-height: calc(100vh - 200px);
+  width: 95%;
+  height: 95%;
+  max-height: none;
   overflow-y: auto;
+  
+  @include m.mobile {
+    width: 98%;
+    height: 98%;
+  }
   
   mat-card-header {
     padding: v.$spacing-md v.$spacing-lg;
@@ -1086,20 +1122,30 @@
 }
 
 .table-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  display: flex;
+  flex-wrap: wrap;
   gap: v.$spacing-md;
   
   @include m.mobile {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: v.$spacing-sm;
   }
 }
 
 .table-btn {
+  width: 100px;
+  height: 80px;
   min-height: 80px;
+  max-height: 80px;
   border-radius: v.$radius-md !important;
   transition: all 0.2s ease;
+  padding: 8px !important;
+  
+  @include m.mobile {
+    width: 80px;
+    height: 70px;
+    min-height: 70px;
+    max-height: 70px;
+  }
   
   &.available {
     background: linear-gradient(135deg, #4caf50 0%, #45a049 100%) !important;
@@ -1149,22 +1195,27 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    justify-content: center;
+    gap: 2px;
+    height: 100%;
     
     mat-icon {
-      font-size: 28px;
-      width: 28px;
-      height: 28px;
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
     }
     
     .table-number {
       font-weight: 600;
-      font-size: 1rem;
+      font-size: 0.9rem;
+      line-height: 1;
     }
     
     .table-status {
-      font-size: 0.7rem;
-      opacity: 0.8;
+      font-size: 0.6rem;
+      opacity: 0.9;
+      line-height: 1;
+      white-space: nowrap;
     }
   }
   
@@ -1251,6 +1302,13 @@
   
   mat-chip {
     font-weight: 500;
+    
+    .mdc-evolution-chip__cell--primary,
+    .mdc-evolution-chip__action--primary {
+      display: flex;
+      align-items: center;
+      flex-direction: row;
+    }
     
     mat-icon {
       font-size: 18px;

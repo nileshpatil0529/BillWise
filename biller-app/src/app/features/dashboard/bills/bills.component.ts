@@ -119,15 +119,21 @@ export class BillsComponent implements OnInit {
     effect(() => {
       const settings = this.settingsService.settings();
       const tableColumns = settings.tableColumns?.bills;
+      const isHotelMode = settings.applicationType === 'hotel';
       
-      if (!tableColumns) {
-        this.displayedColumns = [...this.allColumns];
-      } else {
-        this.displayedColumns = this.allColumns.filter(col => {
+      // Start with all columns, but filter out 'table' if not hotel mode
+      let columns = isHotelMode 
+        ? [...this.allColumns] 
+        : this.allColumns.filter(col => col !== 'table');
+      
+      if (tableColumns) {
+        columns = columns.filter(col => {
           const columnSetting = tableColumns.find(tc => tc.key === col);
           return columnSetting ? columnSetting.visible : true;
         });
       }
+      
+      this.displayedColumns = columns;
     });
   }
 

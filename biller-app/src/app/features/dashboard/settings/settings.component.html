@@ -225,6 +225,45 @@
                 }
               </div>
 
+              <mat-divider></mat-divider>
+
+              <!-- Item Notes Section -->
+              <div class="section-title">
+                <mat-icon>note_add</mat-icon>
+                <span>Item Notes</span>
+              </div>
+
+              <div class="notes-section">
+                <div class="add-note-form">
+                  <mat-form-field appearance="outline" class="note-input">
+                    <mat-label>Note Label</mat-label>
+                    <input matInput [value]="newNoteLabel()" 
+                           (input)="newNoteLabel.set($any($event.target).value)"
+                           (keyup.enter)="addItemNote()"
+                           placeholder="e.g., Spicy, No salt, No sugar">
+                  </mat-form-field>
+                  <button mat-raised-button color="primary" (click)="addItemNote()" [disabled]="saving()">
+                    <mat-icon>add</mat-icon>
+                    Add Note
+                  </button>
+                </div>
+
+                @if (hotelService.itemNotes().length > 0) {
+                <div class="notes-list">
+                  <div class="notes-chips">
+                    @for (note of hotelService.itemNotes(); track note.id) {
+                      <mat-chip>
+                        {{ note.label }}
+                        <button matChipRemove (click)="deleteItemNote(note)">
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      </mat-chip>
+                    }
+                  </div>
+                </div>
+                }
+              </div>
+
 
               }
             </form>

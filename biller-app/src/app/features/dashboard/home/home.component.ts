@@ -41,6 +41,7 @@ interface KotNewItem {
   name: string;
   quantity: number; // Only the new quantity to print
   unitPrice: number;
+  note?: string; // Optional note (e.g., Spicy, No salt)
 }
 
 // Interface for tracking attended table state
@@ -98,6 +99,7 @@ export class HomeComponent implements OnInit {
   currentBillId = signal<string | null>(null);
   billStatus = signal<'new' | 'draft' | 'kot-printed'>('new');
   kotPrintedQuantities = signal<KotPrintedQuantities>({}); // Track quantities that have been KOT printed
+  hotelModeInitialized = signal(false); // Flag to track if hotel mode has finished initializing
   
   // Multi-table attendance state
   attendedTables = signal<AttendedTableState[]>([]);
@@ -128,7 +130,13 @@ export class HomeComponent implements OnInit {
   // Business type specific fields
   businessTypeForm: FormGroup;
 
-  displayedColumns = ['sno', 'name', 'price', 'quantity', 'total', 'actions'];
+  // Cart table columns - dynamically includes 'note' for hotel mode
+  get displayedColumns(): string[] {
+    if (this.isHotelMode()) {
+      return ['sno', 'name', 'price', 'quantity', 'note', 'total', 'actions'];
+    }
+    return ['sno', 'name', 'price', 'quantity', 'total', 'actions'];
+  }
 
   private searchSubject = new Subject<string>();
 
@@ -184,7 +192,90 @@ export class HomeComponent implements OnInit {
 
     // Load tables if hotel mode
     if (this.isHotelMode()) {
-      this.hotelService.loadTables().subscribe();
+      this.hotelService.loadTables().subscribe({
+        next: () => {
+          // Restore last selected table if any
+          this.restoreLastSelectedTable();
+        }
+      });
+      this.hotelService.loadItemNotes().subscribe();
+    }
+  }
+
+  // Restore last selected table from localStorage
+  private restoreLastSelectedTable(): void {
+    const savedTableId = localStorage.getItem('lastSelectedTableId');
+    if (savedTableId) {
+      const tableId = parseInt(savedTableId, 10);
+      const table = this.hotelService.tables().find(t => t.id === tableId);
+      if (table && table.status === 'occupied') {
+        // Auto-select the occupied table - this will set hotelModeInitialized after loading bill
+        this.selectTableWithInit(table);
+        return;
+      } else {
+        // Clear saved table if not found or not occupied
+        localStorage.removeItem('lastSelectedTableId');
+      }
+    }
+    // No saved table or table not found - mark as initialized
+    this.hotelModeInitialized.set(true);
+  }
+
+  // Select table and mark hotel mode as initialized
+  private selectTableWithInit(table: RestaurantTable): void {
+    if (table.status === 'occupied' && table.currentBillId) {
+      // Load existing bill for this table
+      this.billService.getBillById(table.currentBillId).subscribe({
+        next: (response) => {
+          if (response.success && response.data) {
+            const bill = response.data;
+            this.selectedTable.set(table);
+            this.saveSelectedTable(table.id);
+            this.currentBillId.set(bill.billId);
+            this.billStatus.set(bill.kotPrintedAt ? 'kot-printed' : 'draft');
+            
+            // Load cart items from bill
+            this.billService.clearCart();
+            if (bill.items) {
+              bill.items.forEach((item: any) => {
+                const product = {
+                  productId: item.productId,
+                  name: item.name,
+                  unitPrice: item.unitPrice,
+                  category: item.category || 'General',
+                  stockQuantity: 9999,
+                  status: 'active' as const
+                };
+                for (let i = 0; i < item.quantity; i++) {
+                  this.billService.addToCart(product);
+                }
+                if (item.kotPrinted) {
+                  this.kotPrintedQuantities.update(quantities => {
+                    return { ...quantities, [item.productId]: item.quantity };
+                  });
+                }
+              });
+            }
+          }
+          this.hotelModeInitialized.set(true);
+        },
+        error: () => {
+          this.hotelModeInitialized.set(true);
+        }
+      });
+    } else {
+      this.selectedTable.set(table);
+      this.saveSelectedTable(table.id);
+      this.hotelModeInitialized.set(true);
+    }
+  }
+
+  // Save selected table to localStorage
+  private saveSelectedTable(tableId: number | null): void {
+    if (tableId) {
+      localStorage.setItem('lastSelectedTableId', tableId.toString());
+    } else {
+      localStorage.removeItem('lastSelectedTableId');
     }
   }
 
@@ -195,6 +286,8 @@ export class HomeComponent implements OnInit {
 
   // Check if table selection is required (hotel mode without selected table)
   needsTableSelection(): boolean {
+    // Don't show table selection until hotel mode is initialized
+    if (!this.hotelModeInitialized()) return false;
     return this.isHotelMode() && !this.selectedTable();
   }
 
@@ -385,6 +478,10 @@ export class HomeComponent implements OnInit {
   removeItem(productId: string): void {
     this.billService.removeFromCart(productId);
     this.snackBar.open('Item removed', 'Close', { duration: 2000 });
+  }
+
+  updateItemNote(item: CartItem, note: string): void {
+    this.billService.updateCartItem(item.productId, { note: note || undefined });
   }
 
   clearCart(): void {
@@ -619,6 +716,7 @@ export class HomeComponent implements OnInit {
     } else {
       // Start new order for this table
       this.selectedTable.set(table);
+      this.saveSelectedTable(table.id);
       this.billStatus.set('new');
       this.currentBillId.set(null);
       this.kotPrintedQuantities.set({});
@@ -635,6 +733,7 @@ export class HomeComponent implements OnInit {
         if (response.success && response.data) {
           const bill = response.data;
           this.selectedTable.set(table);
+          this.saveSelectedTable(table.id);
           this.currentBillId.set(bill.billId);
           this.billStatus.set(bill.kotPrintedAt ? 'kot-printed' : 'draft');
           
@@ -681,6 +780,7 @@ export class HomeComponent implements OnInit {
     }
     
     this.selectedTable.set(null);
+    this.saveSelectedTable(null);
     this.currentBillId.set(null);
     this.billStatus.set('new');
     this.kotPrintedQuantities.set({});
@@ -745,10 +845,19 @@ export class HomeComponent implements OnInit {
             
             // Update local state
             this.selectedTable.set(newTable);
+            this.saveSelectedTable(newTable.id);
             this.changingTable.set(false);
             
-            // Reload tables
-            this.hotelService.loadTables().subscribe();
+            // Reload tables and update selectedTable reference
+            this.hotelService.loadTables().subscribe({
+              next: () => {
+                // Update selectedTable to the fresh reference from the reloaded tables
+                const refreshedTable = this.hotelService.tables().find(t => t.id === newTable.id);
+                if (refreshedTable) {
+                  this.selectedTable.set(refreshedTable);
+                }
+              }
+            });
             
             const tableLabel = newTable.tableType === 'parcel' ? `Parcel ${newTable.tableNumber}` : `Table ${newTable.tableNumber}`;
             this.snackBar.open(`Changed to ${tableLabel}`, 'Close', { duration: 2000 });
@@ -770,6 +879,7 @@ export class HomeComponent implements OnInit {
       });
       
       this.selectedTable.set(newTable);
+      this.saveSelectedTable(newTable.id);
       this.changingTable.set(false);
       
       const tableLabel = newTable.tableType === 'parcel' ? `Parcel ${newTable.tableNumber}` : `Table ${newTable.tableNumber}`;
@@ -810,6 +920,7 @@ export class HomeComponent implements OnInit {
   // Restore table state when switching back
   private restoreTableState(state: AttendedTableState): void {
     this.selectedTable.set(state.table);
+    this.saveSelectedTable(state.table.id);
     this.currentBillId.set(state.billId);
     this.billStatus.set(state.billStatus);
     this.kotPrintedQuantities.set({ ...state.kotPrintedQuantities });
@@ -843,6 +954,19 @@ export class HomeComponent implements OnInit {
     if (tableState) {
       this.restoreTableState(tableState);
     }
+    
+    this.showAttendedTablesMenu.set(false);
+  }
+
+  // Select an occupied table from the occupied tables menu
+  selectOccupiedTable(table: RestaurantTable): void {
+    // Save current state first if we have a selected table
+    if (this.selectedTable()) {
+      this.saveCurrentTableState();
+    }
+    
+    // Select the table (will load existing bill)
+    this.selectTable(table);
     
     this.showAttendedTablesMenu.set(false);
   }
@@ -902,7 +1026,8 @@ export class HomeComponent implements OnInit {
           productId: item.productId,
           name: item.name,
           quantity: newQty,
-          unitPrice: item.unitPrice
+          unitPrice: item.unitPrice,
+          note: item.note
         });
       }
     });
@@ -952,13 +1077,25 @@ export class HomeComponent implements OnInit {
 
     if (this.currentBillId()) {
       // Update existing bill with new items
-      this.billService.updateBill(this.currentBillId()!, billData).subscribe({
+      // Include items data so they get added to the database
+      const updateData = {
+        ...billData,
+        items: newItems.map(item => ({
+          productId: item.productId,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        }))
+      } as any; // Backend accepts partial item data for new items
+      this.billService.updateBill(this.currentBillId()!, updateData).subscribe({
         next: (response) => {
           if (response.success) {
             this.printKOTReceipt(newItems);
             // Update KOT printed quantities
             this.updateKotPrintedQuantities(newItems);
             this.billStatus.set('kot-printed');
+            // Reload tables to update grandTotal
+            this.hotelService.loadTables().subscribe();
           }
         },
         error: () => {
@@ -976,8 +1113,12 @@ export class HomeComponent implements OnInit {
             this.updateKotPrintedQuantities(newItems);
             this.billStatus.set('kot-printed');
             
-            // Update table status
-            this.hotelService.updateTableStatus(table.id, 'occupied', response.data.billId).subscribe();
+            // Update table status and reload tables
+            this.hotelService.updateTableStatus(table.id, 'occupied', response.data.billId).subscribe({
+              next: () => {
+                this.hotelService.loadTables().subscribe();
+              }
+            });
           }
         },
         error: () => {
@@ -998,7 +1139,7 @@ export class HomeComponent implements OnInit {
     });
   }
 
-  // Print KOT receipt (simplified - only items and tip)
+  // Print KOT receipt (simplified - only items and notes)
   private printKOTReceipt(items: KotNewItem[]): void {
     const table = this.selectedTable();
     const tableLabel = table?.tableType === 'parcel' 
@@ -1011,7 +1152,10 @@ ${tableLabel}
 Time: ${new Date().toLocaleTimeString()}
 ----------------------------
 ITEMS:
-${items.map(item => `${item.quantity}x ${item.name}`).join('\n')}`;
+${items.map(item => {
+  const noteText = item.note ? `  (${item.note})` : '';
+  return `${item.quantity}x ${item.name}${noteText}`;
+}).join('\n')}`;
     
     kotContent += `\n----------------------------`;
     
@@ -1044,16 +1188,23 @@ ${items.map(item => `${item.quantity}x ${item.name}`).join('\n')}`;
           
           // Update table status to available
           if (table) {
-            this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe();
-            // Remove from attended tables
-            this.removeFromAttendedTables(table.id);
+            this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe({
+              next: () => {
+                // Remove from attended tables
+                this.removeFromAttendedTables(table.id);
+                
+                // Reset state
+                this.cancelTableSelection();
+                
+                // Reload tables after status update completes
+                this.hotelService.loadTables().subscribe();
+              }
+            });
+          } else {
+            // No table, just reset state
+            this.cancelTableSelection();
+            this.hotelService.loadTables().subscribe();
           }
-          
-          // Reset state
-          this.cancelTableSelection();
-          
-          // Reload tables
-          this.hotelService.loadTables().subscribe();
         }
       },
       error: () => {

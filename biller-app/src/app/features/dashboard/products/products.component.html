@@ -42,7 +42,7 @@
         }
       </mat-form-field>
 
-      @if (settingsService.settings().scannerType === 'camera') {
+      @if (settingsService.settings().scannerType === 'camera' && settingsService.settings().applicationType !== 'hotel') {
         <button mat-raised-button color="accent" (click)="openBarcodeScanner()" class="scan-button">
           <mat-icon>qr_code_scanner</mat-icon>
           Scan
@@ -145,10 +145,12 @@
                 <mat-icon>edit</mat-icon>
                 <span>Edit</span>
               </button>
-              <button mat-menu-item (click)="openPrintBarcodeDialog(product)">
-                <mat-icon>print</mat-icon>
-                <span>Print Barcode</span>
-              </button>
+              @if (settingsService.settings().scannerType !== 'none' && settingsService.settings().applicationType !== 'hotel') {
+                <button mat-menu-item (click)="openPrintBarcodeDialog(product)">
+                  <mat-icon>print</mat-icon>
+                  <span>Print Barcode</span>
+                </button>
+              }
               <button mat-menu-item (click)="deleteProduct(product)" class="delete-action">
                 <mat-icon>delete</mat-icon>
                 <span>Delete</span>

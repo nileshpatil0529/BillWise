@@ -252,6 +252,17 @@ const initializeDatabase = () => {
     )
   `);
 
+  // Item notes table (for hotel application type - e.g., Spicy, No salt, No sugar)
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS item_notes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      label TEXT NOT NULL UNIQUE,
+      isActive INTEGER DEFAULT 1,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Insert default settings if not exists
   const settingsExist = db.prepare('SELECT COUNT(*) as count FROM settings').get();
   if (settingsExist.count === 0) {
