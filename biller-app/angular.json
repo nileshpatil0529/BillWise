@@ -51,7 +51,8 @@
               {
                 "glob": "**/*",
                 "input": "public"
-              }
+              },
+              "src/manifest.webmanifest"
             ],
             "styles": [
               "src/styles.scss"
@@ -66,16 +67,17 @@
               "budgets": [
                 {
                   "type": "initial",
-                  "maximumWarning": "800kB",
-                  "maximumError": "2MB"
+                  "maximumWarning": "2MB",
+                  "maximumError": "5MB"
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "8kB",
-                  "maximumError": "16kB"
+                  "maximumWarning": "50kB",
+                  "maximumError": "100kB"
                 }
               ],
-              "outputHashing": "all"
+              "outputHashing": "all",
+              "serviceWorker": "ngsw-config.json"
             },
             "development": {
               "optimization": false,
