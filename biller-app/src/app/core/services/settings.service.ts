@@ -23,7 +23,7 @@ export class SettingsService {
     currency: '₹',
     currencyCode: 'INR',
     applicationType: 'general',
-    theme: 'light',
+    theme: 'dark',
     scannerType: 'none',
     taxEnabled: true,
     taxRates: [],
@@ -38,7 +38,7 @@ export class SettingsService {
     updatedAt: ''
   });
 
-  currentTheme = signal<ThemeType>('light');
+  currentTheme = signal<ThemeType>('dark');
   applicationTypes = signal<ApplicationTypes>({});
   currencies = signal<Currency[]>([]);
 

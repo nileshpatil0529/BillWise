@@ -58,7 +58,7 @@ import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog
 export class SettingsComponent implements OnInit {
   private fb = inject(FormBuilder);
   settingsService = inject(SettingsService);
-  private authService = inject(AuthService);
+  authService = inject(AuthService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
@@ -151,7 +151,7 @@ export class SettingsComponent implements OnInit {
       email: ['', [Validators.email]],
       applicationType: ['general', Validators.required],
       currencyCode: ['INR', Validators.required],
-      theme: ['light'],
+      theme: ['dark'],
       scannerType: ['none']
     });
 

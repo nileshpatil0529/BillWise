@@ -24,6 +24,7 @@ import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
 import { BillDetailDialogComponent } from './bill-detail-dialog/bill-detail-dialog.component';
 
@@ -87,19 +88,30 @@ export class BillsComponent implements OnInit {
   // Report data
   reportData = signal<ReportData | null>(null);
 
-  // Quick date presets
-  datePresets = [
+  // Quick date presets - all available
+  private allDatePresets = [
     { label: 'Today', value: 'today' },
     { label: 'Yesterday', value: 'yesterday' },
     { label: 'This Week', value: 'week' },
     { label: 'This Month', value: 'month' },
     { label: 'Custom', value: 'custom' }
   ];
+  
+  // Filtered presets based on user role
+  get datePresets() {
+    if (this.authService.isAdmin()) {
+      return this.allDatePresets;
+    }
+    // Non-admin users only see Today and Yesterday
+    return this.allDatePresets.filter(p => p.value === 'today' || p.value === 'yesterday');
+  }
+  
   selectedPreset = signal('today');
 
   constructor(
     private billService: BillService,
     public settingsService: SettingsService,
+    public authService: AuthService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog
   ) {

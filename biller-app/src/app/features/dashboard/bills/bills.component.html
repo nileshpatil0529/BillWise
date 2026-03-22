@@ -107,7 +107,8 @@
           </div>
 
           <div class="filters-fields">
-            <!-- Date Range -->
+            <!-- Date Range (Admin Only) -->
+            @if (authService.isAdmin()) {
             <mat-form-field appearance="outline">
               <mat-label>Start Date</mat-label>
               <input matInput 
@@ -155,6 +156,7 @@
               <mat-icon>filter_list</mat-icon>
               Apply
             </button>
+            }
           </div>
         </div>
       </div>

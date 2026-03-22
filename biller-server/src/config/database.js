@@ -193,7 +193,7 @@ const initializeDatabase = () => {
       currency TEXT DEFAULT '₹',
       currencyCode TEXT DEFAULT 'INR',
       applicationType TEXT DEFAULT 'general',
-      theme TEXT DEFAULT 'light',
+      theme TEXT DEFAULT 'dark',
       scannerType TEXT DEFAULT 'none',
       taxEnabled INTEGER DEFAULT 1,
       taxRates TEXT DEFAULT '[{"name":"GST 5%","rate":5},{"name":"GST 12%","rate":12},{"name":"GST 18%","rate":18}]',
@@ -213,7 +213,7 @@ const initializeDatabase = () => {
     CREATE TABLE IF NOT EXISTS user_settings (
       userId TEXT PRIMARY KEY,
       tableColumns TEXT,
-      theme TEXT DEFAULT 'light',
+      theme TEXT DEFAULT 'dark',
       preferences TEXT,
       createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,

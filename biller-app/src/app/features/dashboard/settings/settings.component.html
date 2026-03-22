@@ -6,7 +6,8 @@
   </div>
 
   <mat-tab-group animationDuration="200ms">
-    <!-- Business Settings Tab -->
+    <!-- Business Settings Tab (Admin Only) -->
+    @if (authService.isAdmin()) {
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>settings</mat-icon>
@@ -168,8 +169,106 @@
         </mat-card>
       </div>
     </mat-tab>
+    }
 
-    <!-- Tax Settings Tab -->
+    <!-- Account Tab (All Users) -->
+    <mat-tab>
+      <ng-template mat-tab-label>
+        <mat-icon>account_circle</mat-icon>
+        <span>Account</span>
+      </ng-template>
+
+      <div class="tab-content">
+        <mat-card class="settings-card">
+          <mat-card-header>
+            <mat-icon mat-card-avatar>account_circle</mat-icon>
+            <mat-card-title>Account Settings</mat-card-title>
+            <mat-card-subtitle>Manage your profile and preferences</mat-card-subtitle>
+          </mat-card-header>
+
+          <mat-card-content>
+            <!-- Profile Photo Section -->
+            <div class="account-section">
+              <label>Profile Photo</label>
+              <div class="profile-photo-upload">
+                @if (profilePhotoPreview()) {
+                  <div class="photo-preview-small">
+                    <img [src]="profilePhotoPreview()" alt="Profile Photo">
+                    <button mat-icon-button color="warn" (click)="removeProfilePhoto()" class="remove-photo">
+                      <mat-icon>close</mat-icon>
+                    </button>
+                  </div>
+                } @else {
+                  <div class="photo-placeholder" (click)="profilePhotoInput.click()">
+                    <mat-icon>account_circle</mat-icon>
+                    <span>Upload Photo</span>
+                  </div>
+                }
+                <input type="file" #profilePhotoInput hidden accept="image/*" (change)="onProfilePhotoSelected($event)">
+                @if (profilePhotoPreview()) {
+                  <button mat-stroked-button (click)="profilePhotoInput.click()">
+                    <mat-icon>edit</mat-icon>
+                    Change Photo
+                  </button>
+                }
+              </div>
+              <p class="hint-text">Max size: 2MB. Formats: JPG, PNG, GIF</p>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <!-- Theme Mode Section -->
+            <div class="account-section">
+              <label>Theme Mode</label>
+              <div class="theme-toggle">
+                <span class="toggle-label">
+                  <mat-icon>{{ businessForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
+                  {{ businessForm.get('theme')?.value === 'dark' ? 'Dark Mode' : 'Light Mode' }}
+                </span>
+                <mat-slide-toggle
+                  [checked]="businessForm.get('theme')?.value === 'dark'"
+                  (change)="onThemeChange($event.checked)"
+                >
+                </mat-slide-toggle>
+              </div>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <!-- Change Password Section -->
+            <div class="account-section">
+              <label>Password</label>
+              <div class="password-row">
+                <span class="password-hint">Change your account password for security</span>
+                <button mat-stroked-button color="primary" (click)="openChangePasswordDialog()">
+                  <mat-icon>lock</mat-icon>
+                  Change Password
+                </button>
+              </div>
+            </div>
+          </mat-card-content>
+
+          <mat-card-actions align="end">
+            <button mat-flat-button color="primary" (click)="saveProfilePhoto()" [disabled]="saving() || !profilePhotoChanged()">
+              @if (saving()) {
+                <span class="button-content">
+                  <mat-spinner diameter="20"></mat-spinner>
+                  Saving...
+                </span>
+              } @else {
+                <span class="button-content">
+                  <mat-icon>save</mat-icon>
+                  Save Changes
+                </span>
+              }
+            </button>
+          </mat-card-actions>
+        </mat-card>
+      </div>
+    </mat-tab>
+
+    <!-- Tax Settings Tab (Admin Only) -->
+    @if (authService.isAdmin()) {
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>receipt_long</mat-icon>
@@ -262,8 +361,10 @@
         </mat-card>
       </div>
     </mat-tab>
+    }
 
-    <!-- Receipt Settings Tab -->
+    <!-- Receipt Settings Tab (Admin Only) -->
+    @if (authService.isAdmin()) {
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>print</mat-icon>
@@ -333,8 +434,10 @@
         </mat-card>
       </div>
     </mat-tab>
+    }
 
-    <!-- Categories Tab -->
+    <!-- Categories Tab (Admin Only) -->
+    @if (authService.isAdmin()) {
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>category</mat-icon>
@@ -424,8 +527,9 @@
         </mat-card>
       </div>
     </mat-tab>
+    }
 
-    <!-- Table Columns Tab -->
+    <!-- Table Columns Tab (All Users) -->
     <mat-tab>
       <ng-template mat-tab-label>
         <mat-icon>view_column</mat-icon>
@@ -558,102 +662,6 @@
                 <span class="button-content">
                   <mat-icon>save</mat-icon>
                   Save Preferences
-                </span>
-              }
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </div>
-    </mat-tab>
-
-    <!-- Account Tab -->
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <mat-icon>account_circle</mat-icon>
-        <span>Account</span>
-      </ng-template>
-
-      <div class="tab-content">
-        <mat-card class="settings-card">
-          <mat-card-header>
-            <mat-icon mat-card-avatar>account_circle</mat-icon>
-            <mat-card-title>Account Settings</mat-card-title>
-            <mat-card-subtitle>Manage your profile and preferences</mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content>
-            <!-- Profile Photo Section -->
-            <div class="account-section">
-              <label>Profile Photo</label>
-              <div class="profile-photo-upload">
-                @if (profilePhotoPreview()) {
-                  <div class="photo-preview-small">
-                    <img [src]="profilePhotoPreview()" alt="Profile Photo">
-                    <button mat-icon-button color="warn" (click)="removeProfilePhoto()" class="remove-photo">
-                      <mat-icon>close</mat-icon>
-                    </button>
-                  </div>
-                } @else {
-                  <div class="photo-placeholder" (click)="profilePhotoInput.click()">
-                    <mat-icon>account_circle</mat-icon>
-                    <span>Upload Photo</span>
-                  </div>
-                }
-                <input type="file" #profilePhotoInput hidden accept="image/*" (change)="onProfilePhotoSelected($event)">
-                @if (profilePhotoPreview()) {
-                  <button mat-stroked-button (click)="profilePhotoInput.click()">
-                    <mat-icon>edit</mat-icon>
-                    Change Photo
-                  </button>
-                }
-              </div>
-              <p class="hint-text">Max size: 2MB. Formats: JPG, PNG, GIF</p>
-            </div>
-
-            <mat-divider></mat-divider>
-
-            <!-- Theme Mode Section -->
-            <div class="account-section">
-              <label>Theme Mode</label>
-              <div class="theme-toggle">
-                <span class="toggle-label">
-                  <mat-icon>{{ businessForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
-                  {{ businessForm.get('theme')?.value === 'dark' ? 'Dark Mode' : 'Light Mode' }}
-                </span>
-                <mat-slide-toggle
-                  [checked]="businessForm.get('theme')?.value === 'dark'"
-                  (change)="onThemeChange($event.checked)"
-                >
-                </mat-slide-toggle>
-              </div>
-            </div>
-
-            <mat-divider></mat-divider>
-
-            <!-- Change Password Section -->
-            <div class="account-section">
-              <label>Password</label>
-              <div class="password-row">
-                <span class="password-hint">Change your account password for security</span>
-                <button mat-stroked-button color="primary" (click)="openChangePasswordDialog()">
-                  <mat-icon>lock</mat-icon>
-                  Change Password
-                </button>
-              </div>
-            </div>
-          </mat-card-content>
-
-          <mat-card-actions align="end">
-            <button mat-flat-button color="primary" (click)="saveProfilePhoto()" [disabled]="saving() || !profilePhotoChanged()">
-              @if (saving()) {
-                <span class="button-content">
-                  <mat-spinner diameter="20"></mat-spinner>
-                  Saving...
-                </span>
-              } @else {
-                <span class="button-content">
-                  <mat-icon>save</mat-icon>
-                  Save Changes
                 </span>
               }
             </button>
