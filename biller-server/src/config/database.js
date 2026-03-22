@@ -373,6 +373,42 @@ const initializeDatabase = () => {
     // Column might already exist
   }
 
+  // Migration: Add units column to settings table (for grocery loose items)
+  try {
+    const settingsColumns = db.prepare('PRAGMA table_info(settings)').all();
+    const hasUnits = settingsColumns.some(col => col.name === 'units');
+    if (!hasUnits) {
+      const defaultUnits = JSON.stringify([
+        { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },
+        { id: 2, name: 'Gram', symbol: 'g', allowDecimal: false },
+        { id: 3, name: 'Liter', symbol: 'ltr', allowDecimal: true },
+        { id: 4, name: 'Milliliter', symbol: 'ml', allowDecimal: false },
+        { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
+      ]);
+      db.exec(`ALTER TABLE settings ADD COLUMN units TEXT DEFAULT '${defaultUnits}'`);
+      console.log('✅ Migration: Added units column to settings');
+    }
+  } catch (e) {
+    // Column might already exist
+  }
+
+  // Migration: Add loose item fields to products table (for grocery)
+  try {
+    const productColumns = db.prepare('PRAGMA table_info(products)').all();
+    const hasIsLooseItem = productColumns.some(col => col.name === 'isLooseItem');
+    if (!hasIsLooseItem) {
+      db.exec('ALTER TABLE products ADD COLUMN isLooseItem INTEGER DEFAULT 0');
+      console.log('✅ Migration: Added isLooseItem column to products');
+    }
+    const hasUnit = productColumns.some(col => col.name === 'unit');
+    if (!hasUnit) {
+      db.exec('ALTER TABLE products ADD COLUMN unit TEXT');
+      console.log('✅ Migration: Added unit column to products');
+    }
+  } catch (e) {
+    // Columns might already exist
+  }
+
   // Update existing admin users to have all permissions if they don't have any
   try {
     const allPermissions = JSON.stringify(['dashboard', 'products', 'bills', 'customers', 'settings']);

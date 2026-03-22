@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, ViewChild, ElementRef, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, ViewChild, ElementRef, inject, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -27,6 +27,7 @@ import { HotelService } from '../../../core/services/hotel.service';
 import { Product, CartItem } from '../../../core/models/product.model';
 import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
+import { Unit } from '../../../core/models/settings.model';
 import { BarcodeScannerDialogComponent, ScannerDialogData } from './barcode-scanner-dialog/barcode-scanner-dialog.component';
 import { InlineScannerComponent } from './inline-scanner/inline-scanner.component';
 
@@ -453,6 +454,13 @@ export class HomeComponent implements OnInit {
   }
 
   selectProduct(product: Product): void {
+    // Check if it's a loose item in grocery mode - need to prompt for quantity
+    const isGroceryMode = this.settingsService.settings().applicationType === 'grocery';
+    if (isGroceryMode && product.isLooseItem) {
+      this.openLooseItemDialog(product);
+      return;
+    }
+
     this.billService.addToCart(product);
     this.searchQuery.set('');
     this.searchResults.set([]);
@@ -466,11 +474,69 @@ export class HomeComponent implements OnInit {
     });
   }
 
+  // Open dialog to enter quantity for loose items
+  looseItemQuantity = signal<number>(0);
+  selectedLooseProduct = signal<Product | null>(null);
+  showLooseItemDialog = signal(false);
+  
+  openLooseItemDialog(product: Product): void {
+    this.selectedLooseProduct.set(product);
+    this.looseItemQuantity.set(0);
+    this.showLooseItemDialog.set(true);
+    this.searchQuery.set('');
+    this.searchResults.set([]);
+  }
+
+  closeLooseItemDialog(): void {
+    this.showLooseItemDialog.set(false);
+    this.selectedLooseProduct.set(null);
+    this.looseItemQuantity.set(0);
+  }
+
+  addLooseItemToCart(): void {
+    const product = this.selectedLooseProduct();
+    const quantity = this.looseItemQuantity();
+    
+    if (!product || quantity <= 0) {
+      this.snackBar.open('Please enter a valid quantity', 'Close', { duration: 2000 });
+      return;
+    }
+
+    this.billService.addLooseItemToCart(product, quantity);
+    
+    // Highlight the added item
+    this.highlightedProductId.set(product.productId);
+    setTimeout(() => this.highlightedProductId.set(null), 1000);
+
+    this.snackBar.open(`${quantity} ${product.unit || 'pcs'} of ${product.name} added to cart`, 'Close', {
+      duration: 2000
+    });
+
+    this.closeLooseItemDialog();
+  }
+
+  getLooseItemUnit(): string {
+    return this.selectedLooseProduct()?.unit || 'pcs';
+  }
+
+  getLooseItemTotal(): number {
+    const product = this.selectedLooseProduct();
+    if (!product) return 0;
+    return this.looseItemQuantity() * product.unitPrice;
+  }
+
+  onLooseQuantityChange(event: Event): void {
+    const value = (event.target as HTMLInputElement).value;
+    this.looseItemQuantity.set(parseFloat(value) || 0);
+  }
+
   updateQuantity(item: CartItem, change: number): void {
     const newQuantity = item.quantity + change;
-    if (newQuantity > 0) {
+    // For loose items, use 0.01 as minimum, for regular items use 1
+    const minQuantity = item.isLooseItem ? 0.01 : 1;
+    if (newQuantity >= minQuantity) {
       this.billService.updateCartItem(item.productId, { quantity: newQuantity });
-    } else if (newQuantity === 0) {
+    } else if (newQuantity <= 0) {
       this.removeItem(item.productId);
     }
   }

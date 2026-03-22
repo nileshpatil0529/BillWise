@@ -1053,6 +1053,120 @@
   display: none !important;
 }
 
+// Loose Item Dialog (Grocery Mode)
+.loose-item-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-lg;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.loose-item-dialog {
+  width: 100%;
+  max-width: 400px;
+  
+  mat-card-header {
+    padding: v.$spacing-md v.$spacing-lg;
+    
+    mat-card-title {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-sm;
+      font-size: 1.1rem;
+      margin: 0;
+      
+      mat-icon {
+        color: var(--mat-primary);
+      }
+    }
+    
+    .spacer {
+      flex: 1;
+    }
+  }
+  
+  mat-card-content {
+    padding: v.$spacing-md v.$spacing-lg;
+    
+    .loose-product-info {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: v.$spacing-md;
+      padding: v.$spacing-md;
+      background: rgba(var(--mat-primary-rgb), 0.08);
+      border-radius: 8px;
+      
+      .product-name {
+        font-weight: 600;
+        font-size: 1.1rem;
+      }
+      
+      .product-price {
+        color: var(--mat-primary);
+        font-weight: 500;
+      }
+    }
+    
+    .quantity-input-field {
+      width: 100%;
+      
+      input {
+        font-size: 1.5rem;
+        text-align: center;
+        font-weight: 600;
+      }
+    }
+    
+    .loose-item-total {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: v.$spacing-sm v.$spacing-md;
+      background: rgba(0, 0, 0, 0.04);
+      border-radius: 8px;
+      font-size: 1.1rem;
+      
+      @include m.dark-theme {
+        background: rgba(255, 255, 255, 0.04);
+      }
+      
+      .total-amount {
+        font-weight: 600;
+        color: var(--mat-primary);
+        font-size: 1.3rem;
+      }
+    }
+  }
+  
+  mat-card-actions {
+    padding: v.$spacing-md v.$spacing-lg;
+  }
+}
+
+// Unit label in cart
+.unit-label, .qty-unit {
+  font-size: 0.75rem;
+  color: v.$light-text-secondary;
+  margin-left: 2px;
+  
+  @include m.dark-theme {
+    color: v.$dark-text-secondary;
+  }
+}
+
+.qty-unit {
+  display: block;
+  font-size: 0.7rem;
+  text-align: center;
+}
+
 .table-selection-overlay {
   position: absolute;
   top: 0;

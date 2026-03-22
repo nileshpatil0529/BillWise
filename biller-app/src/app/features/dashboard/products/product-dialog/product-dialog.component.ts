@@ -1,4 +1,4 @@
-import { Component, Inject, inject } from '@angular/core';
+import { Component, Inject, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule, MatDialog } from '@angular/material/dialog';
@@ -9,10 +9,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatSelectModule } from '@angular/material/select';
 import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Product } from '../../../../core/models/product.model';
 import { BarcodeScannerDialogComponent } from '../../home/barcode-scanner-dialog/barcode-scanner-dialog.component';
 import { SettingsService } from '../../../../core/services/settings.service';
 import { ProductService } from '../../../../core/services/product.service';
+import { Unit } from '../../../../core/models/settings.model';
 
 interface DialogData {
   mode: 'add' | 'edit';
@@ -32,7 +34,8 @@ interface DialogData {
     MatIconModule,
     MatSelectModule,
     MatSlideToggleModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatCheckboxModule
   ],
   template: `
     <h2 mat-dialog-title>{{ data.mode === 'add' ? 'Add New Product' : 'Edit Product' }}</h2>
@@ -129,6 +132,32 @@ interface DialogData {
             </mat-slide-toggle>
           </div>
         </div>
+
+        <!-- Loose Item Section (Grocery Mode Only) -->
+        @if (isGroceryMode()) {
+          <div class="loose-item-section">
+            <div class="form-row">
+              <div class="checkbox-field">
+                <mat-checkbox formControlName="isLooseItem" color="primary" (change)="onLooseItemChange($event.checked)">
+                  Loose Item (sold by weight/volume)
+                </mat-checkbox>
+              </div>
+            </div>
+
+            @if (productForm.get('isLooseItem')?.value) {
+              <div class="form-row">
+                <mat-form-field appearance="outline">
+                  <mat-label>Unit</mat-label>
+                  <mat-select formControlName="unit">
+                    @for (unit of units(); track unit.id) {
+                      <mat-option [value]="unit.symbol">{{ unit.name }} ({{ unit.symbol }})</mat-option>
+                    }
+                  </mat-select>
+                </mat-form-field>
+              </div>
+            }
+          </div>
+        }
       </form>
     </mat-dialog-content>
 
@@ -170,6 +199,25 @@ interface DialogData {
       padding-top: 8px;
     }
 
+    .checkbox-field {
+      display: flex;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .loose-item-section {
+      margin-top: 8px;
+      padding: 16px;
+      border: 1px dashed rgba(0, 0, 0, 0.12);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.02);
+    }
+
+    :host-context(.dark-theme) .loose-item-section {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: rgba(255, 255, 255, 0.02);
+    }
+
     @media (max-width: 600px) {
       mat-dialog-content {
         min-width: auto;
@@ -186,6 +234,7 @@ export class ProductDialogComponent {
   productForm: FormGroup;
   settingsService = inject(SettingsService);
   productService = inject(ProductService);
+  units = signal<Unit[]>([]);
 
   constructor(
     private fb: FormBuilder,
@@ -197,6 +246,13 @@ export class ProductDialogComponent {
     if (this.productService.categories().length === 0) {
       this.productService.getCategories().subscribe();
     }
+    
+    // Load units for grocery mode
+    const settings = this.settingsService.settings();
+    if (settings.units) {
+      this.units.set(settings.units);
+    }
+    
     const product = data.product;
     
     this.productForm = this.fb.group({
@@ -209,7 +265,9 @@ export class ProductDialogComponent {
       costPrice: [product?.costPrice || 0, Validators.min(0)],
       stockQuantity: [product?.stockQuantity || '', [Validators.required, Validators.min(1)]],
       lowStockAlert: [product?.lowStockAlert || 10, Validators.min(0)],
-      status: [product?.status !== 'inactive'] // Default to active for new products
+      status: [product?.status !== 'inactive'], // Default to active for new products
+      isLooseItem: [product?.isLooseItem || false],
+      unit: [product?.unit || 'pcs']
     });
 
     // Add barcode match validator
@@ -224,6 +282,19 @@ export class ProductDialogComponent {
       return { barcodeMismatch: true };
     }
     return null;
+  }
+
+  isGroceryMode(): boolean {
+    return this.settingsService.settings().applicationType === 'grocery';
+  }
+
+  onLooseItemChange(isLooseItem: boolean): void {
+    if (!isLooseItem) {
+      this.productForm.patchValue({ unit: 'pcs' });
+    } else if (!this.productForm.get('unit')?.value || this.productForm.get('unit')?.value === 'pcs') {
+      // Default to kg for loose items
+      this.productForm.patchValue({ unit: 'kg' });
+    }
   }
 
   scanBarcode(): void {
@@ -283,7 +354,10 @@ export class ProductDialogComponent {
       const { confirmBarcode, ...productData } = formValue;
       this.dialogRef.close({
         ...productData,
-        status: formValue.status ? 'active' : 'inactive'
+        status: formValue.status ? 'active' : 'inactive',
+        // Include loose item fields for grocery mode
+        isLooseItem: this.isGroceryMode() ? formValue.isLooseItem : false,
+        unit: this.isGroceryMode() && formValue.isLooseItem ? formValue.unit : 'pcs'
       });
     }
   }

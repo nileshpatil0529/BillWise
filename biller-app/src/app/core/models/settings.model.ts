@@ -18,6 +18,14 @@ export interface Category {
   enabled: boolean;
 }
 
+// Unit for loose items (grocery mode)
+export interface Unit {
+  id: number;
+  name: string;       // e.g., "Kilogram", "Liter"
+  symbol: string;     // e.g., "kg", "ltr"
+  allowDecimal: boolean; // Whether decimals are allowed
+}
+
 export interface TableColumn {
   key: string;
   label: string;
@@ -53,6 +61,7 @@ export interface Settings {
   lowStockAlertEnabled: boolean;
   lowStockThreshold: number;
   tableColumns?: TableColumnPreferences;
+  units?: Unit[]; // Units for loose items (grocery mode)
   updatedAt: string;
 }
 

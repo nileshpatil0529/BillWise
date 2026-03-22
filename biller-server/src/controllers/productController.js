@@ -100,10 +100,11 @@ export const getAllProducts = async (req, res) => {
       products = db.prepare(query).all(...params);
     }
 
-    // Parse metadata JSON for each product
+    // Parse metadata JSON and isLooseItem for each product
     const productsWithMetadata = products.map(p => ({
       ...p,
-      metadata: p.metadata ? JSON.parse(p.metadata) : {}
+      metadata: p.metadata ? JSON.parse(p.metadata) : {},
+      isLooseItem: Boolean(p.isLooseItem)
     }));
 
     res.json({
@@ -140,7 +141,8 @@ export const getProductById = async (req, res) => {
       success: true,
       data: {
         ...product,
-        metadata: product.metadata ? JSON.parse(product.metadata) : {}
+        metadata: product.metadata ? JSON.parse(product.metadata) : {},
+        isLooseItem: Boolean(product.isLooseItem)
       }
     });
   } catch (error) {
@@ -197,8 +199,8 @@ export const createProduct = async (req, res) => {
       const now = new Date().toISOString();
       
       db.prepare(`
-        INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, isLooseItem, unit, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         productId,
         productName,
@@ -212,6 +214,8 @@ export const createProduct = async (req, res) => {
         productData.imageUrl || '',
         productData.status || 'active',
         JSON.stringify(productData.metadata || {}),
+        productData.isLooseItem ? 1 : 0,
+        productData.unit || null,
         now,
         now
       );
@@ -221,7 +225,10 @@ export const createProduct = async (req, res) => {
       res.status(201).json({
         success: true,
         message: 'Product created successfully',
-        data: newProduct
+        data: {
+          ...newProduct,
+          isLooseItem: Boolean(newProduct.isLooseItem)
+        }
       });
     }
   } catch (error) {
@@ -262,6 +269,8 @@ export const updateProduct = async (req, res) => {
         imageUrl = COALESCE(?, imageUrl),
         status = COALESCE(?, status),
         metadata = COALESCE(?, metadata),
+        isLooseItem = COALESCE(?, isLooseItem),
+        unit = COALESCE(?, unit),
         updatedAt = ?
       WHERE productId = ?
     `).run(
@@ -276,6 +285,8 @@ export const updateProduct = async (req, res) => {
       updates.imageUrl,
       updates.status,
       updates.metadata ? JSON.stringify(updates.metadata) : null,
+      updates.isLooseItem !== undefined ? (updates.isLooseItem ? 1 : 0) : null,
+      updates.unit !== undefined ? updates.unit : null,
       now,
       id
     );
@@ -285,7 +296,10 @@ export const updateProduct = async (req, res) => {
     res.json({
       success: true,
       message: 'Product updated successfully',
-      data: updatedProduct
+      data: {
+        ...updatedProduct,
+        isLooseItem: Boolean(updatedProduct.isLooseItem)
+      }
     });
   } catch (error) {
     console.error('Update product error:', error);
@@ -452,13 +466,13 @@ export const importProducts = async (req, res) => {
     let errors = [];
 
     const insertProduct = db.prepare(`
-      INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
+      INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, isLooseItem, unit, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?)
     `);
 
     const updateProduct = db.prepare(`
       UPDATE products 
-      SET name = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, updatedAt = ? 
+      SET name = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, isLooseItem = ?, unit = ?, updatedAt = ? 
       WHERE productId = ?
     `);
 
@@ -522,6 +536,11 @@ export const importProducts = async (req, res) => {
             existingProduct = db.prepare('SELECT * FROM products WHERE barcode = ?').get(productBarcode);
           }
 
+          // Parse loose item fields (for grocery mode)
+          const isLooseItemValue = (row.isLooseItem || row.IsLooseItem || row['Is Loose Item'] || 'No').toString().trim().toLowerCase();
+          const isLooseItem = isLooseItemValue === 'yes' || isLooseItemValue === '1' || isLooseItemValue === 'true' ? 1 : 0;
+          const unit = (row.unit || row.Unit || 'pcs').toString().trim();
+
           console.log(`Row ${i + 2}: Name="${productName}", Barcode="${productBarcode}", Exists=${!!existingProduct}`);
 
           if (existingProduct) {
@@ -535,6 +554,8 @@ export const importProducts = async (req, res) => {
               parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
               stockQuantity,
               parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              isLooseItem,
+              unit,
               now,
               existingProduct.productId
             );
@@ -558,6 +579,8 @@ export const importProducts = async (req, res) => {
               parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
               stockQuantity,
               parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              isLooseItem,
+              unit,
               now,
               now
             );
@@ -614,7 +637,7 @@ export const exportProducts = async (req, res) => {
     const products = db.prepare('SELECT * FROM products').all();
     
     // Get enabled categories from settings
-    const settings = db.prepare('SELECT categories FROM settings WHERE id = 1').get();
+    const settings = db.prepare('SELECT categories, units, applicationType FROM settings WHERE id = 1').get();
     let categories = ['General'];
     if (settings && settings.categories) {
       const allCategories = JSON.parse(settings.categories);
@@ -626,12 +649,21 @@ export const exportProducts = async (req, res) => {
       }
     }
 
+    // Get units for grocery mode
+    let units = ['pcs', 'kg', 'g', 'ltr', 'ml'];
+    if (settings && settings.units) {
+      const allUnits = JSON.parse(settings.units);
+      units = allUnits.map(u => u.symbol);
+    }
+
+    const isGroceryMode = settings && settings.applicationType === 'grocery';
+
     // Create workbook with ExcelJS
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products');
 
-    // Define columns (Product ID removed)
-    worksheet.columns = [
+    // Define columns - include loose item fields for grocery mode
+    const columns = [
       { header: 'Product Name', key: 'name', width: 30 },
       { header: 'Barcode', key: 'barcode', width: 20 },
       { header: 'Category', key: 'category', width: 20 },
@@ -643,9 +675,17 @@ export const exportProducts = async (req, res) => {
       { header: 'Status', key: 'status', width: 12 }
     ];
 
-    // Add product rows (Product ID removed)
+    // Add loose item columns for grocery mode
+    if (isGroceryMode) {
+      columns.push({ header: 'Is Loose Item', key: 'isLooseItem', width: 15 });
+      columns.push({ header: 'Unit', key: 'unit', width: 10 });
+    }
+
+    worksheet.columns = columns;
+
+    // Add product rows
     products.forEach(p => {
-      worksheet.addRow({
+      const row = {
         name: p.name,
         barcode: p.barcode || '',
         category: p.category,
@@ -655,7 +695,14 @@ export const exportProducts = async (req, res) => {
         stockQuantity: p.stockQuantity,
         lowStockAlert: p.lowStockAlert,
         status: p.status
-      });
+      };
+      
+      if (isGroceryMode) {
+        row.isLooseItem = p.isLooseItem ? 'Yes' : 'No';
+        row.unit = p.unit || 'pcs';
+      }
+      
+      worksheet.addRow(row);
     });
 
     // Format Barcode column as TEXT to prevent scientific notation
@@ -697,6 +744,39 @@ export const exportProducts = async (req, res) => {
       }
     });
 
+    // Add validation for grocery-specific columns
+    if (isGroceryMode) {
+      // Is Loose Item column validation
+      worksheet.getColumn('isLooseItem').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
+        if (rowNumber > 1) {
+          cell.dataValidation = {
+            type: 'list',
+            allowBlank: false,
+            formulae: ['"Yes,No"'],
+            showErrorMessage: true,
+            errorStyle: 'error',
+            errorTitle: 'Invalid Value',
+            error: 'Please select either "Yes" or "No"'
+          };
+        }
+      });
+
+      // Unit column validation
+      worksheet.getColumn('unit').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
+        if (rowNumber > 1) {
+          cell.dataValidation = {
+            type: 'list',
+            allowBlank: true,
+            formulae: [`"${units.join(',')}"`],
+            showErrorMessage: true,
+            errorStyle: 'error',
+            errorTitle: 'Invalid Unit',
+            error: `Please select a unit from the list: ${units.join(', ')}`
+          };
+        }
+      });
+    }
+
     // Apply validation to empty cells too (100 extra rows for new entries)
     for (let i = products.length + 2; i <= products.length + 102; i++) {
       // Format Barcode cell as text (column B now)
@@ -716,7 +796,7 @@ export const exportProducts = async (req, res) => {
         error: `Please select a category from the list: ${categories.join(', ')}`
       };
       
-      // Status dropdown validation (column I - last column)
+      // Status dropdown validation (column I)
       const statusCell = worksheet.getCell(`I${i}`);
       statusCell.dataValidation = {
         type: 'list',
@@ -727,6 +807,35 @@ export const exportProducts = async (req, res) => {
         errorTitle: 'Invalid Status',
         error: 'Please select either "active" or "inactive"'
       };
+      
+      // Add grocery-specific validations for empty rows
+      if (isGroceryMode) {
+        // Is Loose Item validation (column J)
+        const looseItemCell = worksheet.getCell(`J${i}`);
+        looseItemCell.dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          formulae: ['"Yes,No"'],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Value',
+          error: 'Please select either "Yes" or "No"'
+        };
+        looseItemCell.value = 'No'; // Default value
+
+        // Unit validation (column K)
+        const unitCell = worksheet.getCell(`K${i}`);
+        unitCell.dataValidation = {
+          type: 'list',
+          allowBlank: true,
+          formulae: [`"${units.join(',')}"`],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Unit',
+          error: `Please select a unit from the list: ${units.join(', ')}`
+        };
+        unitCell.value = 'pcs'; // Default value
+      }
     }
 
     // Style the header row

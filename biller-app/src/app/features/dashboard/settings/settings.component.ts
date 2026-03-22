@@ -24,7 +24,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
-import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn } from '../../../core/models/settings.model';
+import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
@@ -83,6 +83,12 @@ export class SettingsComponent implements OnInit {
   newTableEndNumber = signal<number>(10);
   newTableType = signal<'dine-in' | 'parcel'>('dine-in');
   newNoteLabel = signal<string>('');
+  
+  // Grocery Management - Units
+  units = signal<Unit[]>([]);
+  newUnitName = signal<string>('');
+  newUnitSymbol = signal<string>('');
+  newUnitAllowDecimal = signal<boolean>(false);
   
   // Table column preferences
   productsColumns = signal<TableColumn[]>([]);
@@ -165,6 +171,11 @@ export class SettingsComponent implements OnInit {
     return this.businessForm?.get('applicationType')?.value === 'hotel';
   }
 
+  // Check if current application type is grocery
+  isGroceryMode(): boolean {
+    return this.businessForm?.get('applicationType')?.value === 'grocery';
+  }
+
   private initForms(): void {
     this.businessForm = this.fb.group({
       businessName: ['', [Validators.required, Validators.maxLength(100)]],
@@ -231,6 +242,16 @@ export class SettingsComponent implements OnInit {
 
     // Load categories
     this.categories.set(settings.categories || [{ name: 'General', enabled: true }]);
+    
+    // Load units (for grocery mode)
+    const defaultUnits: Unit[] = [
+      { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },
+      { id: 2, name: 'Gram', symbol: 'g', allowDecimal: false },
+      { id: 3, name: 'Liter', symbol: 'ltr', allowDecimal: true },
+      { id: 4, name: 'Milliliter', symbol: 'ml', allowDecimal: false },
+      { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
+    ];
+    this.units.set(settings.units || defaultUnits);
     
     // Load table columns preferences
     if (settings.tableColumns) {
@@ -641,5 +662,71 @@ export class SettingsComponent implements OnInit {
         }
       });
     }
+  }
+
+  // ==================== GROCERY UNIT MANAGEMENT ====================
+  
+  addUnit(): void {
+    const name = this.newUnitName().trim();
+    const symbol = this.newUnitSymbol().trim().toLowerCase();
+    
+    if (!name || !symbol) {
+      this.snackBar.open('Please enter unit name and symbol', 'Close', { duration: 3000 });
+      return;
+    }
+
+    // Check for duplicate symbol
+    if (this.units().some(u => u.symbol.toLowerCase() === symbol)) {
+      this.snackBar.open('Unit with this symbol already exists', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const newUnit: Unit = {
+      id: Math.max(0, ...this.units().map(u => u.id)) + 1,
+      name,
+      symbol,
+      allowDecimal: this.newUnitAllowDecimal()
+    };
+
+    this.units.update(units => [...units, newUnit]);
+    this.saveUnits();
+    
+    // Reset form
+    this.newUnitName.set('');
+    this.newUnitSymbol.set('');
+    this.newUnitAllowDecimal.set(false);
+  }
+
+  deleteUnit(unit: Unit): void {
+    if (this.units().length <= 1) {
+      this.snackBar.open('At least one unit must exist', 'Close', { duration: 3000 });
+      return;
+    }
+
+    if (confirm(`Are you sure you want to delete "${unit.name}" (${unit.symbol})?`)) {
+      this.units.update(units => units.filter(u => u.id !== unit.id));
+      this.saveUnits();
+    }
+  }
+
+  toggleUnitDecimal(unit: Unit): void {
+    this.units.update(units => 
+      units.map(u => u.id === unit.id ? { ...u, allowDecimal: !u.allowDecimal } : u)
+    );
+    this.saveUnits();
+  }
+
+  private saveUnits(): void {
+    this.saving.set(true);
+    this.settingsService.updateSettings({ units: this.units() }).subscribe({
+      next: () => {
+        this.snackBar.open('Units saved successfully', 'Close', { duration: 3000 });
+        this.saving.set(false);
+      },
+      error: () => {
+        this.snackBar.open('Failed to save units', 'Close', { duration: 3000 });
+        this.saving.set(false);
+      }
+    });
   }
 }

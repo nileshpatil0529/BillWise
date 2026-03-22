@@ -11,6 +11,9 @@ export interface Product {
   barcode?: string;
   status: 'active' | 'inactive';
   metadata?: ProductMetadata;
+  // Loose item fields (grocery mode)
+  isLooseItem?: boolean;  // Whether this is a loose item (sold by weight/volume)
+  unit?: string;          // Unit symbol (kg, ltr, g, ml, pcs)
   createdAt?: string;
   updatedAt?: string;
 }

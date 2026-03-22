@@ -52,8 +52,9 @@ export class BillService {
     this.cartSubtotal() - this.cartDiscount() + this.cartTax()
   );
   
+  // Count items: loose items count as 1, regular items count by quantity
   cartItemCount = computed(() => 
-    this.cartItems().reduce((sum, item) => sum + item.quantity, 0)
+    this.cartItems().reduce((sum, item) => sum + (item.isLooseItem ? 1 : item.quantity), 0)
   );
 
   // Bill discount
@@ -84,6 +85,34 @@ export class BillService {
         discount: 0,
         discountType: 'fixed',
         lineTotal: product.unitPrice
+      };
+      this.cartItems.set([...items, cartItem]);
+    }
+  }
+
+  // Add loose item to cart with specific quantity (weight/volume)
+  addLooseItemToCart(product: Product, quantity: number): void {
+    const items = this.cartItems();
+    const existingIndex = items.findIndex(item => item.productId === product.productId);
+
+    if (existingIndex >= 0) {
+      // Update quantity for loose items (add to existing)
+      const updated = [...items];
+      const newQuantity = updated[existingIndex].quantity + quantity;
+      updated[existingIndex] = {
+        ...updated[existingIndex],
+        quantity: newQuantity,
+        lineTotal: newQuantity * updated[existingIndex].unitPrice
+      };
+      this.cartItems.set(updated);
+    } else {
+      // Add new loose item
+      const cartItem: CartItem = {
+        ...product,
+        quantity: quantity,
+        discount: 0,
+        discountType: 'fixed',
+        lineTotal: product.unitPrice * quantity
       };
       this.cartItems.set([...items, cartItem]);
     }

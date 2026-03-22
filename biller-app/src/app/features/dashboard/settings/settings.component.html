@@ -152,6 +152,81 @@
               </div>
               }
 
+              <!-- Grocery Settings (Units Management) -->
+              @if (isGroceryMode()) {
+              <mat-divider></mat-divider>
+
+              <div class="section-title">
+                <mat-icon>scale</mat-icon>
+                <span>Units Management</span>
+              </div>
+              <p class="section-hint">Manage units for loose items like oil, grains, etc.</p>
+
+              <div class="units-section">
+                <div class="add-unit-form">
+                  <mat-form-field appearance="outline" class="unit-name-input">
+                    <mat-label>Unit Name</mat-label>
+                    <input matInput [value]="newUnitName()" 
+                           (input)="newUnitName.set($any($event.target).value)"
+                           placeholder="e.g., Kilogram">
+                  </mat-form-field>
+                  <mat-form-field appearance="outline" class="unit-symbol-input">
+                    <mat-label>Symbol</mat-label>
+                    <input matInput [value]="newUnitSymbol()" 
+                           (input)="newUnitSymbol.set($any($event.target).value)"
+                           placeholder="e.g., kg">
+                  </mat-form-field>
+                  <mat-slide-toggle [checked]="newUnitAllowDecimal()" 
+                                    (change)="newUnitAllowDecimal.set($event.checked)">
+                    Allow Decimal
+                  </mat-slide-toggle>
+                  <button mat-raised-button color="primary" (click)="addUnit()" [disabled]="saving()">
+                    <mat-icon>add</mat-icon>
+                    Add
+                  </button>
+                </div>
+
+                @if (units().length > 0) {
+                <div class="units-list">
+                  <h4>Available Units ({{ units().length }})</h4>
+                  <div class="units-table">
+                    <table mat-table [dataSource]="units()">
+                      <ng-container matColumnDef="name">
+                        <th mat-header-cell *matHeaderCellDef>Name</th>
+                        <td mat-cell *matCellDef="let unit">{{ unit.name }}</td>
+                      </ng-container>
+                      <ng-container matColumnDef="symbol">
+                        <th mat-header-cell *matHeaderCellDef>Symbol</th>
+                        <td mat-cell *matCellDef="let unit">
+                          <mat-chip>{{ unit.symbol }}</mat-chip>
+                        </td>
+                      </ng-container>
+                      <ng-container matColumnDef="decimal">
+                        <th mat-header-cell *matHeaderCellDef>Decimal</th>
+                        <td mat-cell *matCellDef="let unit">
+                          <mat-slide-toggle [checked]="unit.allowDecimal" 
+                                            (change)="toggleUnitDecimal(unit)">
+                          </mat-slide-toggle>
+                        </td>
+                      </ng-container>
+                      <ng-container matColumnDef="actions">
+                        <th mat-header-cell *matHeaderCellDef>Actions</th>
+                        <td mat-cell *matCellDef="let unit">
+                          <button mat-icon-button color="warn" (click)="deleteUnit(unit)" 
+                                  [disabled]="units().length <= 1" matTooltip="Delete">
+                            <mat-icon>delete</mat-icon>
+                          </button>
+                        </td>
+                      </ng-container>
+                      <tr mat-header-row *matHeaderRowDef="['name', 'symbol', 'decimal', 'actions']"></tr>
+                      <tr mat-row *matRowDef="let row; columns: ['name', 'symbol', 'decimal', 'actions']"></tr>
+                    </table>
+                  </div>
+                </div>
+                }
+              </div>
+              }
+
               <!-- Hotel Settings (Tables & Tips) -->
               @if (isHotelMode()) {
               <mat-divider></mat-divider>

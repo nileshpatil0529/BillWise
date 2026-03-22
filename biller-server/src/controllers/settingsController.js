@@ -51,6 +51,13 @@ export const getSettings = async (req, res) => {
       taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
       categories: settings.categories ? JSON.parse(settings.categories) : [{ name: 'General', enabled: true }],
       tableColumns: settings.tableColumns ? JSON.parse(settings.tableColumns) : null,
+      units: settings.units ? JSON.parse(settings.units) : [
+        { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },
+        { id: 2, name: 'Gram', symbol: 'g', allowDecimal: false },
+        { id: 3, name: 'Liter', symbol: 'ltr', allowDecimal: true },
+        { id: 4, name: 'Milliliter', symbol: 'ml', allowDecimal: false },
+        { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
+      ],
       taxEnabled: Boolean(settings.taxEnabled),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
       debtEnabled: Boolean(settings.debtEnabled ?? 0),
@@ -79,7 +86,7 @@ export const updateSettings = async (req, res) => {
     const allowedFields = [
       'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber',
       'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
-      'taxEnabled', 'taxRates', 'categories', 'tableColumns', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
+      'taxEnabled', 'taxRates', 'categories', 'tableColumns', 'units', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
       'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
     ];
 
@@ -91,7 +98,7 @@ export const updateSettings = async (req, res) => {
         setClauses.push(`${field} = ?`);
         
         // Handle special conversions
-        if (field === 'taxRates' || field === 'categories' || field === 'tableColumns') {
+        if (field === 'taxRates' || field === 'categories' || field === 'tableColumns' || field === 'units') {
           values.push(JSON.stringify(updates[field]));
         } else if (field === 'taxEnabled' || field === 'discountEnabled' || field === 'debtEnabled' || field === 'lowStockAlertEnabled') {
           values.push(updates[field] ? 1 : 0);
@@ -118,6 +125,13 @@ export const updateSettings = async (req, res) => {
       taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
       categories: settings.categories ? JSON.parse(settings.categories) : [{ name: 'General', enabled: true }],
       tableColumns: settings.tableColumns ? JSON.parse(settings.tableColumns) : null,
+      units: settings.units ? JSON.parse(settings.units) : [
+        { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },
+        { id: 2, name: 'Gram', symbol: 'g', allowDecimal: false },
+        { id: 3, name: 'Liter', symbol: 'ltr', allowDecimal: true },
+        { id: 4, name: 'Milliliter', symbol: 'ml', allowDecimal: false },
+        { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
+      ],
       taxEnabled: Boolean(settings.taxEnabled),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
       debtEnabled: Boolean(settings.debtEnabled ?? 0),
