@@ -309,6 +309,85 @@
     height: 100%;
     overflow: auto;
     @include m.custom-scrollbar;
+
+    // Mobile mode specific styles
+    &.mobile-mode {
+      .cart-table {
+        th.mat-mdc-header-cell {
+          font-size: 11px;
+          padding: v.$spacing-xs v.$spacing-sm;
+        }
+
+        td.mat-mdc-cell {
+          padding: v.$spacing-xs v.$spacing-sm;
+          font-size: 13px;
+        }
+      }
+
+      .product-cell {
+        .product-name {
+          font-size: 13px;
+          max-width: 120px;
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+        }
+
+        .product-price-inline {
+          font-size: 11px;
+          color: v.$light-text-secondary;
+          
+          @include m.dark-theme {
+            color: rgba(255, 255, 255, 0.7);
+          }
+        }
+      }
+
+      .quantity-controls {
+        padding: 1px;
+        
+        .qty-btn {
+          width: 26px;
+          height: 26px;
+          min-width: 26px;
+          
+          &.mat-mdc-icon-button {
+            --mdc-icon-button-state-layer-size: 26px;
+          }
+          
+          mat-icon {
+            font-size: 16px;
+            width: 16px;
+            height: 16px;
+          }
+        }
+
+        .qty-value {
+          min-width: 28px;
+          font-size: 12px;
+        }
+      }
+
+      .total-cell {
+        font-size: 13px;
+      }
+
+      .note-select {
+        width: 70px;
+        font-size: 11px;
+      }
+
+      .warranty-badge {
+        padding: 2px 4px;
+        font-size: 10px;
+        
+        mat-icon {
+          font-size: 12px;
+          width: 12px;
+          height: 12px;
+        }
+      }
+    }
   }
 
   .cart-table {

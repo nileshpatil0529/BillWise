@@ -37,7 +37,7 @@
       </div>
     }
 
-    <div class="table-container" #tableContainer>
+    <div class="table-container" #tableContainer [class.mobile-mode]="isMobileMode()">
       <table mat-table [dataSource]="dataSource" matSort class="customers-table">
         <!-- Name Column -->
         <ng-container matColumnDef="name">
@@ -50,7 +50,13 @@
         <!-- Phone Column -->
         <ng-container matColumnDef="phone">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Phone</th>
-          <td mat-cell *matCellDef="let customer">{{ customer.phone }}</td>
+          <td mat-cell *matCellDef="let customer">
+            @if (isMobileMode()) {
+              {{ customer.phone?.slice(-10) }}
+            } @else {
+              {{ customer.phone }}
+            }
+          </td>
         </ng-container>
 
         <!-- Total Debt Column -->

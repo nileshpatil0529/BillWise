@@ -369,11 +369,11 @@
             </div>
           }
         } @else {
-          <div class="cart-table-container">
+          <div class="cart-table-container" [class.mobile-mode]="isMobileMode()">
             <table mat-table [dataSource]="billService.cartItems()" class="cart-table">
               <!-- S.No Column -->
               <ng-container matColumnDef="sno">
-                <th mat-header-cell *matHeaderCellDef>S.No</th>
+                <th mat-header-cell *matHeaderCellDef>#</th>
                 <td mat-cell *matCellDef="let item; let i = index">{{ i + 1 }}</td>
               </ng-container>
 
@@ -388,7 +388,12 @@
                         <mat-icon class="kot-sent-icon" matTooltip="Sent to Kitchen">check_circle</mat-icon>
                       }
                     </div>
-                    <span class="product-id">{{ item.productId }}</span>
+                    @if (!isMobileMode()) {
+                      <span class="product-id">{{ item.productId }}</span>
+                    }
+                    @if (isMobileMode()) {
+                      <span class="product-price-inline">{{ formatCurrency(item.unitPrice) }}</span>
+                    }
                   </div>
                 </td>
               </ng-container>

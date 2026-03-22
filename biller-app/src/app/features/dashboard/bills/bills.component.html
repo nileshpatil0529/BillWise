@@ -171,21 +171,25 @@
       </div>
     }
 
-    <div class="table-container" #tableContainer>
+    <div class="table-container" #tableContainer [class.mobile-mode]="isMobileMode()">
       <table mat-table [dataSource]="dataSource" matSort class="bills-table">
         <!-- Bill Number Column -->
         <ng-container matColumnDef="billNumber">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>Bill #</th>
           <td mat-cell *matCellDef="let bill">
-            <span class="bill-number">{{ bill.billNumber }}</span>
+            <span class="bill-number" [matTooltip]="isMobileMode() ? bill.billNumber : ''">{{ formatBillNumber(bill.billNumber) }}</span>
           </td>
         </ng-container>
 
         <!-- Date Column -->
         <ng-container matColumnDef="createdAt">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Date & Time</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ isMobileMode() ? 'Date' : 'Date & Time' }}</th>
           <td mat-cell *matCellDef="let bill">
-            {{ bill.createdAt | date:'dd/MM/yyyy HH:mm' }}
+            @if (isMobileMode()) {
+              {{ bill.createdAt | date:'dd/MM HH:mm' }}
+            } @else {
+              {{ bill.createdAt | date:'dd/MM/yyyy HH:mm' }}
+            }
           </td>
         </ng-container>
 

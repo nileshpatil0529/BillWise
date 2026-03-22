@@ -89,6 +89,11 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
     });
   }
 
+  // Check if mobile mode is enabled
+  isMobileMode(): boolean {
+    return this.settingsService.settings().viewMode === 'mobile';
+  }
+
   ngOnInit(): void {
     this.loadCustomers(true);
 

@@ -38,6 +38,8 @@ export interface TableColumnPreferences {
   customers: TableColumn[];
 }
 
+export type ViewMode = 'desktop' | 'mobile';
+
 export interface Settings {
   businessName: string;
   logo: string;
@@ -61,6 +63,7 @@ export interface Settings {
   lowStockAlertEnabled: boolean;
   lowStockThreshold: number;
   tableColumns?: TableColumnPreferences;
+  viewMode?: ViewMode; // 'desktop' or 'mobile' - affects table display
   units?: Unit[]; // Units for loose items (grocery mode)
   updatedAt: string;
 }

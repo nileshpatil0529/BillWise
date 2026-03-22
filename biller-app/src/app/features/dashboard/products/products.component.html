@@ -69,20 +69,27 @@
       </div>
     }
 
-    <div class="table-container" #tableContainer>
+    <div class="table-container" #tableContainer [class.mobile-mode]="isMobileMode()">
       <table mat-table [dataSource]="dataSource" matSort class="products-table">
         <!-- Product ID Column -->
         <ng-container matColumnDef="productId">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>ID</th>
           <td mat-cell *matCellDef="let product">
-            <span class="product-id">{{ product.productId }}</span>
+            <span class="product-id" [matTooltip]="isMobileMode() ? product.productId : ''">{{ formatProductId(product.productId) }}</span>
           </td>
         </ng-container>
 
         <!-- Name Column -->
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>Product Name</th>
-          <td mat-cell *matCellDef="let product">{{ product.name }}</td>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ isMobileMode() ? 'Product' : 'Product Name' }}</th>
+          <td mat-cell *matCellDef="let product">
+            <div class="product-name-cell">
+              <span class="product-name">{{ product.name }}</span>
+              @if (isMobileMode() && product.category) {
+                <span class="product-category-inline">{{ product.category }}</span>
+              }
+            </div>
+          </td>
         </ng-container>
 
         <!-- Barcode Column -->

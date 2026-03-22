@@ -738,6 +738,37 @@
           </mat-card-header>
 
           <mat-card-content>
+            <!-- View Mode Toggle -->
+            <div class="view-mode-section">
+              <div class="view-mode-header">
+                <mat-icon>devices</mat-icon>
+                <span>View Mode</span>
+              </div>
+              <div class="view-mode-toggle">
+                <button mat-stroked-button 
+                        [class.active]="viewMode() === 'desktop'"
+                        (click)="setViewMode('desktop')">
+                  <mat-icon>desktop_windows</mat-icon>
+                  Desktop
+                </button>
+                <button mat-stroked-button 
+                        [class.active]="viewMode() === 'mobile'"
+                        (click)="setViewMode('mobile')">
+                  <mat-icon>smartphone</mat-icon>
+                  Mobile
+                </button>
+              </div>
+              <p class="view-mode-hint">
+                @if (viewMode() === 'mobile') {
+                  Mobile mode: Compact display with truncated IDs and optimized columns for small screens.
+                } @else {
+                  Desktop mode: Full display with all details visible.
+                }
+              </p>
+            </div>
+
+            <mat-divider></mat-divider>
+
             <div class="table-columns-section">
               <!-- Products Table Columns -->
               <mat-expansion-panel class="column-panel">

@@ -60,6 +60,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
   // All available columns
   private allColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'warranty', 'status', 'actions'];
+  // Columns to hide in mobile mode
+  private mobileHiddenColumns = ['barcode', 'category', 'status'];
   displayedColumns: string[] = [];
   
   dataSource = new MatTableDataSource<Product>([]);
@@ -89,9 +91,15 @@ export class ProductsComponent implements OnInit, OnDestroy {
       const settings = this.settingsService.settings();
       const tableColumns = settings.tableColumns?.products;
       const isElectronics = settings.applicationType === 'electronics';
+      const isMobileMode = settings.viewMode === 'mobile';
       
       // Filter out warranty column if not electronics mode
-      const baseColumns = this.allColumns.filter(col => col !== 'warranty' || isElectronics);
+      let baseColumns = this.allColumns.filter(col => col !== 'warranty' || isElectronics);
+      
+      // In mobile mode, auto-hide less important columns
+      if (isMobileMode) {
+        baseColumns = baseColumns.filter(col => !this.mobileHiddenColumns.includes(col));
+      }
       
       if (!tableColumns) {
         this.displayedColumns = [...baseColumns];
@@ -102,6 +110,19 @@ export class ProductsComponent implements OnInit, OnDestroy {
         });
       }
     });
+  }
+
+  // Check if mobile mode is enabled
+  isMobileMode(): boolean {
+    return this.settingsService.settings().viewMode === 'mobile';
+  }
+
+  // Get formatted product ID (truncated for mobile)
+  formatProductId(productId: string): string {
+    if (this.isMobileMode() && productId && productId.length > 4) {
+      return '...' + productId.slice(-4);
+    }
+    return productId;
   }
 
   ngOnInit(): void {

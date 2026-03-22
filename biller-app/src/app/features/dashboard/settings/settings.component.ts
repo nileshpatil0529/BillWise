@@ -24,7 +24,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
-import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit } from '../../../core/models/settings.model';
+import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit, ViewMode } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
@@ -94,6 +94,7 @@ export class SettingsComponent implements OnInit {
   productsColumns = signal<TableColumn[]>([]);
   billsColumns = signal<TableColumn[]>([]);
   customersColumns = signal<TableColumn[]>([]);
+  viewMode = signal<ViewMode>('desktop');
 
   // Default table columns configuration
   private defaultProductsColumns: TableColumn[] = [
@@ -263,6 +264,9 @@ export class SettingsComponent implements OnInit {
       this.billsColumns.set([...this.defaultBillsColumns]);
       this.customersColumns.set([...this.defaultCustomersColumns]);
     }
+    
+    // Load view mode preference
+    this.viewMode.set(settings.viewMode || 'desktop');
   }
 
   onThemeChange(isDark: boolean): void {
@@ -494,6 +498,10 @@ export class SettingsComponent implements OnInit {
     this.customersColumns.set([...this.defaultCustomersColumns]);
   }
 
+  setViewMode(mode: ViewMode): void {
+    this.viewMode.set(mode);
+  }
+
   saveTableColumns(): void {
     this.saving.set(true);
     
@@ -502,7 +510,8 @@ export class SettingsComponent implements OnInit {
         products: this.productsColumns(),
         bills: this.billsColumns(),
         customers: this.customersColumns()
-      }
+      },
+      viewMode: this.viewMode()
     };
 
     this.settingsService.updateSettings(settings).subscribe({

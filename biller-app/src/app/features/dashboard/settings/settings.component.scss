@@ -1132,6 +1132,88 @@ mat-tab-group {
   }
 }
 
+// View Mode Toggle
+.view-mode-section {
+  margin-bottom: v.$spacing-lg;
+
+  .view-mode-header {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    font-weight: 600;
+    font-size: 16px;
+    color: v.$light-text-primary;
+    margin-bottom: v.$spacing-md;
+
+    @include m.dark-theme {
+      color: white;
+    }
+
+    mat-icon {
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+  }
+
+  .view-mode-toggle {
+    display: flex;
+    gap: v.$spacing-sm;
+    margin-bottom: v.$spacing-sm;
+
+    button {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-xs;
+      padding: v.$spacing-sm v.$spacing-lg;
+      border-radius: v.$radius-lg;
+      transition: all 0.2s ease;
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+      }
+
+      &.active {
+        background: v.$light-primary;
+        color: white;
+        border-color: v.$light-primary;
+
+        @include m.dark-theme {
+          background: v.$dark-primary;
+          border-color: v.$dark-primary;
+        }
+      }
+
+      &:not(.active) {
+        @include m.dark-theme {
+          color: rgba(255, 255, 255, 0.7);
+          border-color: rgba(255, 255, 255, 0.3);
+        }
+      }
+
+      @include m.mobile {
+        flex: 1;
+        justify-content: center;
+        padding: v.$spacing-sm;
+      }
+    }
+  }
+
+  .view-mode-hint {
+    font-size: 13px;
+    color: v.$light-text-secondary;
+    margin: 0;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+}
+
 // Table Columns Management
 .table-columns-section {
   display: flex;

@@ -199,6 +199,8 @@ const initializeDatabase = () => {
       taxRates TEXT DEFAULT '[{"name":"GST 5%","rate":5},{"name":"GST 12%","rate":12},{"name":"GST 18%","rate":18}]',
       discountEnabled INTEGER DEFAULT 1,
       categories TEXT DEFAULT '[{"name":"General","enabled":true}]',
+      tableColumns TEXT,
+      viewMode TEXT DEFAULT 'desktop',
       invoicePrefix TEXT DEFAULT 'INV',
       invoiceStartNumber INTEGER DEFAULT 1,
       footerText TEXT DEFAULT 'Thank you for your business!',
@@ -293,6 +295,11 @@ const initializeDatabase = () => {
     if (!hasTableColumns) {
       db.exec('ALTER TABLE settings ADD COLUMN tableColumns TEXT');
       console.log('✅ Migration: Added tableColumns column');
+    }
+    const hasViewMode = columns.some(col => col.name === 'viewMode');
+    if (!hasViewMode) {
+      db.exec("ALTER TABLE settings ADD COLUMN viewMode TEXT DEFAULT 'desktop'");
+      console.log('✅ Migration: Added viewMode column');
     }
   } catch (e) {
     // Column might already exist

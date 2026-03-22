@@ -480,6 +480,39 @@
     }
   }
 
+  // Mobile mode specific styles
+  &.mobile-mode {
+    .bills-table {
+      min-width: 350px;
+      
+      th.mat-mdc-header-cell,
+      td.mat-mdc-cell {
+        padding: v.$spacing-xs v.$spacing-sm;
+        font-size: 13px;
+      }
+      
+      th.mat-mdc-header-cell {
+        font-size: 11px;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+      }
+    }
+
+    .bill-number {
+      font-size: 12px;
+    }
+
+    .total-cell {
+      font-size: 13px;
+    }
+
+    mat-chip {
+      font-size: 11px;
+      padding: 2px 6px;
+      min-height: 20px;
+    }
+  }
+
   .bills-table {
     width: 100%;
     min-width: 700px;
