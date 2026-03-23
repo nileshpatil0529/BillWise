@@ -135,36 +135,18 @@
                 <span>{{ translateService.t('settings.barcodeScanner') }}</span>
               </div>
 
-              <div class="scanner-options">
-                <mat-radio-group formControlName="scannerType" class="scanner-radio-group">
-                  <mat-radio-button value="none">
-                    <div class="scanner-option">
-                      <mat-icon>block</mat-icon>
-                      <div class="scanner-info">
-                        <span class="scanner-label">{{ translateService.t('settings.scannerNone') }}</span>
-                        <span class="scanner-description">{{ translateService.t('settings.scannerNoneDesc') }}</span>
-                      </div>
-                    </div>
-                  </mat-radio-button>
-                  <mat-radio-button value="camera">
-                    <div class="scanner-option">
-                      <mat-icon>camera_alt</mat-icon>
-                      <div class="scanner-info">
-                        <span class="scanner-label">{{ translateService.t('settings.scannerCamera') }}</span>
-                        <span class="scanner-description">{{ translateService.t('settings.scannerCameraDesc') }}</span>
-                      </div>
-                    </div>
-                  </mat-radio-button>
-                  <mat-radio-button value="usb" [disabled]="true">
-                    <div class="scanner-option">
-                      <mat-icon>usb</mat-icon>
-                      <div class="scanner-info">
-                        <span class="scanner-label">{{ translateService.t('settings.scannerUsb') }} <span class="coming-soon">({{ translateService.t('settings.comingSoon') }})</span></span>
-                        <span class="scanner-description">{{ translateService.t('settings.scannerUsbDesc') }}</span>
-                      </div>
-                    </div>
-                  </mat-radio-button>
-                </mat-radio-group>
+              <div class="scanner-toggle-option">
+                <div class="scanner-option-info">
+                  <mat-icon>usb</mat-icon>
+                  <div class="scanner-info">
+                    <span class="scanner-label">{{ translateService.t('settings.scannerUsb') }}</span>
+                    <span class="scanner-description">{{ translateService.t('settings.scannerUsbDesc') }}</span>
+                  </div>
+                </div>
+                <mat-slide-toggle
+                  [checked]="businessForm.get('scannerType')?.value === 'usb'"
+                  (change)="businessForm.get('scannerType')?.setValue($event.checked ? 'usb' : 'none')">
+                </mat-slide-toggle>
               </div>
               }
 

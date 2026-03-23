@@ -1,6 +1,6 @@
 export type ApplicationType = 'general' | 'hotel' | 'grocery' | 'clothing' | 'electronics' | 'restaurant';
 export type ThemeType = 'light' | 'dark';
-export type ScannerType = 'none' | 'camera' | 'usb';
+export type ScannerType = 'none' | 'usb';
 export type LanguageType = 'en' | 'hi';
 
 export interface TaxRate {

@@ -42,13 +42,6 @@
         }
       </mat-form-field>
 
-      @if (settingsService.settings().scannerType === 'camera' && settingsService.settings().applicationType !== 'hotel') {
-        <button mat-raised-button color="accent" (click)="openBarcodeScanner()" class="scan-button">
-          <mat-icon>qr_code_scanner</mat-icon>
-          {{ translateService.t('home.scan') }}
-        </button>
-      }
-
       <mat-form-field appearance="outline" class="category-field">
         <mat-label>{{ translateService.t('common.category') }}</mat-label>
         <mat-select [value]="selectedCategory()" (selectionChange)="selectedCategory.set($event.value); onCategoryChange()">

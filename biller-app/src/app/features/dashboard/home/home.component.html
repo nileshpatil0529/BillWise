@@ -336,11 +336,6 @@
           </mat-chip>
         }
         
-        @if (settingsService.settings().scannerType === 'camera' && !showInlineScanner() && !isHotelMode()) {
-          <button mat-icon-button color="primary" (click)="openBarcodeScanner()" matTooltip="Open Scanner">
-            <mat-icon>qr_code_scanner</mat-icon>
-          </button>
-        }
         <button mat-icon-button color="warn" (click)="clearCart()" 
                 [disabled]="billService.cartItems().length === 0"
                 matTooltip="Clear All">
@@ -349,25 +344,11 @@
       </mat-card-header>
 
       <mat-card-content>
-        <!-- Inline Scanner -->
-        @if (showInlineScanner()) {
-          <div class="inline-scanner-wrapper">
-            <app-inline-scanner 
-              #inlineScanner
-              [currencySymbol]="settingsService.settings().currency"
-              (barcodeScanned)="onScannerBarcodeScanned($event)"
-              (closed)="closeInlineScanner()">
-            </app-inline-scanner>
-          </div>
-        }
-
         @if (billService.cartItems().length === 0) {
-          @if (!showInlineScanner()) {
-            <div class="empty-cart">
-              <mat-icon>add_shopping_cart</mat-icon>
-              <p>{{ translateService.t('home.emptyCart') }}</p>
-            </div>
-          }
+          <div class="empty-cart">
+            <mat-icon>add_shopping_cart</mat-icon>
+            <p>{{ translateService.t('home.emptyCart') }}</p>
+          </div>
         } @else {
           <div class="cart-table-container" [class.mobile-mode]="isMobileMode()">
             <table mat-table [dataSource]="billService.cartItems()" class="cart-table">
@@ -628,54 +609,6 @@
           }
         </mat-card-actions>
       </mat-card>
-
-      <!-- Business Type Specific Fields -->
-      @if (getApplicationType() !== 'general' && getApplicationType() !== 'hotel') {
-        <mat-card class="business-type-card">
-          <mat-card-header>
-            <mat-card-title>Additional Info</mat-card-title>
-          </mat-card-header>
-          <mat-card-content>
-            <form [formGroup]="businessTypeForm" class="business-type-form">
-              @switch (getApplicationType()) {
-                @case ('clothing') {
-                  <mat-form-field appearance="outline">
-                    <mat-label>Size</mat-label>
-                    <mat-select formControlName="size">
-                      <mat-option value="XS">XS</mat-option>
-                      <mat-option value="S">S</mat-option>
-                      <mat-option value="M">M</mat-option>
-                      <mat-option value="L">L</mat-option>
-                      <mat-option value="XL">XL</mat-option>
-                      <mat-option value="XXL">XXL</mat-option>
-                    </mat-select>
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Color</mat-label>
-                    <input matInput formControlName="color">
-                  </mat-form-field>
-                }
-                @case ('electronics') {
-                  <mat-form-field appearance="outline">
-                    <mat-label>Serial Number</mat-label>
-                    <input matInput formControlName="serialNumber">
-                  </mat-form-field>
-                  <mat-form-field appearance="outline">
-                    <mat-label>Warranty (months)</mat-label>
-                    <input matInput type="number" formControlName="warranty">
-                  </mat-form-field>
-                }
-                @case ('grocery') {
-                  <mat-form-field appearance="outline">
-                    <mat-label>Weight (kg)</mat-label>
-                    <input matInput type="number" formControlName="weight">
-                  </mat-form-field>
-                }
-              }
-            </form>
-          </mat-card-content>
-        </mat-card>
-      }
     </div>
   </div>
 </div>

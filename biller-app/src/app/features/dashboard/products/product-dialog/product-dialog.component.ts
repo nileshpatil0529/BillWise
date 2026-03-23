@@ -11,7 +11,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Product } from '../../../../core/models/product.model';
-import { BarcodeScannerDialogComponent } from '../../home/barcode-scanner-dialog/barcode-scanner-dialog.component';
 import { SettingsService } from '../../../../core/services/settings.service';
 import { ProductService } from '../../../../core/services/product.service';
 import { Unit } from '../../../../core/models/settings.model';
@@ -66,27 +65,12 @@ interface DialogData {
           <textarea matInput formControlName="description" rows="2"></textarea>
         </mat-form-field>
 
-        @if (settingsService.settings().scannerType === 'camera') {
+        @if (settingsService.settings().scannerType === 'usb') {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Barcode</mat-label>
-            <input matInput formControlName="barcode" placeholder="Enter barcode (EAN, UPC, etc.)">
-            <button mat-icon-button matSuffix (click)="scanBarcode()" matTooltip="Scan barcode" type="button">
-              <mat-icon>qr_code_scanner</mat-icon>
-            </button>
+            <input matInput formControlName="barcode" placeholder="Scan or enter barcode (EAN, UPC, etc.)">
+            <mat-icon matSuffix>qr_code</mat-icon>
           </mat-form-field>
-
-          @if (productForm.get('barcode')?.value) {
-            <mat-form-field appearance="outline" class="full-width">
-              <mat-label>Confirm Barcode</mat-label>
-              <input matInput formControlName="confirmBarcode" placeholder="Scan barcode again to confirm">
-              <button mat-icon-button matSuffix (click)="scanConfirmBarcode()" matTooltip="Scan to confirm" type="button">
-                <mat-icon>qr_code_scanner</mat-icon>
-              </button>
-              @if (productForm.get('confirmBarcode')?.hasError('barcodeMismatch')) {
-                <mat-error>Barcodes do not match</mat-error>
-              }
-            </mat-form-field>
-          }
         }
 
         <div class="form-row">
@@ -319,52 +303,6 @@ export class ProductDialogComponent {
       // Default to kg for loose items
       this.productForm.patchValue({ unit: 'kg' });
     }
-  }
-
-  scanBarcode(): void {
-    const scannerDialog = this.dialog.open(BarcodeScannerDialogComponent, {
-      width: '450px',
-      maxWidth: '95vw',
-      maxHeight: '95vh',
-      panelClass: 'barcode-scanner-dialog',
-      data: {
-        mode: 'single',
-        title: 'Scan Product Barcode'
-      }
-    });
-
-    scannerDialog.afterClosed().subscribe((barcode: string | null) => {
-      if (barcode) {
-        this.productForm.patchValue({ barcode });
-        // Clear confirm barcode when new barcode is scanned
-        this.productForm.patchValue({ confirmBarcode: '' });
-        
-        // Automatically open confirm barcode scanner after a brief delay
-        setTimeout(() => {
-          this.scanConfirmBarcode();
-        }, 300);
-      }
-    });
-  }
-
-  scanConfirmBarcode(): void {
-    const scannerDialog = this.dialog.open(BarcodeScannerDialogComponent, {
-      width: '450px',
-      maxWidth: '95vw',
-      maxHeight: '95vh',
-      panelClass: 'barcode-scanner-dialog',
-      data: {
-        mode: 'single',
-        title: 'Confirm Barcode'
-      }
-    });
-
-    scannerDialog.afterClosed().subscribe((barcode: string | null) => {
-      if (barcode) {
-        this.productForm.patchValue({ confirmBarcode: barcode });
-        this.productForm.get('confirmBarcode')?.updateValueAndValidity();
-      }
-    });
   }
 
   onCancel(): void {

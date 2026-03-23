@@ -907,6 +907,62 @@ mat-tab-group {
   }
 }
 
+// Scanner Toggle Option
+.scanner-toggle-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: v.$spacing-md;
+  border: 1px solid v.$light-divider;
+  border-radius: v.$radius-md;
+  transition: all 0.2s ease;
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+
+  .scanner-option-info {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-md;
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+
+    .scanner-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .scanner-label {
+        font-weight: 500;
+        color: v.$light-text-primary;
+
+        @include m.dark-theme {
+          color: white;
+        }
+      }
+
+      .scanner-description {
+        font-size: 12px;
+        color: v.$light-text-secondary;
+
+        @include m.dark-theme {
+          color: rgba(255, 255, 255, 0.6);
+        }
+      }
+    }
+  }
+}
+
 // Units Management Section (Grocery)
 .units-section {
   .add-unit-form {

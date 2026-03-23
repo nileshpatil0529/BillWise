@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, computed, ViewChild, ElementRef, inject, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormsModule, ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -29,8 +29,6 @@ import { Product, CartItem } from '../../../core/models/product.model';
 import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
 import { Unit } from '../../../core/models/settings.model';
-import { BarcodeScannerDialogComponent, ScannerDialogData } from './barcode-scanner-dialog/barcode-scanner-dialog.component';
-import { InlineScannerComponent } from './inline-scanner/inline-scanner.component';
 
 // Interface for tracking KOT printed quantities per product
 interface KotPrintedQuantities {
@@ -63,7 +61,6 @@ interface AttendedTableState {
   imports: [
     CommonModule,
     FormsModule,
-    ReactiveFormsModule,
     MatCardModule,
     MatFormFieldModule,
     MatInputModule,
@@ -78,23 +75,18 @@ interface AttendedTableState {
     MatDialogModule,
     MatTooltipModule,
     MatChipsModule,
-    MatBadgeModule,
-    InlineScannerComponent
+    MatBadgeModule
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
 export class HomeComponent implements OnInit {
   @ViewChild('searchInput') searchInput!: ElementRef;
-  @ViewChild('inlineScanner') inlineScanner!: InlineScannerComponent;
 
   searchQuery = signal('');
   searchResults = signal<Product[]>([]);
   searching = signal(false);
   highlightedProductId = signal<string | null>(null);
-  
-  // Inline scanner state
-  showInlineScanner = signal(false);
 
   // Hotel mode state
   selectedTable = signal<RestaurantTable | null>(null);
@@ -128,9 +120,6 @@ export class HomeComponent implements OnInit {
   // customer search
   customerSuggestions = signal<Customer[]>([]);
   private customerSearchSubject = new Subject<string>();
-
-  // Business type specific fields
-  businessTypeForm: FormGroup;
 
   // Cart table columns - dynamically includes 'note' for hotel mode, 'warranty' for electronics mode
   get displayedColumns(): string[] {
@@ -166,25 +155,10 @@ export class HomeComponent implements OnInit {
     public translateService: TranslateService,
     private productService: ProductService,
     private snackBar: MatSnackBar,
-    private fb: FormBuilder,
     private dialog: MatDialog,
     private beepService: BeepService,
     private customerService: CustomerService
   ) {
-    this.businessTypeForm = this.fb.group({
-      // Hotel fields
-      roomNumber: [''],
-      guestName: [''],
-      serviceType: [''],
-      // Clothing fields
-      size: [''],
-      color: [''],
-      // Electronics fields
-      serialNumber: [''],
-      warranty: [''],
-      // Grocery fields
-      weight: ['']
-    });
   }
 
   ngOnInit(): void {
@@ -579,7 +553,6 @@ export class HomeComponent implements OnInit {
     this.billService.billDiscount.set(0);
     this.customerName.set('');
     this.customerPhone.set('');
-    this.businessTypeForm.reset();
     this.snackBar.open('Cart cleared', 'Close', { duration: 2000 });
   }
 
@@ -616,7 +589,6 @@ export class HomeComponent implements OnInit {
       amountPaid: this.paymentMethod() === 'debt' ? 0 : this.billService.cartTotal(),
       customerName: this.customerName(),
       customerPhone: this.customerPhone(),
-      businessTypeData: this.businessTypeForm.value,
       taxEnabled: this.settingsService.settings().taxEnabled
     };
 
@@ -637,88 +609,6 @@ export class HomeComponent implements OnInit {
         });
       }
     });
-  }
-
-  openBarcodeScanner(): void {
-    this.showInlineScanner.set(true);
-  }
-
-  closeInlineScanner(): void {
-    this.showInlineScanner.set(false);
-  }
-
-  onScannerBarcodeScanned(barcode: string): void {
-    // Search for product by barcode and auto-add to cart
-    this.productService.searchProducts(barcode).subscribe({
-      next: (response) => {
-        const products: Product[] = response.data || [];
-        const product = products.find((p: Product) => 
-          p.productId === barcode || 
-          p.barcode === barcode ||
-          p.productId.toLowerCase() === barcode.toLowerCase()
-        );
-
-        if (product) {
-          // Check if product already in cart
-          const existingItem = this.billService.cartItems().find(item => item.productId === product.productId);
-          
-          if (existingItem) {
-            // Increase quantity
-            this.billService.updateCartItem(product.productId, { quantity: existingItem.quantity + 1 });
-            this.beepService.playSuccess();
-            this.snackBar.open(`${product.name} quantity increased`, 'Close', {
-              duration: 2000,
-              panelClass: ['success-snackbar']
-            });
-          } else {
-            // Add new item
-            this.selectProduct(product);
-            this.snackBar.open(`${product.name} added to cart`, 'Close', {
-              duration: 2000,
-              panelClass: ['success-snackbar']
-            });
-          }
-          this.inlineScanner?.setProductAdded();
-        } else if (products.length > 0) {
-          // Add first match if no exact match
-          const firstProduct = products[0];
-          const existingItem = this.billService.cartItems().find(item => item.productId === firstProduct.productId);
-          
-          if (existingItem) {
-            this.billService.updateCartItem(firstProduct.productId, { quantity: existingItem.quantity + 1 });
-            this.beepService.playSuccess();
-            this.snackBar.open(`${firstProduct.name} quantity increased`, 'Close', {
-              duration: 2000,
-              panelClass: ['success-snackbar']
-            });
-          } else {
-            this.selectProduct(firstProduct);
-            this.snackBar.open(`${firstProduct.name} added to cart`, 'Close', {
-              duration: 2000,
-              panelClass: ['success-snackbar']
-            });
-          }
-          this.inlineScanner?.setProductAdded();
-        } else {
-          this.inlineScanner?.setNotFound();
-          this.snackBar.open(`Product not found for barcode: ${barcode}`, 'Close', {
-            duration: 3000,
-            panelClass: ['error-snackbar']
-          });
-        }
-      },
-      error: () => {
-        this.inlineScanner?.setNotFound();
-        this.snackBar.open('Failed to search product', 'Close', {
-          duration: 3000
-        });
-      }
-    });
-  }
-
-  onScannerProductAdded(product: Product): void {
-    // This method is no longer needed as products are auto-added in onScannerBarcodeScanned
-    // Kept for backward compatibility
   }
 
   private addProductByBarcode(barcode: string): void {

@@ -721,21 +721,6 @@
   overflow: visible;
 }
 
-// Business Type Card
-.business-type-card {
-  overflow: hidden;
-  
-  .business-type-form {
-    display: flex;
-    flex-direction: column;
-    gap: v.$spacing-sm;
-
-    mat-form-field {
-      width: 100%;
-    }
-  }
-}
-
 // Bill Summary Card
 .bill-summary-card {
   overflow: visible;

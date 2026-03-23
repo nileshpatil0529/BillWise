@@ -148,8 +148,7 @@ export class SettingsComponent implements OnInit {
 
   scannerTypes: { value: ScannerType; label: string; icon: string; description: string }[] = [
     { value: 'none', label: 'None', icon: 'block', description: 'Disable barcode scanning' },
-    { value: 'camera', label: 'Device Camera', icon: 'camera_alt', description: 'Use device camera to scan barcodes' },
-    { value: 'usb', label: 'USB Scanner', icon: 'usb', description: 'Coming soon - Use USB barcode scanner' }
+    { value: 'usb', label: 'USB Scanner', icon: 'usb', description: 'Use external USB barcode scanner' }
   ];
 
   ngOnInit(): void {
