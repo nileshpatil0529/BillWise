@@ -2,6 +2,9 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import os from 'os';
+import fs from 'fs';
+import https from 'https';
+import http from 'http';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
@@ -91,12 +94,46 @@ const getLocalIP = () => {
 
 // Start server
 const PORT = config.port;
+const HTTPS_PORT = config.port; // Use same port for HTTPS
 const HOST = '0.0.0.0'; // Bind to all network interfaces for WiFi access
-app.listen(PORT, HOST, () => {
-  const localIP = getLocalIP();
-  const ipPadded = `http://${localIP}:${PORT}`.padEnd(25);
+
+// Check for SSL certificates
+const certDir = path.join(__dirname, '..', 'certs');
+const keyPath = path.join(certDir, 'server.key');
+const certPath = path.join(certDir, 'server.crt');
+
+const hasSSL = fs.existsSync(keyPath) && fs.existsSync(certPath);
+
+if (hasSSL) {
+  // Start HTTPS server
+  const sslOptions = {
+    key: fs.readFileSync(keyPath),
+    cert: fs.readFileSync(certPath)
+  };
   
-  console.log(`
+  https.createServer(sslOptions, app).listen(HTTPS_PORT, HOST, () => {
+    const localIP = getLocalIP();
+    const ipPadded = `https://${localIP}:${HTTPS_PORT}`.padEnd(25);
+    
+    console.log(`
+  ╔════════════════════════════════════════════════════════════╗
+  ║                                                            ║
+  ║   🚀 Biller Server Started Successfully! (HTTPS)           ║
+  ║   🔒 Local:   https://localhost:${HTTPS_PORT}                      ║
+  ║   🌐 Network: ${ipPadded}║
+  ║   🌍 Environment: ${config.nodeEnv.padEnd(27)}║
+  ║   📅 Started: ${new Date().toLocaleString().padEnd(30)}║
+  ║   📱 Camera access enabled for mobile devices!             ║
+  ╚════════════════════════════════════════════════════════════╝
+    `);
+  });
+} else {
+  // Start HTTP server (fallback)
+  app.listen(PORT, HOST, () => {
+    const localIP = getLocalIP();
+    const ipPadded = `http://${localIP}:${PORT}`.padEnd(25);
+    
+    console.log(`
   ╔════════════════════════════════════════════════════════════╗
   ║                                                            ║
   ║   🚀 Biller Server Started Successfully!                   ║
@@ -104,8 +141,11 @@ app.listen(PORT, HOST, () => {
   ║   🌐 Network: ${ipPadded}║
   ║   🌍 Environment: ${config.nodeEnv.padEnd(27)}║
   ║   📅 Started: ${new Date().toLocaleString().padEnd(30)}║
+  ║   ⚠️  No SSL certs found - camera won't work on mobile!    ║
+  ║   Run: npm run generate-cert                               ║
   ╚════════════════════════════════════════════════════════════╝
-  `);
-});
+    `);
+  });
+}
 
 export default app;
