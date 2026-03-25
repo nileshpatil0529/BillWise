@@ -760,37 +760,6 @@ h3 {
   --mdc-snackbar-supporting-text-color: white;
 }
 
-// Barcode Scanner Dialog - remove default padding
-.barcode-scanner-dialog {
-  .mat-mdc-dialog-container {
-    padding: 0 !important;
-    
-    .mdc-dialog__surface {
-      border-radius: 16px !important;
-      overflow: hidden;
-    }
-  }
-  
-  .mat-mdc-dialog-content {
-    padding: 0 !important;
-    max-height: none !important;
-  }
-  
-  .mat-mdc-dialog-actions {
-    padding: 0 !important;
-  }
-
-  @media (max-width: 480px) {
-    .mat-mdc-dialog-container {
-      .mdc-dialog__surface {
-        border-radius: 0 !important;
-        max-height: 100vh !important;
-        height: 100vh !important;
-      }
-    }
-  }
-}
-
 // Bill Detail Dialog
 .bill-detail-dialog {
   .mat-mdc-dialog-container {
