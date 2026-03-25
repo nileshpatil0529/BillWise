@@ -1,0 +1,931 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+// ============================================
+// MOBILE SETTINGS COMPONENT
+// ============================================
+
+:host {
+  display: block;
+  height: 100%;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.settings-container {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-md;
+  padding: v.$spacing-sm;
+  padding-bottom: calc(v.$spacing-xl + env(safe-area-inset-bottom, 0));
+  max-width: 100%;
+}
+
+// ============================================
+// PAGE HEADER
+// ============================================
+.page-header {
+  padding: v.$spacing-xs 0;
+
+  h1 {
+    font-size: 20px;
+    font-weight: 600;
+    margin: 0;
+    color: v.$light-text-primary;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+}
+
+// ============================================
+// SETTINGS SECTION
+// ============================================
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-xs;
+}
+
+.section-header {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-xs v.$spacing-sm;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: v.$light-text-secondary;
+
+  mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: v.$light-primary;
+
+    @include m.dark-theme {
+      color: v.$dark-primary;
+    }
+  }
+
+  @include m.dark-theme {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+// ============================================
+// SETTINGS CARD
+// ============================================
+.settings-card {
+  background: v.$light-surface;
+  border-radius: v.$radius-md;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+  }
+}
+
+// ============================================
+// SETTING ITEM
+// ============================================
+.setting-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: v.$spacing-md;
+  min-height: 60px;
+  border-bottom: 1px solid v.$light-divider;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:active {
+    background: rgba(0, 0, 0, 0.04);
+
+    @include m.dark-theme {
+      background: rgba(255, 255, 255, 0.04);
+    }
+  }
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+.setting-left {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  flex: 1;
+  min-width: 0;
+}
+
+.setting-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: v.$radius-sm;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  &.theme {
+    background: linear-gradient(135deg, #7c4dff, #536dfe);
+    color: white;
+  }
+
+  &.language {
+    background: linear-gradient(135deg, #00bcd4, #0097a7);
+    color: white;
+  }
+
+  &.security {
+    background: linear-gradient(135deg, #ff5722, #e64a19);
+    color: white;
+  }
+
+  &.scanner {
+    background: linear-gradient(135deg, #607d8b, #455a64);
+    color: white;
+  }
+
+  &.tax {
+    background: linear-gradient(135deg, #4caf50, #388e3c);
+    color: white;
+  }
+
+  &.discount {
+    background: linear-gradient(135deg, #ff9800, #f57c00);
+    color: white;
+  }
+
+  &.debt {
+    background: linear-gradient(135deg, #f44336, #d32f2f);
+    color: white;
+  }
+
+  &.receipt {
+    background: linear-gradient(135deg, #9c27b0, #7b1fa2);
+    color: white;
+  }
+}
+
+.setting-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.setting-label {
+  font-size: 15px;
+  font-weight: 500;
+  color: v.$light-text-primary;
+  line-height: 1.3;
+
+  @include m.dark-theme {
+    color: white;
+  }
+}
+
+.setting-value {
+  font-size: 13px;
+  color: v.$light-text-secondary;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  @include m.dark-theme {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+.chevron {
+  color: v.$light-text-secondary;
+  font-size: 20px;
+  flex-shrink: 0;
+
+  @include m.dark-theme {
+    color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+// ============================================
+// PROFILE & LOGO ITEMS
+// ============================================
+.profile-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+}
+
+.profile-avatar-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, v.$light-primary, darken(v.$light-primary, 10%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+
+  mat-icon {
+    font-size: 28px;
+    width: 28px;
+    height: 28px;
+    color: white;
+  }
+
+  @include m.dark-theme {
+    background: linear-gradient(135deg, v.$dark-primary, darken(v.$dark-primary, 10%));
+  }
+}
+
+.business-logo {
+  width: 48px;
+  height: 48px;
+  border-radius: v.$radius-sm;
+  object-fit: contain;
+  background: white;
+  flex-shrink: 0;
+}
+
+.logo-placeholder {
+  width: 48px;
+  height: 48px;
+  border-radius: v.$radius-sm;
+  background: v.$light-divider;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  cursor: pointer;
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+    color: v.$light-text-secondary;
+  }
+
+  @include m.dark-theme {
+    background: v.$dark-divider;
+    
+    mat-icon {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+}
+
+.logo-actions {
+  display: flex;
+  gap: v.$spacing-xs;
+}
+
+// ============================================
+// LANGUAGE BUTTONS
+// ============================================
+.language-buttons {
+  display: flex;
+  gap: v.$spacing-xs;
+
+  button {
+    min-width: 44px;
+    height: 36px;
+    padding: 0 v.$spacing-sm;
+    font-size: 13px;
+    font-weight: 600;
+    border-radius: v.$radius-sm;
+    border: 1px solid v.$light-divider;
+    background: transparent;
+    color: v.$light-text-secondary;
+
+    &.active {
+      background: v.$light-primary;
+      border-color: v.$light-primary;
+      color: white;
+
+      @include m.dark-theme {
+        background: v.$dark-primary;
+        border-color: v.$dark-primary;
+      }
+    }
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+      color: rgba(255, 255, 255, 0.7);
+    }
+  }
+}
+
+// ============================================
+// BUSINESS FORM
+// ============================================
+.business-form {
+  padding: v.$spacing-md;
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+  border-top: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+
+  mat-form-field {
+    width: 100%;
+
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+}
+
+// ============================================
+// APPLICATION TYPE
+// ============================================
+.app-type-section {
+  padding: v.$spacing-md;
+  border-top: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+.section-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: v.$light-text-secondary;
+  margin-bottom: v.$spacing-sm;
+
+  @include m.dark-theme {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+.app-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$spacing-sm;
+}
+
+.app-type-chip {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-xs;
+  padding: v.$spacing-sm v.$spacing-md;
+  border-radius: 20px;
+  border: 1px solid v.$light-divider;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  mat-icon {
+    font-size: 18px;
+    width: 18px;
+    height: 18px;
+    color: v.$light-text-secondary;
+  }
+
+  span {
+    font-size: 13px;
+    color: v.$light-text-primary;
+    white-space: nowrap;
+  }
+
+  &.selected {
+    background: v.$light-primary;
+    border-color: v.$light-primary;
+
+    mat-icon, span {
+      color: white;
+    }
+
+    @include m.dark-theme {
+      background: v.$dark-primary;
+      border-color: v.$dark-primary;
+    }
+  }
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+
+    mat-icon {
+      color: rgba(255, 255, 255, 0.5);
+    }
+
+    span {
+      color: white;
+    }
+  }
+}
+
+// ============================================
+// SAVE BUTTON
+// ============================================
+.save-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: v.$spacing-sm;
+  width: calc(100% - #{v.$spacing-md * 2});
+  margin: v.$spacing-md;
+  height: 48px;
+  font-size: 15px;
+  font-weight: 500;
+  border-radius: v.$radius-sm;
+
+  mat-icon {
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+  }
+
+  mat-spinner {
+    margin-right: v.$spacing-xs;
+  }
+}
+
+// ============================================
+// UNITS SECTION
+// ============================================
+.units-add-row {
+  display: flex;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+  padding-bottom: 0;
+
+  .unit-field {
+    flex: 2;
+  }
+
+  .symbol-field {
+    flex: 1;
+    min-width: 80px;
+  }
+
+  mat-form-field {
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+}
+
+.units-add-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: v.$spacing-sm v.$spacing-md;
+  border-bottom: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+.units-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+}
+
+.unit-chip {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-xs;
+  padding: v.$spacing-xs v.$spacing-sm;
+  padding-left: v.$spacing-md;
+  background: v.$light-divider;
+  border-radius: 20px;
+
+  .unit-name {
+    font-size: 13px;
+    color: v.$light-text-primary;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+
+  .unit-symbol {
+    font-size: 12px;
+    font-weight: 600;
+    color: v.$light-primary;
+    background: rgba(v.$light-primary, 0.1);
+    padding: 2px 6px;
+    border-radius: 4px;
+
+    @include m.dark-theme {
+      color: v.$dark-primary;
+      background: rgba(v.$dark-primary, 0.2);
+    }
+  }
+
+  .decimal-icon {
+    font-size: 14px;
+    width: 14px;
+    height: 14px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.5);
+    }
+  }
+
+  button {
+    width: 24px;
+    height: 24px;
+    
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  @include m.dark-theme {
+    background: v.$dark-divider;
+  }
+}
+
+// ============================================
+// TABLES SECTION (HOTEL)
+// ============================================
+.tables-add-row {
+  display: flex;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+  padding-bottom: v.$spacing-xs;
+
+  .type-field {
+    flex: 2;
+  }
+
+  .number-field {
+    flex: 1;
+    min-width: 70px;
+  }
+
+  mat-form-field {
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+}
+
+.add-tables-btn {
+  width: calc(100% - #{v.$spacing-md * 2});
+  margin: v.$spacing-xs v.$spacing-md v.$spacing-md;
+  height: 44px;
+}
+
+.tables-group {
+  padding: v.$spacing-md;
+  border-top: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+.group-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: v.$light-text-secondary;
+  margin-bottom: v.$spacing-sm;
+
+  @include m.dark-theme {
+    color: rgba(255, 255, 255, 0.6);
+  }
+}
+
+.tables-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$spacing-xs;
+}
+
+.table-chip {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-xs;
+  padding: v.$spacing-xs v.$spacing-sm;
+  background: rgba(v.$light-primary, 0.1);
+  border-radius: v.$radius-sm;
+  color: v.$light-primary;
+  font-size: 13px;
+  font-weight: 500;
+
+  &.parcel {
+    background: rgba(#ff9800, 0.1);
+    color: #ff9800;
+
+    @include m.dark-theme {
+      background: rgba(#ff9800, 0.2);
+    }
+  }
+
+  &.occupied {
+    background: rgba(#f44336, 0.1);
+    color: #f44336;
+
+    @include m.dark-theme {
+      background: rgba(#f44336, 0.2);
+    }
+  }
+
+  button {
+    width: 20px;
+    height: 20px;
+    line-height: 20px;
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+
+  @include m.dark-theme {
+    background: rgba(v.$dark-primary, 0.2);
+    color: v.$dark-primary;
+  }
+}
+
+// ============================================
+// NOTES SECTION
+// ============================================
+.notes-add-row {
+  display: flex;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+  align-items: flex-start;
+
+  .note-field {
+    flex: 1;
+
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+
+  button {
+    height: 56px;
+    min-width: 56px;
+  }
+}
+
+.notes-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: v.$spacing-sm;
+  padding: 0 v.$spacing-md v.$spacing-md;
+}
+
+.note-chip {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-xs;
+  padding: v.$spacing-xs v.$spacing-sm;
+  padding-left: v.$spacing-md;
+  background: rgba(#9c27b0, 0.1);
+  border-radius: 20px;
+  color: #9c27b0;
+  font-size: 13px;
+
+  button {
+    width: 24px;
+    height: 24px;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  @include m.dark-theme {
+    background: rgba(#ce93d8, 0.2);
+    color: #ce93d8;
+  }
+}
+
+// ============================================
+// TAX FIELDS
+// ============================================
+.tax-fields {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+  border-top: 1px solid v.$light-divider;
+  border-bottom: 1px solid v.$light-divider;
+
+  mat-form-field {
+    width: 100%;
+
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+// ============================================
+// RECEIPT FIELDS
+// ============================================
+.receipt-fields {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+  border-top: 1px solid v.$light-divider;
+
+  mat-form-field {
+    width: 100%;
+
+    &.full-width {
+      width: 100%;
+    }
+
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+.language-setting {
+  .language-buttons {
+    flex-shrink: 0;
+  }
+}
+
+// ============================================
+// CATEGORIES
+// ============================================
+.category-add-row {
+  display: flex;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-md;
+  align-items: flex-start;
+
+  .category-field {
+    flex: 1;
+
+    ::ng-deep {
+      .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+    }
+  }
+
+  button {
+    height: 56px;
+    min-width: 56px;
+  }
+}
+
+.empty-categories {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+  color: v.$light-text-secondary;
+
+  mat-icon {
+    font-size: 48px;
+    width: 48px;
+    height: 48px;
+    margin-bottom: v.$spacing-sm;
+  }
+
+  span {
+    font-size: 14px;
+  }
+
+  @include m.dark-theme {
+    color: rgba(255, 255, 255, 0.3);
+  }
+}
+
+.categories-list {
+  border-top: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+.category-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: v.$spacing-sm v.$spacing-md;
+  border-bottom: 1px solid v.$light-divider;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  mat-checkbox {
+    flex: 1;
+
+    ::ng-deep {
+      .mdc-label {
+        font-size: 15px;
+        color: v.$light-text-primary;
+
+        @include m.dark-theme {
+          color: white;
+        }
+      }
+    }
+  }
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+// ============================================
+// APP INFO
+// ============================================
+.app-info {
+  padding: v.$spacing-md;
+}
+
+.app-version {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+
+  .version-label {
+    font-size: 14px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: rgba(255, 255, 255, 0.6);
+    }
+  }
+
+  .version-number {
+    font-size: 14px;
+    font-weight: 500;
+    color: v.$light-text-primary;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+}
+
+// ============================================
+// SLIDE TOGGLE STYLING
+// ============================================
+mat-slide-toggle {
+  flex-shrink: 0;
+}

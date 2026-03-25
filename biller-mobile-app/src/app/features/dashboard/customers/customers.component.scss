@@ -1,0 +1,373 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+// ============================================
+// MOBILE CUSTOMERS COMPONENT
+// ============================================
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.customers-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: v.$light-background;
+  position: relative;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+}
+
+// ============================================
+// SEARCH HEADER
+// ============================================
+
+.search-header {
+  flex-shrink: 0;
+  padding: v.$spacing-sm;
+  background: v.$light-surface;
+  border-bottom: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+}
+
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  background: v.$light-background;
+  border-radius: 24px;
+  padding: 0 v.$spacing-sm 0 v.$spacing-md;
+  height: 44px;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+
+  .search-icon {
+    flex-shrink: 0;
+    color: v.$light-text-secondary;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    outline: none;
+    color: inherit;
+    padding-right: v.$spacing-xs;
+
+    @include m.dark-theme {
+      color: white;
+    }
+
+    &::placeholder {
+      color: v.$light-text-secondary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+  }
+
+  .clear-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+// ============================================
+// CUSTOMERS LIST
+// ============================================
+
+.customers-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: v.$spacing-sm;
+  padding-bottom: 80px; // Space for FAB
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+}
+
+// ============================================
+// CUSTOMER CARD
+// ============================================
+
+.customer-card {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  background: v.$light-surface;
+  border-radius: v.$radius-sm;
+  padding: v.$spacing-md;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.customer-avatar {
+  flex-shrink: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, v.$light-primary, darken(v.$light-primary, 10%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @include m.dark-theme {
+    background: linear-gradient(135deg, v.$dark-primary, darken(v.$dark-primary, 10%));
+  }
+
+  span {
+    font-size: 16px;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+
+    @include m.dark-theme {
+      color: black;
+    }
+  }
+}
+
+.customer-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .customer-name {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+
+  .customer-phone {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+.customer-debt {
+  flex-shrink: 0;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .debt-amount {
+    font-size: 14px;
+    font-weight: 700;
+
+    &.has-debt {
+      color: v.$light-warning;
+
+      @include m.dark-theme {
+        color: v.$dark-warning;
+      }
+    }
+
+    &.no-debt {
+      font-size: 11px;
+      font-weight: 600;
+      color: v.$light-success;
+
+      @include m.dark-theme {
+        color: v.$dark-success;
+      }
+    }
+  }
+
+  .debt-label {
+    font-size: 10px;
+    color: v.$light-text-secondary;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}
+
+.customer-actions {
+  flex-shrink: 0;
+  display: flex;
+  gap: 2px;
+
+  button {
+    width: 36px;
+    height: 36px;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      color: v.$light-text-secondary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+
+    &.delete-btn mat-icon {
+      color: v.$light-error;
+
+      @include m.dark-theme {
+        color: v.$dark-error;
+      }
+    }
+  }
+}
+
+// ============================================
+// FAB ADD BUTTON
+// ============================================
+
+.fab-add {
+  position: absolute;
+  bottom: v.$spacing-md;
+  right: v.$spacing-md;
+  z-index: 10;
+  background: v.$light-primary !important;
+  color: white !important;
+
+  @include m.dark-theme {
+    background: v.$dark-primary !important;
+    color: black !important;
+  }
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+// ============================================
+// LOADING & EMPTY STATES
+// ============================================
+
+.loading-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+  color: v.$light-text-secondary;
+
+  @include m.dark-theme {
+    color: v.$dark-text-secondary;
+  }
+
+  mat-icon {
+    font-size: 56px;
+    width: 56px;
+    height: 56px;
+    margin-bottom: v.$spacing-md;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0 0 v.$spacing-md;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  button {
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
+      opacity: 1;
+    }
+  }
+}
+
+.loading-more {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-md;
+}
+
+.end-message {
+  text-align: center;
+  padding: v.$spacing-sm;
+
+  span {
+    font-size: 12px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}

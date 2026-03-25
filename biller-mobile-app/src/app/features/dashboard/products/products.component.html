@@ -1,0 +1,154 @@
+<div class="products-container">
+  <!-- Search Header -->
+  <div class="search-header">
+    <div class="search-wrapper">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input type="text"
+             [value]="searchQuery()"
+             (input)="onSearchInput($event)"
+             placeholder="Search products...">
+      @if (searchQuery()) {
+        <button mat-icon-button class="clear-btn" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </div>
+    
+    <button mat-icon-button class="filter-btn" [matMenuTriggerFor]="filterMenu" [class.active]="selectedCategory()">
+      <mat-icon>filter_list</mat-icon>
+    </button>
+    
+    <mat-menu #filterMenu="matMenu">
+      <button mat-menu-item (click)="selectedCategory.set(''); onCategoryChange()" [class.selected]="!selectedCategory()">
+        <mat-icon>check</mat-icon>
+        <span>All Categories</span>
+      </button>
+      <mat-divider></mat-divider>
+      @for (category of productService.categories(); track category) {
+        <button mat-menu-item (click)="selectedCategory.set(category); onCategoryChange()" [class.selected]="selectedCategory() === category">
+          @if (selectedCategory() === category) {
+            <mat-icon>check</mat-icon>
+          } @else {
+            <mat-icon></mat-icon>
+          }
+          <span>{{ category }}</span>
+        </button>
+      }
+    </mat-menu>
+  </div>
+
+  <!-- Category Filter Chips (visible when category selected) -->
+  @if (selectedCategory()) {
+    <div class="active-filter">
+      <mat-chip-set>
+        <mat-chip (removed)="selectedCategory.set(''); onCategoryChange()">
+          {{ selectedCategory() }}
+          <mat-icon matChipRemove>cancel</mat-icon>
+        </mat-chip>
+      </mat-chip-set>
+    </div>
+  }
+
+  <!-- Products List -->
+  <div class="products-list" #productsList (scroll)="onScroll()">
+    @if (loading()) {
+      <div class="loading-state">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span>Loading products...</span>
+      </div>
+    } @else if (allProducts().length === 0) {
+      <div class="empty-state">
+        <mat-icon>inventory_2</mat-icon>
+        <h3>No Products Found</h3>
+        <p>{{ searchQuery() ? 'Try a different search term' : 'Add your first product to get started' }}</p>
+        @if (!searchQuery()) {
+          <button mat-flat-button color="primary" (click)="openAddDialog()">
+            <mat-icon>add</mat-icon>
+            Add Product
+          </button>
+        }
+      </div>
+    } @else {
+      @for (product of allProducts(); track product.productId) {
+        <div class="product-card" (click)="openEditDialog(product)">
+          <div class="product-main">
+            <div class="product-info">
+              <span class="product-name">{{ getDisplayName(product) }}</span>
+              <div class="product-meta">
+                @if (product.category) {
+                  <span class="category-tag">{{ product.category }}</span>
+                }
+                @if (product.barcode) {
+                  <span class="barcode">{{ product.barcode }}</span>
+                }
+              </div>
+            </div>
+            <div class="product-right">
+              <span class="product-price">{{ formatCurrency(product.unitPrice) }}</span>
+              <div class="stock-info" [class.low-stock]="product.stockQuantity <= (product.lowStockAlert || 10)" [class.out-of-stock]="product.stockQuantity <= 0">
+                @if (product.stockQuantity <= 0) {
+                  <span>Out</span>
+                } @else {
+                  <span>{{ product.stockQuantity }}</span>
+                }
+              </div>
+            </div>
+          </div>
+          
+          <div class="product-actions">
+            @if (product.warrantyMonths && product.warrantyMonths > 0) {
+              <span class="warranty-badge">
+                <mat-icon>verified_user</mat-icon>
+                {{ product.warrantyMonths }}mo
+              </span>
+            }
+            <div class="action-buttons">
+              @if (settingsService.settings().scannerType !== 'none' && settingsService.settings().applicationType !== 'hotel') {
+                <button mat-icon-button class="action-btn" (click)="$event.stopPropagation(); openPrintBarcodeDialog(product)" matTooltip="Print Barcode">
+                  <mat-icon>print</mat-icon>
+                </button>
+              }
+              <button mat-icon-button class="action-btn delete" (click)="$event.stopPropagation(); deleteProduct(product)" matTooltip="Delete">
+                <mat-icon>delete_outline</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+      
+      @if (loadingMore()) {
+        <div class="loading-more">
+          <mat-spinner diameter="24"></mat-spinner>
+        </div>
+      }
+      
+      @if (!hasMore() && allProducts().length > 0) {
+        <div class="list-end">
+          <span>{{ allProducts().length }} products</span>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- Floating Action Button -->
+  <button mat-fab color="primary" class="fab-add" (click)="openAddDialog()">
+    <mat-icon>add</mat-icon>
+  </button>
+
+  <!-- Quick Actions Bottom Bar -->
+  <div class="bottom-actions">
+    <input type="file" 
+           #fileInput 
+           hidden 
+           accept=".xlsx,.xls,.csv"
+           (change)="onFileSelected($event)">
+    <button mat-button (click)="fileInput.click()">
+      <mat-icon>download</mat-icon>
+      Import
+    </button>
+    <button mat-button (click)="exportProducts()">
+      <mat-icon>upload</mat-icon>
+      Export
+    </button>
+  </div>
+</div>

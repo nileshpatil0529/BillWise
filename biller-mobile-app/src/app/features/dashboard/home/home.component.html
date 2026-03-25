@@ -1,0 +1,582 @@
+<div class="home-container">
+  <!-- Hotel Mode: Table Selection Overlay -->
+  @if (needsTableSelection()) {
+    <div class="table-selection-overlay">
+      <mat-card class="table-selection-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>table_restaurant</mat-icon>
+            {{ translateService.t('hotel.selectTable') }}
+          </mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+          <!-- Dine-in Tables -->
+          @if (getDineInTables().length > 0) {
+            <div class="table-section">
+              <h3>Dine-in Tables</h3>
+              <div class="table-grid">
+                @for (table of getDineInTables(); track table.id) {
+                  <button mat-raised-button 
+                          class="table-btn"
+                          [class.occupied]="table.status === 'occupied'"
+                          [class.available]="table.status === 'available'"
+                          (click)="selectTable(table)">
+                    <div class="table-content">
+                      <mat-icon>table_restaurant</mat-icon>
+                      <span class="table-number">{{ table.tableNumber }}</span>
+                      @if (table.status === 'occupied') {
+                        <span class="table-status">Open Order</span>
+                      }
+                    </div>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          
+          <!-- Parcel/Takeaway -->
+          @if (getParcelTables().length > 0) {
+            <div class="table-section">
+              <h3>Takeaway / Parcel</h3>
+              <div class="table-grid">
+                @for (table of getParcelTables(); track table.id) {
+                  <button mat-raised-button 
+                          class="table-btn parcel"
+                          [class.occupied]="table.status === 'occupied'"
+                          [class.available]="table.status === 'available'"
+                          (click)="selectTable(table)">
+                    <div class="table-content">
+                      <mat-icon>takeout_dining</mat-icon>
+                      <span class="table-number">{{ table.tableNumber }}</span>
+                      @if (table.status === 'occupied') {
+                        <span class="table-status">Open Order</span>
+                      }
+                    </div>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          
+          @if (getDineInTables().length === 0 && getParcelTables().length === 0) {
+            <div class="no-tables-message">
+              <mat-icon>info</mat-icon>
+              <p>No tables configured. Please add tables in Settings.</p>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+
+  <!-- Hotel Mode: Change Table Overlay -->
+  @if (changingTable()) {
+    <div class="table-selection-overlay change-table-overlay">
+      <mat-card class="table-selection-card">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>swap_horiz</mat-icon>
+            Change Table
+          </mat-card-title>
+          <span class="spacer"></span>
+          <button mat-icon-button (click)="cancelChangeTable()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <p class="change-table-hint">Select a new table. Currently on: 
+            <strong>{{ selectedTable()?.tableNumber }}</strong>
+          </p>
+          
+          <!-- Available Dine-in Tables -->
+          @if (getDineInTables().length > 0) {
+            <div class="table-section">
+              <h3>Dine-in Tables</h3>
+              <div class="table-grid">
+                @for (table of getDineInTables(); track table.id) {
+                  <button mat-raised-button 
+                          class="table-btn"
+                          [class.available]="table.status === 'available'"
+                          [class.current]="table.id === selectedTable()?.id"
+                          [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                          [disabled]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                          (click)="changeToTable(table)">
+                    <div class="table-content">
+                      <mat-icon>table_restaurant</mat-icon>
+                      <span class="table-number">{{ table.tableNumber }}</span>
+                      @if (table.id === selectedTable()?.id) {
+                        <span class="table-status">Current</span>
+                      } @else if (table.status === 'occupied') {
+                        <span class="table-status">Occupied</span>
+                      }
+                    </div>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+          
+          <!-- Available Parcel/Takeaway -->
+          @if (getParcelTables().length > 0) {
+            <div class="table-section">
+              <h3>Takeaway / Parcel</h3>
+              <div class="table-grid">
+                @for (table of getParcelTables(); track table.id) {
+                  <button mat-raised-button 
+                          class="table-btn parcel"
+                          [class.available]="table.status === 'available'"
+                          [class.current]="table.id === selectedTable()?.id"
+                          [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                          [disabled]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                          (click)="changeToTable(table)">
+                    <div class="table-content">
+                      <mat-icon>takeout_dining</mat-icon>
+                      <span class="table-number">{{ table.tableNumber }}</span>
+                      @if (table.id === selectedTable()?.id) {
+                        <span class="table-status">Current</span>
+                      } @else if (table.status === 'occupied') {
+                        <span class="table-status">Occupied</span>
+                      }
+                    </div>
+                  </button>
+                }
+              </div>
+            </div>
+          }
+        </mat-card-content>
+      </mat-card>
+    </div>
+  }
+
+  <!-- Loose Item Quantity Dialog (Grocery Mode) -->
+  @if (showLooseItemDialog()) {
+    <div class="loose-item-overlay">
+      <mat-card class="loose-item-dialog">
+        <mat-card-header>
+          <mat-card-title>
+            <mat-icon>scale</mat-icon>
+            Enter Quantity
+          </mat-card-title>
+          <span class="spacer"></span>
+          <button mat-icon-button (click)="closeLooseItemDialog()">
+            <mat-icon>close</mat-icon>
+          </button>
+        </mat-card-header>
+        <mat-card-content>
+          <div class="loose-product-info">
+            <span class="product-name">{{ selectedLooseProduct()?.name }}</span>
+            <span class="product-price">{{ formatCurrency(selectedLooseProduct()?.unitPrice || 0) }} / {{ getLooseItemUnit() }}</span>
+          </div>
+          
+          <mat-form-field appearance="outline" class="quantity-input-field">
+            <mat-label>Quantity ({{ getLooseItemUnit() }})</mat-label>
+            <input matInput type="number" 
+                   [value]="looseItemQuantity()" 
+                   (input)="onLooseQuantityChange($event)"
+                   min="0.001" 
+                   step="0.1"
+                   autofocus>
+          </mat-form-field>
+
+          <div class="loose-item-total">
+            <span>Total:</span>
+            <span class="total-amount">{{ formatCurrency(getLooseItemTotal()) }}</span>
+          </div>
+        </mat-card-content>
+        <mat-card-actions align="end">
+          <button mat-button (click)="closeLooseItemDialog()">Cancel</button>
+          <button mat-raised-button color="primary" (click)="addLooseItemToCart()" [disabled]="looseItemQuantity() <= 0">
+            Add to Cart
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  }
+
+  <!-- Out of Stock Dialog -->
+  @if (showOutOfStockDialog()) {
+    <div class="out-of-stock-overlay" (click)="closeOutOfStockDialog()">
+      <mat-card class="out-of-stock-dialog" (click)="$event.stopPropagation()">
+        <div class="out-of-stock-icon-container">
+          <div class="icon-circle">
+            <mat-icon>remove_shopping_cart</mat-icon>
+          </div>
+        </div>
+        <mat-card-content>
+          <h2 class="out-of-stock-title">Out of Stock</h2>
+          <p class="out-of-stock-product">{{ outOfStockProduct()?.name }}</p>
+          <p class="out-of-stock-message">This product is currently unavailable and cannot be added to cart.</p>
+          <div class="out-of-stock-details">
+            <div class="detail-row">
+              <span class="label">Product ID:</span>
+              <span class="value">{{ outOfStockProduct()?.productId }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Price:</span>
+              <span class="value">{{ formatCurrency(outOfStockProduct()?.unitPrice || 0) }}</span>
+            </div>
+            <div class="detail-row stock-row">
+              <span class="label">Stock:</span>
+              <span class="value stock-zero">{{ outOfStockProduct()?.stockQuantity || 0 }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="primary" (click)="closeOutOfStockDialog()">
+            <mat-icon>close</mat-icon>
+            Close
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  }
+
+  <!-- Search Section -->
+  <div class="search-header" [class.hidden]="needsTableSelection()">
+    <div class="search-wrapper">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input type="text"
+             #searchInput
+             [value]="searchQuery()"
+             (input)="onSearchInput($event)"
+             (keydown.enter)="onSearchEnter($event)"
+             placeholder="Search items..."
+             autocomplete="off">
+      @if (searchQuery()) {
+        <button mat-icon-button class="clear-btn" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </div>
+
+  <!-- Search Results Dropdown -->
+  @if (searchResults().length > 0) {
+    <div class="search-results">
+        @for (product of searchResults(); track product.productId) {
+          <div class="search-result-item" 
+               [class.out-of-stock]="product.stockQuantity <= 0"
+               [class.in-cart]="getCartQuantity(product.productId) > 0"
+               (click)="selectProduct(product)">
+            <div class="product-info">
+              <span class="product-name">{{ getDisplayName(product) }}</span>
+            </div>
+            <div class="product-price">{{ formatCurrency(product.unitPrice) }}</div>
+            @if (product.stockQuantity <= 0) {
+              <span class="stock-label out-of-stock-label">Out</span>
+            } @else if (getCartQuantity(product.productId) > 0) {
+              <span class="stock-label in-stock-label">{{ product.stockQuantity }}</span>
+            } @else if (product.stockQuantity <= 10) {
+              <span class="stock-label low-stock-label">{{ product.stockQuantity }}</span>
+            } @else {
+              <span class="stock-label in-stock-label">{{ product.stockQuantity }}</span>
+            }
+          </div>
+        }
+      </div>
+    }
+  </div>
+
+  <div class="content-area" [class.hidden]="needsTableSelection()">
+    <!-- Hotel Mode: Table Info Bar -->
+    @if (isHotelMode() && selectedTable()) {
+      <div class="table-info-bar">
+        <mat-chip [highlighted]="true" class="table-chip">
+          <span>{{ selectedTable()?.tableNumber }}</span>
+        </mat-chip>
+        <button mat-stroked-button (click)="startChangeTable()" class="change-table-btn">
+          <mat-icon>swap_horiz</mat-icon>
+          Change
+        </button>
+        
+        <!-- Occupied Tables Button -->
+        <div class="attended-tables-container">
+          <button mat-icon-button 
+                  (click)="toggleAttendedTablesMenu()"
+                  class="attended-tables-btn">
+            <mat-icon [matBadge]="getOccupiedTables().length" matBadgeColor="warn" matBadgeSize="small">
+              grid_view
+            </mat-icon>
+          </button>
+          
+          @if (showAttendedTablesMenu()) {
+            <div class="attended-tables-menu" (click)="$event.stopPropagation()">
+              <div class="menu-header">
+                <span>Occupied Tables</span>
+                <button mat-icon-button (click)="closeAttendedTablesMenu()">
+                  <mat-icon>close</mat-icon>
+                </button>
+              </div>
+              <div class="menu-content">
+                @if (getOccupiedTables().length === 0) {
+                  <div class="no-tables">No occupied tables</div>
+                } @else {
+                  @for (table of getOccupiedTables(); track table.id) {
+                    <div class="attended-table-item" 
+                         [class.current]="table.id === selectedTable()?.id"
+                         (click)="table.id !== selectedTable()?.id && selectOccupiedTable(table)">
+                      <div class="table-info">
+                        @if (table.tableType === 'parcel') {
+                          <mat-icon>takeout_dining</mat-icon>
+                        } @else {
+                          <mat-icon>table_restaurant</mat-icon>
+                        }
+                        <span>{{ table.tableNumber }}</span>
+                      </div>
+                      @if (table.id === selectedTable()?.id) {
+                        <span class="current-label">Current</span>
+                      } @else if (table.grandTotal) {
+                        <span class="table-amount">{{ formatCurrency(table.grandTotal) }}</span>
+                      }
+                    </div>
+                  }
+                }
+                <button mat-stroked-button class="add-new-table-btn" (click)="cancelTableSelection(); closeAttendedTablesMenu()">
+                  <mat-icon>add</mat-icon>
+                  Attend New Table
+                </button>
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+    }
+
+    <!-- Cart Header -->
+    <div class="cart-header">
+      <div class="cart-title">
+        <mat-icon>shopping_cart</mat-icon>
+        <span>{{ translateService.t('home.cart') }}</span>
+        @if (billService.cartItemCount() > 0) {
+          <span class="cart-count">{{ billService.cartItemCount() }}</span>
+        }
+      </div>
+      <div class="cart-actions">
+        @if (isHotelMode() && getNewItems().length > 0) {
+          <span class="new-badge">{{ getNewItems().length }} new</span>
+        }
+        <button mat-icon-button color="warn" (click)="clearCart()" 
+                [disabled]="billService.cartItems().length === 0">
+          <mat-icon>delete_sweep</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Cart Items List -->
+    <div class="cart-items-list">
+      @if (billService.cartItems().length === 0) {
+        <div class="empty-cart">
+          <mat-icon>add_shopping_cart</mat-icon>
+          <p>{{ translateService.t('home.emptyCart') }}</p>
+          <span class="empty-hint">Search & add products above</span>
+        </div>
+      } @else {
+        @for (item of billService.cartItems(); track item.productId; let i = $index) {
+          <div class="cart-item" 
+               [class.highlight]="highlightedProductId() === item.productId"
+               (pointerdown)="onItemPointerDown($event, item)"
+               (pointerup)="onItemPointerUp($event, item)"
+               (pointercancel)="onItemPointerCancel($event)"
+               (pointerleave)="onItemPointerCancel($event)"
+               (lostpointercapture)="onLostPointerCapture($event)"
+               (contextmenu)="$event.preventDefault()">
+            <div class="item-main">
+              <div class="item-qty-badge">{{ item.isLooseItem ? item.quantity.toFixed(1) : item.quantity }}</div>
+              <div class="item-details">
+                <div class="item-name-row">
+                  <span class="item-name">{{ getDisplayName(item) }}</span>
+                  @if (isHotelMode() && isItemKotPrinted(item.productId)) {
+                    <mat-icon class="kot-icon">check_circle</mat-icon>
+                  }
+                </div>
+                <span class="item-price">{{ formatCurrency(item.unitPrice) }}@if (item.isLooseItem && item.unit) {/{{ item.unit }}}</span>
+              </div>
+              <div class="item-total">{{ formatCurrency(getItemTotal(item)) }}</div>
+            </div>
+            @if (isHotelMode() || (item.warrantyMonths && item.warrantyMonths > 0)) {
+              <div class="item-extras" 
+                   (pointerdown)="$event.stopPropagation()">
+                @if (isHotelMode()) {
+                  <mat-form-field appearance="outline" class="note-field">
+                    <mat-select [value]="item.note || ''" 
+                                (selectionChange)="updateItemNote(item, $event.value)"
+                                placeholder="Note">
+                      <mat-option value="">None</mat-option>
+                      @for (note of hotelService.itemNotes(); track note.id) {
+                        <mat-option [value]="note.label">{{ note.label }}</mat-option>
+                      }
+                    </mat-select>
+                  </mat-form-field>
+                }
+                @if (item.warrantyMonths && item.warrantyMonths > 0) {
+                  <span class="warranty-tag">
+                    <mat-icon>verified_user</mat-icon>{{ item.warrantyMonths }}mo
+                  </span>
+                }
+              </div>
+            }
+          </div>
+        }
+      }
+    </div>
+
+    <!-- Floating Cart Footer -->
+    <div class="cart-footer" [class.expanded]="showBillSummary()" [class.has-items]="billService.cartItems().length > 0">
+      <!-- Collapsed View: Total + Pay Button -->
+      <div class="footer-collapsed" (click)="toggleBillSummary()">
+        <div class="footer-total">
+          <span class="total-label">Total</span>
+          <span class="total-amount">{{ formatCurrency(billService.cartTotal()) }}</span>
+        </div>
+        <button mat-icon-button class="expand-btn">
+          <mat-icon>{{ showBillSummary() ? 'expand_more' : 'expand_less' }}</mat-icon>
+        </button>
+        @if (!showBillSummary()) {
+          @if (isHotelMode()) {
+            <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
+                    [disabled]="getNewItems().length === 0" class="action-btn kot-btn">
+              KOT @if (getNewItems().length > 0) {({{ getNewItems().length }})}
+            </button>
+            <button mat-flat-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
+                    [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0" class="action-btn">
+              Pay
+            </button>
+          } @else {
+            <button mat-flat-button color="primary" (click)="saveBill(); $event.stopPropagation()" 
+                    [disabled]="isSaveBillDisabled()" class="action-btn">
+              {{ translateService.t('home.payNow') }}
+            </button>
+          }
+        }
+      </div>
+
+      <!-- Expanded View: Full Bill Summary -->
+      @if (showBillSummary()) {
+        <div class="footer-expanded">
+          <!-- Summary Rows -->
+          <div class="summary-rows">
+            <div class="sum-row">
+              <span>Subtotal</span>
+              <span>{{ formatCurrency(billService.cartSubtotal()) }}</span>
+            </div>
+            @if (settingsService.settings().discountEnabled) {
+              <div class="sum-row discount">
+                <span>Discount</span>
+                <div class="discount-input">
+                  <span>-{{ settingsService.settings().currency }}</span>
+                  <input type="number" 
+                         [value]="billService.billDiscount()" 
+                         (input)="billService.billDiscount.set(+$any($event.target).value)"
+                         (click)="$event.stopPropagation()"
+                         min="0" placeholder="0">
+                </div>
+              </div>
+            }
+            @if (settingsService.settings().taxEnabled) {
+              <div class="sum-row">
+                <span>Tax</span>
+                <span>+{{ formatCurrency(billService.cartTax()) }}</span>
+              </div>
+            }
+            <div class="sum-row grand-total">
+              <span>Grand Total</span>
+              <span>{{ formatCurrency(billService.cartTotal()) }}</span>
+            </div>
+          </div>
+
+          <!-- Payment Method -->
+          <div class="payment-methods">
+            <span class="section-label">Payment</span>
+            <div class="methods-grid">
+              <button mat-stroked-button 
+                      [class.selected]="paymentMethod() === 'online'"
+                      (click)="onPaymentMethodChange('online'); $event.stopPropagation()">
+                <mat-icon>smartphone</mat-icon>
+                <span>UPI</span>
+              </button>
+              <button mat-stroked-button 
+                      [class.selected]="paymentMethod() === 'cash'"
+                      (click)="onPaymentMethodChange('cash'); $event.stopPropagation()">
+                <mat-icon>payments</mat-icon>
+                <span>Cash</span>
+              </button>
+              <button mat-stroked-button 
+                      [class.selected]="paymentMethod() === 'card'"
+                      (click)="onPaymentMethodChange('card'); $event.stopPropagation()">
+                <mat-icon>credit_card</mat-icon>
+                <span>Card</span>
+              </button>
+              @if (settingsService.settings().debtEnabled) {
+                <button mat-stroked-button 
+                        [class.selected]="paymentMethod() === 'debt'"
+                        (click)="onPaymentMethodChange('debt'); $event.stopPropagation()">
+                  <mat-icon>account_balance</mat-icon>
+                  <span>Debt</span>
+                </button>
+              }
+            </div>
+          </div>
+
+          <!-- Customer Info -->
+          <div class="customer-info" (click)="$event.stopPropagation()">
+            <span class="section-label">Customer {{ paymentMethod() === 'debt' ? '(Required)' : '(Optional)' }}</span>
+            <div class="customer-fields">
+              <mat-form-field appearance="outline">
+                <mat-label>Name</mat-label>
+                <input matInput 
+                       [value]="customerName()" 
+                       (input)="customerName.set($any($event.target).value)"
+                       [matAutocomplete]="customerAuto"
+                       (input)="onCustomerNameInput($any($event.target).value)">
+                <mat-autocomplete #customerAuto="matAutocomplete" (optionSelected)="oncustomerSelected($event)">
+                  @for (customer of customerSuggestions(); track customer.customerId) {
+                    <mat-option [value]="customer.name">{{ customer.name }} - {{ customer.phone }}</mat-option>
+                  }
+                </mat-autocomplete>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Phone</mat-label>
+                <input matInput 
+                       [value]="customerPhone()" 
+                       (input)="customerPhone.set($any($event.target).value)"
+                       [matAutocomplete]="customerPhoneAuto"
+                       (input)="onCustomerPhoneInput($any($event.target).value)">
+                <mat-autocomplete #customerPhoneAuto="matAutocomplete" (optionSelected)="oncustomerPhoneSelected($event)">
+                  @for (customer of customerSuggestions(); track customer.customerId) {
+                    <mat-option [value]="customer.phone">{{ customer.name }} - {{ customer.phone }}</mat-option>
+                  }
+                </mat-autocomplete>
+              </mat-form-field>
+            </div>
+            @if (showAddCustomerButton() && paymentMethod() === 'debt') {
+              <button mat-stroked-button color="accent" (click)="addCustomer()" class="add-customer-btn">
+                <mat-icon>person_add</mat-icon>Add Customer
+              </button>
+            }
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="footer-actions">
+            @if (isHotelMode()) {
+              <button mat-raised-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
+                      [disabled]="getNewItems().length === 0">
+                <mat-icon>receipt_long</mat-icon>
+                Print KOT @if (getNewItems().length > 0) {({{ getNewItems().length }})}
+              </button>
+              <button mat-raised-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
+                      [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0">
+                <mat-icon>payment</mat-icon>
+                Complete & Pay
+              </button>
+            } @else {
+              <button mat-raised-button color="primary" (click)="saveBill(); $event.stopPropagation()" 
+                      [disabled]="isSaveBillDisabled()" class="pay-btn">
+                <mat-icon>payment</mat-icon>
+                {{ translateService.t('home.payNow') }}
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

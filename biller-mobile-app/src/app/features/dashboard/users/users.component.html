@@ -1,0 +1,100 @@
+<div class="staff-container">
+  <!-- Search Header -->
+  <div class="search-header">
+    <div class="search-wrapper">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input type="text"
+             [value]="searchQuery()"
+             (input)="onSearchInput($event)"
+             [placeholder]="translateService.t('users.searchUsers')">
+      @if (searchQuery()) {
+        <button mat-icon-button class="clear-btn" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Staff List -->
+  <div class="staff-list">
+    @if (loadingUsers()) {
+      <div class="loading-state">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    } @else if (filteredUsers().length === 0) {
+      <div class="empty-state">
+        <mat-icon>people_outline</mat-icon>
+        @if (searchQuery()) {
+          <p>{{ translateService.t('users.noUsers') }}</p>
+          <button mat-stroked-button (click)="clearSearch()">
+            {{ translateService.t('users.clearSearch') }}
+          </button>
+        } @else {
+          <p>{{ translateService.t('users.noUsers') }}</p>
+          <button mat-stroked-button color="primary" (click)="openCreateUserDialog()">
+            <mat-icon>person_add</mat-icon>
+            {{ translateService.t('users.createFirst') }}
+          </button>
+        }
+      </div>
+    } @else {
+      @for (user of filteredUsers(); track user.uid) {
+        <div class="staff-card" (click)="openEditUserDialog(user)">
+          <div class="staff-avatar" [class.admin]="user.role === 'admin'">
+            <span>{{ getInitials(user.displayName) }}</span>
+          </div>
+          <div class="staff-info">
+            <div class="staff-header">
+              <span class="staff-name">{{ user.displayName }}</span>
+              <span class="role-badge" [class]="'role-' + user.role">
+                {{ user.role | titlecase }}
+              </span>
+            </div>
+            <div class="staff-meta">
+              @if (user.phone) {
+                <span class="meta-item">
+                  <mat-icon>phone</mat-icon>
+                  {{ user.phone }}
+                </span>
+              }
+              <span class="meta-item">
+                <mat-icon>{{ user.isActive ? 'check_circle' : 'cancel' }}</mat-icon>
+                {{ user.isActive ? translateService.t('common.active') : translateService.t('common.inactive') }}
+              </span>
+            </div>
+          </div>
+          <button mat-icon-button [matMenuTriggerFor]="userMenu" class="more-btn" (click)="$event.stopPropagation()">
+            <mat-icon>more_vert</mat-icon>
+          </button>
+          
+          <mat-menu #userMenu="matMenu">
+            <button mat-menu-item (click)="openEditUserDialog(user)">
+              <mat-icon>edit</mat-icon>
+              <span>{{ translateService.t('common.edit') }}</span>
+            </button>
+            <button mat-menu-item (click)="resetUserPassword(user)">
+              <mat-icon>lock_reset</mat-icon>
+              <span>{{ translateService.t('users.resetPassword') }}</span>
+            </button>
+            <button mat-menu-item (click)="toggleUserStatus(user)">
+              <mat-icon>{{ user.isActive ? 'block' : 'check_circle' }}</mat-icon>
+              <span>{{ user.isActive ? translateService.t('users.deactivate') : translateService.t('users.activate') }}</span>
+            </button>
+            @if (user.uid !== authService.currentUser()?.uid) {
+              <mat-divider></mat-divider>
+              <button mat-menu-item (click)="deleteUser(user)" class="delete-action">
+                <mat-icon color="warn">delete</mat-icon>
+                <span>{{ translateService.t('common.delete') }}</span>
+              </button>
+            }
+          </mat-menu>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- FAB Add Button -->
+  <button mat-fab class="fab-add" (click)="openCreateUserDialog()">
+    <mat-icon>person_add</mat-icon>
+  </button>
+</div>

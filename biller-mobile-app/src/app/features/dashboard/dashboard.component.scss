@@ -1,0 +1,345 @@
+@use '../../../styles/variables' as v;
+@use '../../../styles/mixins' as m;
+
+// ============================================
+// MOBILE APP CONTAINER
+// ============================================
+
+:host {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.mobile-app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  background: v.$light-background;
+  overflow: hidden;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+}
+
+// ============================================
+// HEADER - Modern Clean Design
+// ============================================
+
+.app-header {
+  flex-shrink: 0;
+  height: v.$header-height;
+  padding: 0 v.$spacing-md;
+  padding-top: env(safe-area-inset-top, 0);
+  z-index: 100;
+  
+  // Light theme: Bold primary color header
+  background: linear-gradient(135deg, v.$light-primary 0%, v.$light-primary-dark 100%);
+  color: white;
+
+  @include m.dark-theme {
+    // Dark theme: Blend with content, subtle elevation
+    background: v.$dark-surface;
+    color: v.$dark-text-primary;
+    border-bottom: 1px solid v.$dark-divider;
+  }
+
+  .header-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 100%;
+    max-width: 100%;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    min-width: 0;
+    flex: 1;
+
+    .header-logo {
+      width: 32px;
+      height: 32px;
+      border-radius: v.$radius-sm;
+      object-fit: contain;
+      flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 2px;
+
+      @include m.dark-theme {
+        background: v.$dark-primary-bg;
+      }
+    }
+
+    .header-logo-icon {
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+      flex-shrink: 0;
+      
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+
+    .header-title {
+      font-size: 18px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      letter-spacing: -0.3px;
+
+      @include m.dark-theme {
+        color: v.$dark-text-primary;
+      }
+    }
+  }
+
+  .header-actions {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-xs;
+    flex-shrink: 0;
+
+    .header-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      transition: background-color v.$transition-fast;
+      
+      &:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+
+        &:hover {
+          background: v.$dark-surface-light;
+          color: v.$dark-primary;
+        }
+      }
+      
+      mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+    }
+
+    .user-btn {
+      .user-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
+        object-fit: cover;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+
+        @include m.dark-theme {
+          border-color: v.$dark-divider;
+        }
+      }
+
+      mat-icon {
+        @include m.dark-theme {
+          color: v.$dark-text-secondary;
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// MAIN CONTENT AREA
+// ============================================
+
+.app-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: v.$bottom-nav-height;
+  
+  // Add safe area inset for bottom
+  padding-bottom: calc(v.$bottom-nav-height + env(safe-area-inset-bottom, 0));
+}
+
+// ============================================
+// BOTTOM NAVIGATION BAR - Modern Design
+// ============================================
+
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: v.$bottom-nav-height;
+  padding-bottom: env(safe-area-inset-bottom, 0);
+  background: v.$light-surface;
+  border-top: 1px solid v.$light-divider;
+  display: flex;
+  justify-content: space-around;
+  align-items: stretch;
+  z-index: 1000;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-top-color: v.$dark-divider;
+  }
+
+  .nav-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-decoration: none;
+    color: v.$light-text-tertiary;
+    padding: v.$spacing-xs 0;
+    transition: all v.$transition-fast;
+    min-width: 0;
+    max-width: 100px;
+    position: relative;
+
+    @include m.dark-theme {
+      color: v.$dark-text-tertiary;
+    }
+
+    mat-icon {
+      font-size: 24px;
+      width: 24px;
+      height: 24px;
+      margin-bottom: 2px;
+      transition: transform v.$transition-fast;
+    }
+
+    .nav-label {
+      font-size: 11px;
+      font-weight: 500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 100%;
+      text-align: center;
+    }
+
+    &:active {
+      background: v.$light-primary-bg;
+      
+      @include m.dark-theme {
+        background: v.$dark-primary-bg;
+      }
+    }
+
+    &.active {
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+
+      mat-icon {
+        transform: scale(1.05);
+      }
+
+      .nav-label {
+        font-weight: 600;
+      }
+
+      // Active indicator pill
+      &::before {
+        content: '';
+        position: absolute;
+        top: 4px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 48px;
+        height: 28px;
+        background: v.$light-primary-bg;
+        border-radius: 14px;
+        z-index: -1;
+
+        @include m.dark-theme {
+          background: v.$dark-primary-bg;
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// USER MENU - Clean Design
+// ============================================
+
+.user-info-card {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  padding: v.$spacing-md;
+  min-width: 220px;
+
+  .menu-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 2px solid v.$light-divider;
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+  }
+
+  .avatar-placeholder {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, v.$light-primary 0%, v.$light-primary-dark 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    
+    @include m.dark-theme {
+      background: linear-gradient(135deg, v.$dark-primary-dark 0%, v.$dark-primary 100%);
+    }
+    
+    mat-icon {
+      color: white;
+      font-size: 28px;
+      width: 28px;
+      height: 28px;
+    }
+  }
+
+  .user-details {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 2px;
+
+    .user-name {
+      font-weight: 600;
+      font-size: 15px;
+      color: v.$light-text-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-primary;
+      }
+    }
+
+    .user-role {
+      font-size: 12px;
+      color: v.$light-primary;
+      font-weight: 500;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+  }
+}

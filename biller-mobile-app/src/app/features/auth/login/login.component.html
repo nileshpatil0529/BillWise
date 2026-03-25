@@ -1,0 +1,74 @@
+<div class="login-container">
+  <!-- Background shapes -->
+  <div class="login-background">
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+  </div>
+
+  <!-- Logo section -->
+  <div class="logo-section">
+    <div class="logo-container">
+      <mat-icon class="logo-icon">point_of_sale</mat-icon>
+      <h1>Biller</h1>
+    </div>
+    <p class="subtitle">{{ translateService.t('auth.signIn') }}</p>
+  </div>
+
+  <!-- Form section -->
+  <div class="form-section">
+    <form [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <mat-form-field appearance="outline">
+        <mat-label>{{ translateService.t('auth.emailOrPhone') }}</mat-label>
+        <input matInput 
+               type="text" 
+               formControlName="email" 
+               [placeholder]="translateService.t('auth.enterEmailOrPhone')"
+               autocomplete="username">
+        <mat-icon matSuffix>person</mat-icon>
+        @if (loginForm.get('email')?.touched && loginForm.get('email')?.invalid) {
+          <mat-error>{{ getErrorMessage('email') }}</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>{{ translateService.t('auth.password') }}</mat-label>
+        <input matInput 
+               [type]="hidePassword() ? 'password' : 'text'" 
+               formControlName="password" 
+               [placeholder]="translateService.t('auth.enterPassword')"
+               autocomplete="current-password">
+        <button mat-icon-button matSuffix type="button" (click)="togglePasswordVisibility()">
+          <mat-icon>{{ hidePassword() ? 'visibility_off' : 'visibility' }}</mat-icon>
+        </button>
+        @if (loginForm.get('password')?.touched && loginForm.get('password')?.invalid) {
+          <mat-error>{{ getErrorMessage('password') }}</mat-error>
+        }
+      </mat-form-field>
+
+      <button mat-flat-button 
+              color="primary" 
+              type="submit" 
+              class="login-button"
+              [disabled]="loading()">
+        @if (loading()) {
+          <span class="button-content">
+            <mat-spinner diameter="20"></mat-spinner>
+            {{ translateService.t('auth.signingIn') }}
+          </span>
+        } @else {
+          <span class="button-content">
+            <mat-icon>login</mat-icon>
+            {{ translateService.t('auth.loginButton') }}
+          </span>
+        }
+      </button>
+    </form>
+
+    <!-- Footer hint -->
+    <p class="hint">
+      <mat-icon>info</mat-icon>
+      {{ translateService.t('auth.defaultAdmin') }}: admin&#64;biller.com / Admin&#64;123
+    </p>
+  </div>
+</div>

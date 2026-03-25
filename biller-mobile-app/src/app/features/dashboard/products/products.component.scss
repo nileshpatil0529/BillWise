@@ -1,0 +1,474 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+// ============================================
+// MOBILE PRODUCTS COMPONENT
+// ============================================
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.products-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: v.$light-background;
+  position: relative;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+}
+
+// ============================================
+// SEARCH HEADER
+// ============================================
+
+.search-header {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-xs;
+  padding: v.$spacing-sm;
+  background: v.$light-surface;
+  border-bottom: 1px solid v.$light-divider;
+  flex-shrink: 0;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+
+  .filter-btn {
+    &.active {
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+  }
+}
+
+.search-wrapper {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  background: v.$light-background;
+  border-radius: 24px;
+  padding: 0 v.$spacing-sm 0 v.$spacing-md;
+  height: 44px;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+
+  .search-icon {
+    flex-shrink: 0;
+    color: v.$light-text-secondary;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    outline: none;
+    color: inherit;
+    padding-right: v.$spacing-xs;
+
+    @include m.dark-theme {
+      color: white;
+    }
+
+    &::placeholder {
+      color: v.$light-text-secondary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+  }
+
+  .clear-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+// ============================================
+// ACTIVE FILTER
+// ============================================
+
+.active-filter {
+  padding: v.$spacing-xs v.$spacing-sm;
+  background: v.$light-surface;
+  border-bottom: 1px solid v.$light-divider;
+  flex-shrink: 0;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+
+  mat-chip {
+    height: 28px;
+    font-size: 12px;
+  }
+}
+
+// ============================================
+// PRODUCTS LIST
+// ============================================
+
+.products-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 80px; // Space for FAB and bottom actions
+}
+
+// ============================================
+// LOADING & EMPTY STATES
+// ============================================
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+  gap: v.$spacing-sm;
+
+  span {
+    font-size: 13px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+  text-align: center;
+
+  mat-icon {
+    font-size: 64px;
+    width: 64px;
+    height: 64px;
+    color: v.$light-text-secondary;
+    opacity: 0.3;
+    margin-bottom: v.$spacing-md;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+
+  h3 {
+    font-size: 18px;
+    font-weight: 600;
+    margin: 0 0 v.$spacing-xs;
+    color: v.$light-text-primary;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+
+  p {
+    font-size: 13px;
+    color: v.$light-text-secondary;
+    margin: 0 0 v.$spacing-md;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+
+  button {
+    height: 40px;
+  }
+}
+
+// ============================================
+// PRODUCT CARD
+// ============================================
+
+.product-card {
+  background: v.$light-surface;
+  border-bottom: 1px solid v.$light-divider;
+  padding: v.$spacing-sm;
+  cursor: pointer;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+
+  &:active {
+    background: rgba(v.$light-primary, 0.05);
+
+    @include m.dark-theme {
+      background: rgba(v.$dark-primary, 0.1);
+    }
+  }
+
+  .product-main {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: v.$spacing-sm;
+  }
+
+  .product-info {
+    flex: 1;
+    min-width: 0;
+
+    .product-name {
+      font-weight: 500;
+      font-size: 14px;
+      color: v.$light-text-primary;
+      @include m.text-truncate;
+
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+
+    .product-meta {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-xs;
+      margin-top: 4px;
+      flex-wrap: wrap;
+
+      .category-tag {
+        font-size: 10px;
+        color: v.$light-primary;
+        background: rgba(v.$light-primary, 0.1);
+        padding: 2px 6px;
+        border-radius: 4px;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+          background: rgba(v.$dark-primary, 0.15);
+        }
+      }
+
+      .barcode {
+        font-size: 10px;
+        color: v.$light-text-secondary;
+        font-family: monospace;
+
+        @include m.dark-theme {
+          color: v.$dark-text-secondary;
+        }
+      }
+    }
+  }
+
+  .product-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    flex-shrink: 0;
+
+    .product-price {
+      font-weight: 700;
+      font-size: 14px;
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+      }
+    }
+
+    .stock-info {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: rgba(v.$light-success, 0.15);
+      color: v.$light-success;
+
+      &.low-stock {
+        background: rgba(v.$light-warning, 0.15);
+        color: v.$light-warning;
+      }
+
+      &.out-of-stock {
+        background: rgba(v.$light-error, 0.15);
+        color: v.$light-error;
+      }
+    }
+  }
+
+  .product-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: v.$spacing-xs;
+    padding-top: v.$spacing-xs;
+
+    .warranty-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 2px;
+      font-size: 10px;
+      color: v.$light-primary;
+      background: rgba(v.$light-primary, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+
+      mat-icon {
+        font-size: 12px;
+        width: 12px;
+        height: 12px;
+      }
+
+      @include m.dark-theme {
+        color: v.$dark-primary;
+        background: rgba(v.$dark-primary, 0.15);
+      }
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 4px;
+      margin-left: auto;
+
+      .action-btn {
+        width: 32px;
+        height: 32px;
+
+        mat-icon {
+          font-size: 18px;
+          width: 18px;
+          height: 18px;
+        }
+
+        &.delete {
+          color: v.$light-error;
+
+          @include m.dark-theme {
+            color: v.$dark-error;
+          }
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// LOADING MORE & LIST END
+// ============================================
+
+.loading-more {
+  display: flex;
+  justify-content: center;
+  padding: v.$spacing-md;
+}
+
+.list-end {
+  text-align: center;
+  padding: v.$spacing-sm;
+
+  span {
+    font-size: 12px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}
+
+// ============================================
+// FLOATING ACTION BUTTON
+// ============================================
+
+.fab-add {
+  position: absolute;
+  right: v.$spacing-md;
+  bottom: 60px; // Above bottom actions
+  z-index: 100;
+}
+
+// ============================================
+// BOTTOM ACTIONS BAR
+// ============================================
+
+.bottom-actions {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  gap: v.$spacing-md;
+  padding: v.$spacing-xs v.$spacing-md;
+  padding-bottom: calc(v.$spacing-xs + env(safe-area-inset-bottom, 0));
+  background: v.$light-surface;
+  border-top: 1px solid v.$light-divider;
+  z-index: 50;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+
+  button {
+    font-size: 12px;
+    height: 36px;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
+    }
+  }
+}
+
+// ============================================
+// MENU STYLING
+// ============================================
+
+.selected {
+  background: rgba(v.$light-primary, 0.1);
+  color: v.$light-primary;
+
+  @include m.dark-theme {
+    background: rgba(v.$dark-primary, 0.15);
+    color: v.$dark-primary;
+  }
+}

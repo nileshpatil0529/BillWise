@@ -1,0 +1,111 @@
+<mat-card class="user-dialog-card">
+  <mat-card-header>
+    <mat-icon mat-card-avatar>{{ data.user ? 'edit' : 'person_add' }}</mat-icon>
+    <mat-card-title>{{ data.user ? 'Edit User' : 'Create New User' }}</mat-card-title>
+  </mat-card-header>
+
+  <mat-card-content>
+    <form [formGroup]="userForm" class="user-form">
+      <mat-form-field appearance="outline" class="full-width">
+        <mat-label>Display Name</mat-label>
+        <input matInput formControlName="displayName" placeholder="Enter display name">
+        <mat-icon matPrefix>person</mat-icon>
+        @if (userForm.get('displayName')?.hasError('required')) {
+          <mat-error>Name is required</mat-error>
+        }
+      </mat-form-field>
+
+      @if (!data.user) {
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Phone Number</mat-label>
+          <input matInput formControlName="phone" type="tel" placeholder="Enter 10-digit phone number">
+          <mat-icon matPrefix>phone</mat-icon>
+          @if (userForm.get('phone')?.hasError('required')) {
+            <mat-error>Phone number is required</mat-error>
+          }
+          @if (userForm.get('phone')?.hasError('pattern')) {
+            <mat-error>Enter a valid 10-digit phone number</mat-error>
+          }
+        </mat-form-field>
+      }
+
+      <div class="form-row">
+        <mat-form-field appearance="outline">
+          <mat-label>Role</mat-label>
+          <mat-select formControlName="role" (selectionChange)="onRoleChange($event.value)">
+            <mat-option value="admin">
+              <mat-icon class="role-icon">admin_panel_settings</mat-icon>
+              Admin
+            </mat-option>
+            <mat-option value="manager">
+              <mat-icon class="role-icon">manage_accounts</mat-icon>
+              Manager
+            </mat-option>
+            <mat-option value="staff">
+              <mat-icon class="role-icon">badge</mat-icon>
+              Staff
+            </mat-option>
+          </mat-select>
+          <mat-icon matPrefix>badge</mat-icon>
+        </mat-form-field>
+
+        @if (data.user) {
+          <div class="toggle-field">
+            <mat-slide-toggle formControlName="isActive" color="primary">
+              <span class="toggle-label">
+                {{ userForm.get('isActive')?.value ? 'Active' : 'Inactive' }}
+              </span>
+            </mat-slide-toggle>
+          </div>
+        }
+      </div>
+
+      <div class="permissions-section">
+        <div class="section-header">
+          <mat-icon>security</mat-icon>
+          <span>Permissions</span>
+        </div>
+        <p class="section-hint">Select which sections this user can access</p>
+        
+        <div class="permissions-grid">
+          @for (permission of availablePermissions; track permission.value) {
+            <mat-checkbox 
+              [checked]="isPermissionChecked(permission.value)"
+              (change)="togglePermission(permission.value, $event.checked)"
+              color="primary">
+              <div class="permission-item">
+                <mat-icon>{{ permission.icon }}</mat-icon>
+                <span>{{ permission.label }}</span>
+              </div>
+            </mat-checkbox>
+          }
+        </div>
+      </div>
+
+      @if (!data.user && defaultPassword) {
+        <div class="info-box success">
+          <mat-icon>info</mat-icon>
+          <div class="info-content">
+            <p class="info-title">Default Password: <strong>{{ defaultPassword }}</strong></p>
+            <p class="info-hint">User will be required to change this password on first login</p>
+          </div>
+        </div>
+      }
+    </form>
+  </mat-card-content>
+
+  <mat-card-actions align="end">
+    <button mat-button mat-dialog-close>Cancel</button>
+    <button 
+      mat-raised-button 
+      color="primary" 
+      (click)="onSubmit()"
+      [disabled]="userForm.invalid || loading()">
+      @if (loading()) {
+        <mat-spinner diameter="20"></mat-spinner>
+      }
+      <mat-icon>{{ data.user ? 'save' : 'add' }}</mat-icon>
+      {{ data.user ? 'Save Changes' : 'Create User' }}
+    </button>
+  </mat-card-actions>
+</mat-card>

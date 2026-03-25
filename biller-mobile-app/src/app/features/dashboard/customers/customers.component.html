@@ -1,0 +1,89 @@
+<div class="customers-container">
+  <!-- Search Header -->
+  <div class="search-header">
+    <div class="search-wrapper">
+      <mat-icon class="search-icon">search</mat-icon>
+      <input type="text"
+             [value]="searchQuery()"
+             (input)="onSearchInput($event)"
+             [placeholder]="translateService.t('customers.searchCustomers')">
+      @if (searchQuery()) {
+        <button mat-icon-button class="clear-btn" (click)="clearSearch()">
+          <mat-icon>close</mat-icon>
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Customers List -->
+  <div class="customers-list" #customersListContainer>
+    @if (loading()) {
+      <div class="loading-state">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    } @else if (allCustomers().length === 0) {
+      <div class="empty-state">
+        <mat-icon>person_off</mat-icon>
+        @if (searchQuery()) {
+          <p>{{ translateService.t('customers.noCustomers') }} "{{ searchQuery() }}"</p>
+        } @else {
+          <p>{{ translateService.t('customers.noCustomersYet') }}</p>
+        }
+        @if (!searchQuery()) {
+          <button mat-stroked-button color="primary" (click)="openAddDialog()">
+            <mat-icon>person_add</mat-icon>
+            {{ translateService.t('customers.addCustomer') }}
+          </button>
+        }
+      </div>
+    } @else {
+      @for (customer of allCustomers(); track customer.customerId) {
+        <div class="customer-card" (click)="viewCustomerDetails(customer)">
+          <div class="customer-avatar">
+            <span>{{ getInitials(customer.name) }}</span>
+          </div>
+          <div class="customer-info">
+            <span class="customer-name">{{ customer.name }}</span>
+            <span class="customer-phone">
+              <mat-icon>phone</mat-icon>
+              {{ customer.phone }}
+            </span>
+          </div>
+          <div class="customer-debt">
+            @if (customer.totalDebt > 0) {
+              <span class="debt-amount has-debt">{{ formatCurrency(customer.totalDebt) }}</span>
+              <span class="debt-label">{{ translateService.t('customers.totalDebt') }}</span>
+            } @else {
+              <span class="debt-amount no-debt">{{ translateService.t('customers.noDebt') }}</span>
+            }
+          </div>
+          <div class="customer-actions">
+            <button mat-icon-button (click)="openEditDialog($event, customer)">
+              <mat-icon>edit</mat-icon>
+            </button>
+            <button mat-icon-button class="delete-btn" (click)="deleteCustomer($event, customer)">
+              <mat-icon>delete</mat-icon>
+            </button>
+          </div>
+        </div>
+      }
+      
+      @if (loadingMore()) {
+        <div class="loading-more">
+          <mat-spinner diameter="24"></mat-spinner>
+        </div>
+      }
+      
+      @if (!hasMore() && allCustomers().length > 0) {
+        <div class="end-message">
+          <span>{{ translateService.t('customers.allLoaded') }}</span>
+        </div>
+      }
+    }
+  </div>
+
+  <!-- FAB Add Button -->
+  <button mat-fab class="fab-add" (click)="openAddDialog()">
+    <mat-icon>person_add</mat-icon>
+  </button>
+</div>

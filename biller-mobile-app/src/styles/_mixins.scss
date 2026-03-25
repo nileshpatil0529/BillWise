@@ -1,0 +1,325 @@
+@use 'sass:math';
+@use 'variables' as v;
+
+// ============================================
+// MOBILE-FIRST RESPONSIVE MIXINS
+// ============================================
+
+// Small phones (360px and up)
+@mixin sm {
+  @media (min-width: #{v.$breakpoint-sm}) {
+    @content;
+  }
+}
+
+// Medium phones (480px and up)
+@mixin md {
+  @media (min-width: #{v.$breakpoint-md}) {
+    @content;
+  }
+}
+
+// Large phones / small tablets (600px and up)
+@mixin lg {
+  @media (min-width: #{v.$breakpoint-lg}) {
+    @content;
+  }
+}
+
+// Tablets (768px and up) - max for this app
+@mixin xl {
+  @media (min-width: #{v.$breakpoint-xl}) {
+    @content;
+  }
+}
+
+// Small phones only (below 360px)
+@mixin xs-only {
+  @media (max-width: #{v.$breakpoint-sm - 1px}) {
+    @content;
+  }
+}
+
+// Mobile phones (below 600px)
+@mixin mobile {
+  @media (max-width: #{v.$breakpoint-lg - 1px}) {
+    @content;
+  }
+}
+
+// Device orientation
+@mixin landscape {
+  @media (orientation: landscape) {
+    @content;
+  }
+}
+
+@mixin portrait {
+  @media (orientation: portrait) {
+    @content;
+  }
+}
+
+// Touch devices
+@mixin touch {
+  @media (hover: none) and (pointer: coarse) {
+    @content;
+  }
+}
+
+// High DPI screens
+@mixin retina {
+  @media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    @content;
+  }
+}
+
+// ============================================
+// THEME MIXINS
+// ============================================
+
+// Dark theme wrapper
+@mixin dark-theme {
+  :host-context(.dark-theme) & {
+    @content;
+  }
+}
+
+// Light theme explicit (rarely needed)
+@mixin light-theme {
+  :host-context(body:not(.dark-theme)) & {
+    @content;
+  }
+}
+
+// ============================================
+// MOBILE LAYOUT MIXINS
+// ============================================
+
+// Safe area padding - for notches and home indicators
+@mixin safe-area-top {
+  padding-top: v.$safe-area-top;
+}
+
+@mixin safe-area-bottom {
+  padding-bottom: max(v.$safe-area-bottom, v.$spacing-sm);
+}
+
+@mixin safe-area-horizontal {
+  padding-left: v.$safe-area-left;
+  padding-right: v.$safe-area-right;
+}
+
+// Touch-friendly button
+@mixin touch-target($size: v.$touch-target-default) {
+  min-width: $size;
+  min-height: $size;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Flexbox shortcuts
+@mixin flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@mixin flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+@mixin flex-column {
+  display: flex;
+  flex-direction: column;
+}
+
+// Mobile card
+@mixin mobile-card {
+  background: v.$light-surface;
+  border-radius: 0;
+  box-shadow: none;
+  border: 1px solid v.$light-divider;
+  padding: v.$spacing-md;
+  
+  @include dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+}
+
+// Mobile list item
+@mixin mobile-list-item {
+  min-height: v.$list-item-height;
+  padding: v.$spacing-md;
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  border-bottom: 1px solid v.$light-divider;
+  
+  @include dark-theme {
+    border-color: v.$dark-divider;
+  }
+  
+  &:active {
+    background: rgba(0, 0, 0, 0.05);
+    
+    @include dark-theme {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  }
+}
+
+// Grid shortcuts
+@mixin grid($columns: 1, $gap: v.$spacing-md) {
+  display: grid;
+  grid-template-columns: repeat($columns, 1fr);
+  gap: $gap;
+}
+
+@mixin grid-auto-fit($min: 150px, $gap: v.$spacing-md) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax($min, 1fr));
+  gap: $gap;
+}
+
+// ============================================
+// TYPOGRAPHY MIXINS
+// ============================================
+
+@mixin text-truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+@mixin text-truncate-lines($lines: 2) {
+  display: -webkit-box;
+  -webkit-line-clamp: $lines;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+// ============================================
+// VISUAL MIXINS
+// ============================================
+
+@mixin card-base {
+  background: v.$light-surface;
+  border-radius: 0;
+  box-shadow: none;
+  border: 1px solid v.$light-divider;
+  
+  @include dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+}
+
+@mixin card-header-gradient($light-start, $light-end, $dark-start, $dark-end) {
+  background: linear-gradient(135deg, $light-start, $light-end);
+  
+  @include dark-theme {
+    background: linear-gradient(135deg, $dark-start, $dark-end);
+  }
+}
+
+@mixin divider {
+  border-bottom: 1px solid v.$light-divider;
+  
+  @include dark-theme {
+    border-color: v.$dark-divider;
+  }
+}
+
+// ============================================
+// SCROLLBAR MIXINS
+// ============================================
+
+@mixin custom-scrollbar($width: 8px) {
+  &::-webkit-scrollbar {
+    width: $width;
+    height: $width;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.05);
+    border-radius: math.div($width, 2);
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: math.div($width, 2);
+
+    &:hover {
+      background: rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  @include dark-theme {
+    &::-webkit-scrollbar-track {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+
+      &:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+    }
+  }
+}
+
+// ============================================
+// ANIMATION MIXINS
+// ============================================
+
+@mixin fade-in($duration: v.$transition-normal) {
+  animation: fadeIn $duration ease-in-out;
+}
+
+@mixin slide-up($duration: v.$transition-normal) {
+  animation: slideUp $duration ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+// ============================================
+// ACCESSIBILITY MIXINS
+// ============================================
+
+@mixin focus-visible {
+  &:focus-visible {
+    outline: 2px solid v.$light-primary;
+    outline-offset: 2px;
+    
+    @include dark-theme {
+      outline-color: v.$dark-primary;
+    }
+  }
+}
+
+@mixin visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}

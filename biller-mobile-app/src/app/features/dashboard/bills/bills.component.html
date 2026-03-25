@@ -1,0 +1,206 @@
+<div class="bills-container">
+  <!-- Header with Date Presets -->
+  <div class="header-section">
+    <div class="page-header">
+      <h1>{{ translateService.t('bills.title') }}</h1>
+      <div class="header-actions">
+        @if (authService.isAdmin()) {
+          <button mat-icon-button [matMenuTriggerFor]="filterMenu" class="filter-btn">
+            <mat-icon>tune</mat-icon>
+          </button>
+        }
+        <button mat-icon-button (click)="downloadReport()" [disabled]="!reportData()">
+          <mat-icon>download</mat-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Date Presets -->
+    <div class="date-presets">
+      @for (preset of datePresets; track preset.value) {
+        <button mat-stroked-button 
+                [class.active]="selectedPreset() === preset.value"
+                (click)="setDatePreset(preset.value)">
+          {{ preset.label }}
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Filter Menu (Admin Only) -->
+  <mat-menu #filterMenu="matMenu" class="filter-menu">
+    <div class="filter-menu-content" (click)="$event.stopPropagation()">
+      <div class="filter-section">
+        <label>{{ translateService.t('bills.startDate') }}</label>
+        <mat-form-field appearance="outline">
+          <input matInput 
+                 [matDatepicker]="startPicker" 
+                 [value]="startDate()"
+                 (dateChange)="startDate.set($event.value); selectedPreset.set('custom')">
+          <mat-datepicker-toggle matSuffix [for]="startPicker"></mat-datepicker-toggle>
+          <mat-datepicker #startPicker></mat-datepicker>
+        </mat-form-field>
+      </div>
+
+      <div class="filter-section">
+        <label>{{ translateService.t('bills.endDate') }}</label>
+        <mat-form-field appearance="outline">
+          <input matInput 
+                 [matDatepicker]="endPicker" 
+                 [value]="endDate()"
+                 (dateChange)="endDate.set($event.value); selectedPreset.set('custom')">
+          <mat-datepicker-toggle matSuffix [for]="endPicker"></mat-datepicker-toggle>
+          <mat-datepicker #endPicker></mat-datepicker>
+        </mat-form-field>
+      </div>
+
+      <div class="filter-section">
+        <label>{{ translateService.t('bills.paymentMethod') }}</label>
+        <mat-form-field appearance="outline">
+          <mat-select [value]="paymentMethod()" (selectionChange)="paymentMethod.set($event.value)">
+            <mat-option value="all">{{ translateService.t('bills.allMethods') }}</mat-option>
+            <mat-option value="cash">{{ translateService.t('home.cash') }}</mat-option>
+            <mat-option value="card">{{ translateService.t('home.card') }}</mat-option>
+            <mat-option value="online">{{ translateService.t('home.online') }}/UPI</mat-option>
+            <mat-option value="debt">{{ translateService.t('home.debt') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <div class="filter-section">
+        <label>{{ translateService.t('bills.paymentStatus') }}</label>
+        <mat-form-field appearance="outline">
+          <mat-select [value]="paymentStatus()" (selectionChange)="paymentStatus.set($event.value)">
+            <mat-option value="all">{{ translateService.t('bills.allStatus') }}</mat-option>
+            <mat-option value="paid">{{ translateService.t('bills.paid') }}</mat-option>
+            <mat-option value="pending">{{ translateService.t('bills.pending') }}</mat-option>
+            <mat-option value="partial">{{ translateService.t('bills.partial') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+
+      <button mat-flat-button color="primary" (click)="applyFilters()" class="apply-btn">
+        {{ translateService.t('common.apply') }}
+      </button>
+    </div>
+  </mat-menu>
+
+  <!-- Summary Cards (Horizontal Scroll) -->
+  @if (reportData(); as report) {
+    <div class="summary-scroll">
+      <div class="summary-card total">
+        <mat-icon>trending_up</mat-icon>
+        <div class="card-content">
+          <span class="card-value">{{ formatCurrency(report.summary.totalSales) }}</span>
+          <span class="card-label">{{ translateService.t('bills.totalSales') }}</span>
+        </div>
+      </div>
+
+      <div class="summary-card count">
+        <mat-icon>receipt</mat-icon>
+        <div class="card-content">
+          <span class="card-value">{{ report.summary.totalBills }}</span>
+          <span class="card-label">{{ translateService.t('bills.totalBills') }}</span>
+        </div>
+      </div>
+
+      <div class="summary-card cash">
+        <mat-icon>payments</mat-icon>
+        <div class="card-content">
+          <span class="card-value">{{ formatCurrency(report.summary.cashSales) }}</span>
+          <span class="card-label">{{ translateService.t('bills.cashSales') }}</span>
+        </div>
+      </div>
+
+      <div class="summary-card online">
+        <mat-icon>credit_card</mat-icon>
+        <div class="card-content">
+          <span class="card-value">{{ formatCurrency(report.summary.cardSales + report.summary.onlineSales) }}</span>
+          <span class="card-label">{{ translateService.t('bills.cardOnline') }}</span>
+        </div>
+      </div>
+
+      <div class="summary-card debt">
+        <mat-icon>account_balance</mat-icon>
+        <div class="card-content">
+          <span class="card-value">{{ formatCurrency(report.summary.debtAmount) }}</span>
+          <span class="card-label">{{ translateService.t('bills.pendingDebt') }}</span>
+        </div>
+      </div>
+
+      <div class="summary-card tax">
+        <mat-icon>receipt_long</mat-icon>
+        <div class="card-content">
+          <span class="card-value">{{ formatCurrency(report.summary.totalTax) }}</span>
+          <span class="card-label">{{ translateService.t('bills.totalTax') }}</span>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Bills List -->
+  <div class="bills-list" #billsListContainer>
+    @if (loading()) {
+      <div class="loading-state">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    } @else if (allBills().length === 0) {
+      <div class="empty-state">
+        <mat-icon>receipt_long</mat-icon>
+        <p>{{ translateService.t('bills.noBills') }}</p>
+      </div>
+    } @else {
+      @for (bill of allBills(); track bill.billId) {
+        <div class="bill-card" (click)="viewBill(bill)">
+          <div class="bill-main">
+            <div class="bill-info">
+              <span class="bill-number">#{{ formatBillNumber(bill.billNumber) }}</span>
+              <span class="bill-date">{{ bill.createdAt | date:'dd MMM, HH:mm' }}</span>
+            </div>
+            <div class="bill-amount">
+              <span class="amount">{{ formatCurrency(bill.grandTotal) }}</span>
+              <span class="items-count">{{ bill.items.length || 0 }} items</span>
+            </div>
+          </div>
+          <div class="bill-footer">
+            <div class="bill-meta">
+              @if (bill.businessTypeData?.tableNumber) {
+                <span class="table-badge">
+                  @if (bill.businessTypeData?.tableType === 'parcel') {
+                    P{{ bill.businessTypeData.tableNumber }}
+                  } @else {
+                    T{{ bill.businessTypeData.tableNumber }}
+                  }
+                </span>
+              }
+              <span class="payment-method">
+                <mat-icon>{{ getPaymentMethodIcon(bill.paymentMethod) }}</mat-icon>
+                {{ bill.paymentMethod | titlecase }}
+              </span>
+            </div>
+            <div class="bill-actions">
+              <span class="status-badge" [class]="getPaymentStatusClass(bill.paymentStatus)">
+                {{ bill.paymentStatus | titlecase }}
+              </span>
+              <button mat-icon-button class="print-btn" (click)="printBill(bill); $event.stopPropagation()">
+                <mat-icon>print</mat-icon>
+              </button>
+            </div>
+          </div>
+        </div>
+      }
+      
+      @if (loadingMore()) {
+        <div class="loading-more">
+          <mat-spinner diameter="24"></mat-spinner>
+        </div>
+      }
+      
+      @if (!hasMore() && allBills().length > 0) {
+        <div class="end-message">
+          <span>All bills loaded</span>
+        </div>
+      }
+    }
+  </div>
+</div>

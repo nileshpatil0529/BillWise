@@ -1,0 +1,629 @@
+<div class="settings-container">
+  <!-- Page Header -->
+  <div class="page-header">
+    <h1>{{ translateService.t('settings.title') }}</h1>
+  </div>
+
+  <!-- Account Section (All Users) -->
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>account_circle</mat-icon>
+      <span>{{ translateService.t('settings.account') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <!-- Profile Photo -->
+      <div class="setting-item profile-item" (click)="profilePhotoInput.click()">
+        <div class="setting-left">
+          @if (profilePhotoPreview()) {
+            <img [src]="profilePhotoPreview()" alt="Profile" class="profile-avatar">
+          } @else {
+            <div class="profile-avatar-placeholder">
+              <mat-icon>person</mat-icon>
+            </div>
+          }
+          <div class="setting-info">
+            <span class="setting-label">{{ translateService.t('settings.profilePhoto') }}</span>
+            <span class="setting-value">{{ profilePhotoPreview() ? translateService.t('settings.changePhoto') : translateService.t('settings.uploadPhoto') }}</span>
+          </div>
+        </div>
+        <mat-icon class="chevron">chevron_right</mat-icon>
+      </div>
+      <input type="file" #profilePhotoInput hidden accept="image/*" (change)="onProfilePhotoSelected($event)">
+
+      <!-- Theme Toggle -->
+      <div class="setting-item">
+        <div class="setting-left">
+          <div class="setting-icon theme">
+            <mat-icon>{{ businessForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
+          </div>
+          <div class="setting-info">
+            <span class="setting-label">{{ translateService.t('settings.themeMode') }}</span>
+            <span class="setting-value">{{ businessForm.get('theme')?.value === 'dark' ? translateService.t('settings.darkMode') : translateService.t('settings.lightMode') }}</span>
+          </div>
+        </div>
+        <mat-slide-toggle
+          [checked]="businessForm.get('theme')?.value === 'dark'"
+          (change)="onThemeChange($event.checked)">
+        </mat-slide-toggle>
+      </div>
+
+      <!-- Language -->
+      <div class="setting-item language-item">
+        <div class="setting-left">
+          <div class="setting-icon language">
+            <mat-icon>translate</mat-icon>
+          </div>
+          <div class="setting-info">
+            <span class="setting-label">Language / भाषा</span>
+          </div>
+        </div>
+        <div class="language-buttons">
+          <button mat-stroked-button 
+                  [class.active]="selectedLanguage() === 'en'"
+                  (click)="setLanguage('en')">EN</button>
+          <button mat-stroked-button 
+                  [class.active]="selectedLanguage() === 'hi'"
+                  (click)="setLanguage('hi')">हि</button>
+        </div>
+      </div>
+
+      <!-- Change Password -->
+      <div class="setting-item" (click)="openChangePasswordDialog()">
+        <div class="setting-left">
+          <div class="setting-icon security">
+            <mat-icon>lock</mat-icon>
+          </div>
+          <div class="setting-info">
+            <span class="setting-label">{{ translateService.t('settings.changePassword') }}</span>
+            <span class="setting-value">{{ translateService.t('settings.passwordHint') }}</span>
+          </div>
+        </div>
+        <mat-icon class="chevron">chevron_right</mat-icon>
+      </div>
+    </div>
+  </section>
+
+  <!-- Business Settings Section (Admin Only) -->
+  @if (authService.isAdmin()) {
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>business</mat-icon>
+      <span>{{ translateService.t('settings.business') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <!-- Logo Upload -->
+      <div class="setting-item logo-item">
+        <div class="setting-left">
+          @if (logoPreview()) {
+            <img [src]="logoPreview()" alt="Logo" class="business-logo">
+          } @else {
+            <div class="logo-placeholder" (click)="logoInput.click()">
+              <mat-icon>add_photo_alternate</mat-icon>
+            </div>
+          }
+          <div class="setting-info">
+            <span class="setting-label">{{ translateService.t('settings.logo') }}</span>
+            <span class="setting-value">{{ logoPreview() ? translateService.t('settings.changeLogo') : translateService.t('settings.uploadLogo') }}</span>
+          </div>
+        </div>
+        <div class="logo-actions">
+          @if (logoPreview()) {
+            <button mat-icon-button color="warn" (click)="removeLogo(); $event.stopPropagation()">
+              <mat-icon>delete</mat-icon>
+            </button>
+          }
+          <button mat-icon-button (click)="logoInput.click()">
+            <mat-icon>edit</mat-icon>
+          </button>
+        </div>
+      </div>
+      <input type="file" #logoInput hidden accept="image/*" (change)="onLogoSelected($event)">
+
+      <form [formGroup]="businessForm" class="business-form">
+        <mat-form-field appearance="outline">
+          <mat-label>{{ translateService.t('settings.businessName') }}</mat-label>
+          <input matInput formControlName="businessName" placeholder="Enter business name">
+          <mat-icon matSuffix>store</mat-icon>
+          @if (businessForm.get('businessName')?.hasError('required')) {
+            <mat-error>{{ translateService.t('msg.required') }}</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ translateService.t('settings.businessAddress') }}</mat-label>
+          <textarea matInput formControlName="address" rows="2" placeholder="Enter address"></textarea>
+          <mat-icon matSuffix>location_on</mat-icon>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ translateService.t('settings.businessPhone') }}</mat-label>
+          <input matInput formControlName="phone" placeholder="+91 XXXXXXXXXX">
+          <mat-icon matSuffix>phone</mat-icon>
+          @if (businessForm.get('phone')?.hasError('pattern')) {
+            <mat-error>Invalid phone number</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ translateService.t('settings.businessEmail') }}</mat-label>
+          <input matInput formControlName="email" placeholder="business@example.com">
+          <mat-icon matSuffix>email</mat-icon>
+          @if (businessForm.get('email')?.hasError('email')) {
+            <mat-error>Invalid email address</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>{{ translateService.t('settings.currency') }}</mat-label>
+          <mat-select formControlName="currencyCode">
+            @for (curr of currencies; track curr.value) {
+              <mat-option [value]="curr.value">{{ curr.label }}</mat-option>
+            }
+          </mat-select>
+          <mat-icon matSuffix>currency_rupee</mat-icon>
+        </mat-form-field>
+      </form>
+
+      <!-- Application Type -->
+      <div class="app-type-section">
+        <span class="section-label">{{ translateService.t('settings.applicationType') }}</span>
+        <div class="app-type-grid">
+          @for (type of applicationTypes; track type.value) {
+            <div 
+              class="app-type-chip" 
+              [class.selected]="businessForm.get('applicationType')?.value === type.value"
+              (click)="businessForm.patchValue({ applicationType: type.value })">
+              <mat-icon>{{ type.icon }}</mat-icon>
+              <span>{{ type.label }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Save Business Button -->
+      <button mat-flat-button color="primary" class="save-btn" (click)="saveBusinessSettings()" [disabled]="saving()">
+        @if (saving()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <ng-container>
+            <mat-icon>save</mat-icon>
+            {{ translateService.t('settings.saveChanges') }}
+          </ng-container>
+        }
+      </button>
+    </div>
+  </section>
+
+  <!-- Barcode Scanner Section (Non-Hotel Only) -->
+  @if (!isHotelMode()) {
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>qr_code_scanner</mat-icon>
+      <span>{{ translateService.t('settings.barcodeScanner') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <div class="setting-item">
+        <div class="setting-left">
+          <div class="setting-icon scanner">
+            <mat-icon>usb</mat-icon>
+          </div>
+          <div class="setting-info">
+            <span class="setting-label">{{ translateService.t('settings.scannerUsb') }}</span>
+            <span class="setting-value">{{ translateService.t('settings.scannerUsbDesc') }}</span>
+          </div>
+        </div>
+        <mat-slide-toggle
+          [checked]="businessForm.get('scannerType')?.value === 'usb'"
+          (change)="businessForm.get('scannerType')?.setValue($event.checked ? 'usb' : 'none')">
+        </mat-slide-toggle>
+      </div>
+    </div>
+  </section>
+  }
+
+  <!-- Units Management (Grocery Only) -->
+  @if (isGroceryMode()) {
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>scale</mat-icon>
+      <span>{{ translateService.t('settings.unitsManagement') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <div class="units-add-row">
+        <mat-form-field appearance="outline" class="unit-field">
+          <mat-label>{{ translateService.t('settings.unitName') }}</mat-label>
+          <input matInput [value]="newUnitName()" 
+                 (input)="newUnitName.set($any($event.target).value)"
+                 placeholder="Kilogram">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="symbol-field">
+          <mat-label>{{ translateService.t('settings.symbol') }}</mat-label>
+          <input matInput [value]="newUnitSymbol()" 
+                 (input)="newUnitSymbol.set($any($event.target).value)"
+                 placeholder="kg">
+        </mat-form-field>
+      </div>
+      <div class="units-add-actions">
+        <mat-slide-toggle [checked]="newUnitAllowDecimal()" 
+                          (change)="newUnitAllowDecimal.set($event.checked)">
+          {{ translateService.t('settings.allowDecimal') }}
+        </mat-slide-toggle>
+        <button mat-flat-button color="primary" (click)="addUnit()" [disabled]="saving()">
+          <mat-icon>add</mat-icon>
+          {{ translateService.t('common.add') }}
+        </button>
+      </div>
+
+      @if (units().length > 0) {
+      <div class="units-list">
+        @for (unit of units(); track unit.id) {
+          <div class="unit-chip">
+            <span class="unit-name">{{ unit.name }}</span>
+            <span class="unit-symbol">{{ unit.symbol }}</span>
+            @if (unit.allowDecimal) {
+              <mat-icon class="decimal-icon" matTooltip="Allows decimal">decimal_increase</mat-icon>
+            }
+            <button mat-icon-button (click)="deleteUnit(unit)" [disabled]="units().length <= 1">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+      }
+    </div>
+  </section>
+  }
+
+  <!-- Hotel Management (Hotel Only) -->
+  @if (isHotelMode()) {
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>table_restaurant</mat-icon>
+      <span>{{ translateService.t('settings.tableParcelMgmt') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <div class="tables-add-row">
+        <mat-form-field appearance="outline" class="type-field">
+          <mat-label>{{ translateService.t('settings.type') }}</mat-label>
+          <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
+            <mat-option value="dine-in">{{ translateService.t('settings.dineInTables') }}</mat-option>
+            <mat-option value="parcel">{{ translateService.t('settings.parcelTakeaway') }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="number-field">
+          <mat-label>{{ translateService.t('settings.from') }}</mat-label>
+          <input matInput type="number" [value]="newTableStartNumber()" 
+                 (input)="newTableStartNumber.set(+$any($event.target).value)" min="1">
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="number-field">
+          <mat-label>{{ translateService.t('settings.to') }}</mat-label>
+          <input matInput type="number" [value]="newTableEndNumber()" 
+                 (input)="newTableEndNumber.set(+$any($event.target).value)" min="1">
+        </mat-form-field>
+      </div>
+      <button mat-flat-button color="primary" class="add-tables-btn" (click)="addTables()" [disabled]="saving()">
+        <mat-icon>add</mat-icon>
+        {{ translateService.t('common.add') }}
+      </button>
+
+      <!-- Dine-In Tables -->
+      @if (getDineInTables().length > 0) {
+      <div class="tables-group">
+        <span class="group-label">{{ translateService.t('settings.dineInTables') }} ({{ getDineInTables().length }})</span>
+        <div class="tables-chips">
+          @for (table of getDineInTables(); track table.id) {
+            <div class="table-chip" [class.occupied]="table.status === 'occupied'">
+              <span>{{ table.tableNumber }}</span>
+              @if (table.status !== 'occupied') {
+                <button mat-icon-button (click)="deleteTable(table)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      }
+
+      <!-- Parcel Numbers -->
+      @if (getParcelTables().length > 0) {
+      <div class="tables-group">
+        <span class="group-label">{{ translateService.t('settings.parcelNumbers') }} ({{ getParcelTables().length }})</span>
+        <div class="tables-chips">
+          @for (table of getParcelTables(); track table.id) {
+            <div class="table-chip parcel" [class.occupied]="table.status === 'occupied'">
+              <span>{{ table.tableNumber }}</span>
+              @if (table.status !== 'occupied') {
+                <button mat-icon-button (click)="deleteTable(table)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      }
+    </div>
+  </section>
+
+  <!-- Item Notes Section (Hotel Only) -->
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>note_add</mat-icon>
+      <span>{{ translateService.t('settings.itemNotes') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <div class="notes-add-row">
+        <mat-form-field appearance="outline" class="note-field">
+          <mat-label>{{ translateService.t('settings.noteLabel') }}</mat-label>
+          <input matInput [value]="newNoteLabel()" 
+                 (input)="newNoteLabel.set($any($event.target).value)"
+                 (keyup.enter)="addItemNote()"
+                 placeholder="e.g., Spicy, No salt">
+        </mat-form-field>
+        <button mat-flat-button color="primary" (click)="addItemNote()" [disabled]="saving()">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+
+      @if (hotelService.itemNotes().length > 0) {
+      <div class="notes-chips">
+        @for (note of hotelService.itemNotes(); track note.id) {
+          <div class="note-chip">
+            <span>{{ note.label }}</span>
+            <button mat-icon-button (click)="deleteItemNote(note)">
+              <mat-icon>close</mat-icon>
+            </button>
+          </div>
+        }
+      </div>
+      }
+    </div>
+  </section>
+  }
+
+  <!-- Tax Settings Section (Admin Only) -->
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>receipt_long</mat-icon>
+      <span>{{ translateService.t('settings.tax') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <form [formGroup]="taxForm">
+        <!-- Enable Tax Toggle -->
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon tax">
+              <mat-icon>percent</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.enableTax') }}</span>
+              <span class="setting-value">{{ translateService.t('settings.taxAutoApply') }}</span>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="taxEnabled"></mat-slide-toggle>
+        </div>
+
+        @if (taxForm.get('taxEnabled')?.value) {
+        <div class="tax-fields">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ translateService.t('settings.taxName') }}</mat-label>
+            <input matInput formControlName="taxName" placeholder="GST, VAT">
+            <mat-icon matSuffix>label</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ translateService.t('settings.taxRate') }}</mat-label>
+            <input matInput type="number" formControlName="taxRate" min="0" max="100">
+            <span matSuffix>%</span>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ translateService.t('settings.taxRegNumber') }}</mat-label>
+            <input matInput formControlName="taxNumber" placeholder="GSTIN">
+            <mat-icon matSuffix>tag</mat-icon>
+          </mat-form-field>
+        </div>
+        }
+
+        <!-- Enable Discount -->
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon discount">
+              <mat-icon>local_offer</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.enableDiscount') }}</span>
+              <span class="setting-value">{{ translateService.t('settings.discountHint') }}</span>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="discountEnabled"></mat-slide-toggle>
+        </div>
+
+        <!-- Enable Debt -->
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon debt">
+              <mat-icon>account_balance_wallet</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.enableDebt') }}</span>
+              <span class="setting-value">{{ translateService.t('settings.debtHint') }}</span>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="debtEnabled"></mat-slide-toggle>
+        </div>
+      </form>
+
+      <button mat-flat-button color="primary" class="save-btn" (click)="saveTaxSettings()" [disabled]="saving()">
+        @if (saving()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <ng-container>
+            <mat-icon>save</mat-icon>
+            {{ translateService.t('settings.saveChanges') }}
+          </ng-container>
+        }
+      </button>
+    </div>
+  </section>
+
+  <!-- Receipt Settings Section (Admin Only) -->
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>print</mat-icon>
+      <span>{{ translateService.t('settings.receipt') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <form [formGroup]="receiptForm">
+        <!-- Show Logo -->
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon receipt">
+              <mat-icon>image</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.showLogo') }}</span>
+              <span class="setting-value">{{ translateService.t('settings.logoHint') }}</span>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="showLogo"></mat-slide-toggle>
+        </div>
+
+        <!-- Receipt Language -->
+        <div class="setting-item language-setting">
+          <div class="setting-left">
+            <div class="setting-icon">
+              <mat-icon>translate</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.receiptLanguage') }}</span>
+            </div>
+          </div>
+          <div class="language-buttons">
+            <button mat-stroked-button 
+                    [class.active]="receiptForm.get('receiptLanguage')?.value === 'en'"
+                    (click)="receiptForm.patchValue({ receiptLanguage: 'en' })">EN</button>
+            <button mat-stroked-button 
+                    [class.active]="receiptForm.get('receiptLanguage')?.value === 'hi'"
+                    (click)="receiptForm.patchValue({ receiptLanguage: 'hi' })">हि</button>
+          </div>
+        </div>
+
+        <div class="receipt-fields">
+          <mat-form-field appearance="outline">
+            <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>
+            <input matInput formControlName="invoicePrefix" placeholder="INV">
+            <mat-icon matSuffix>tag</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline">
+            <mat-label>{{ translateService.t('settings.invoiceStart') }}</mat-label>
+            <input matInput type="number" formControlName="invoiceStartNumber" min="1">
+            <mat-icon matSuffix>numbers</mat-icon>
+          </mat-form-field>
+
+          <mat-form-field appearance="outline" class="full-width">
+            <mat-label>{{ translateService.t('settings.footerMessage') }}</mat-label>
+            <input matInput formControlName="footerText" placeholder="Thank you!">
+            <mat-icon matSuffix>format_quote</mat-icon>
+          </mat-form-field>
+        </div>
+      </form>
+
+      <button mat-flat-button color="primary" class="save-btn" (click)="saveReceiptSettings()" [disabled]="saving()">
+        @if (saving()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <ng-container>
+            <mat-icon>save</mat-icon>
+            {{ translateService.t('settings.saveChanges') }}
+          </ng-container>
+        }
+      </button>
+    </div>
+  </section>
+
+  <!-- Categories Section (Admin Only) -->
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>category</mat-icon>
+      <span>{{ translateService.t('settings.categories') }}</span>
+    </div>
+
+    <div class="settings-card">
+      <div class="category-add-row">
+        <mat-form-field appearance="outline" class="category-field">
+          <mat-label>{{ translateService.t('settings.newCategory') }}</mat-label>
+          <input matInput 
+                 [value]="newCategoryName()" 
+                 (input)="newCategoryName.set($any($event.target).value)"
+                 (keyup.enter)="addCategory()"
+                 placeholder="Category name">
+        </mat-form-field>
+        <button mat-flat-button color="primary" (click)="addCategory()">
+          <mat-icon>add</mat-icon>
+        </button>
+      </div>
+
+      @if (categories().length === 0) {
+        <div class="empty-categories">
+          <mat-icon>category</mat-icon>
+          <span>No categories yet</span>
+        </div>
+      } @else {
+        <div class="categories-list">
+          @for (category of categories(); track $index) {
+            <div class="category-item">
+              <mat-checkbox 
+                [checked]="category.enabled"
+                (change)="toggleCategory($index)">
+                {{ category.name }}
+              </mat-checkbox>
+              @if (category.name !== 'General') {
+                <button mat-icon-button color="warn" (click)="removeCategory($index)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      }
+
+      <button mat-flat-button color="primary" class="save-btn" (click)="saveCategories()" [disabled]="saving()">
+        @if (saving()) {
+          <mat-spinner diameter="20"></mat-spinner>
+        } @else {
+          <ng-container>
+            <mat-icon>save</mat-icon>
+            {{ translateService.t('settings.saveChanges') }}
+          </ng-container>
+        }
+      </button>
+    </div>
+  </section>
+  }
+
+  <!-- App Info Section -->
+  <section class="settings-section">
+    <div class="section-header">
+      <mat-icon>info</mat-icon>
+      <span>{{ translateService.t('settings.about') || 'About' }}</span>
+    </div>
+
+    <div class="settings-card app-info">
+      <div class="app-version">
+        <span class="version-label">Version</span>
+        <span class="version-number">1.0.0</span>
+      </div>
+    </div>
+  </section>
+</div>

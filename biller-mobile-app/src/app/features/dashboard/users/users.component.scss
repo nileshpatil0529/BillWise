@@ -1,0 +1,347 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+// ============================================
+// MOBILE STAFF COMPONENT
+// ============================================
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.staff-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: v.$light-background;
+  position: relative;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+}
+
+// ============================================
+// SEARCH HEADER
+// ============================================
+
+.search-header {
+  flex-shrink: 0;
+  padding: v.$spacing-sm;
+  background: v.$light-surface;
+  border-bottom: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+}
+
+.search-wrapper {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  background: v.$light-background;
+  border-radius: 24px;
+  padding: 0 v.$spacing-sm 0 v.$spacing-md;
+  height: 44px;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+
+  .search-icon {
+    flex-shrink: 0;
+    color: v.$light-text-secondary;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+
+  input {
+    flex: 1;
+    min-width: 0;
+    border: none;
+    background: transparent;
+    font-size: 14px;
+    outline: none;
+    color: inherit;
+    padding-right: v.$spacing-xs;
+
+    @include m.dark-theme {
+      color: white;
+    }
+
+    &::placeholder {
+      color: v.$light-text-secondary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+  }
+
+  .clear-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+// ============================================
+// STAFF LIST
+// ============================================
+
+.staff-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: v.$spacing-sm;
+  padding-bottom: 80px; // Space for FAB
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+}
+
+// ============================================
+// STAFF CARD
+// ============================================
+
+.staff-card {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  background: v.$light-surface;
+  border-radius: v.$radius-sm;
+  padding: v.$spacing-md;
+  cursor: pointer;
+  transition: transform 0.1s ease;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.staff-avatar {
+  flex-shrink: 0;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &.admin {
+    background: linear-gradient(135deg, v.$light-primary, darken(v.$light-primary, 10%));
+
+    @include m.dark-theme {
+      background: linear-gradient(135deg, v.$dark-primary, darken(v.$dark-primary, 10%));
+    }
+  }
+
+  span {
+    font-size: 18px;
+    font-weight: 600;
+    color: white;
+    text-transform: uppercase;
+
+    @include m.dark-theme {
+      color: black;
+    }
+  }
+}
+
+.staff-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.staff-header {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  flex-wrap: wrap;
+
+  .staff-name {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+
+  .role-badge {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+
+    &.role-admin {
+      background: rgba(v.$light-primary, 0.15);
+      color: v.$light-primary;
+
+      @include m.dark-theme {
+        background: rgba(v.$dark-primary, 0.2);
+        color: v.$dark-primary;
+      }
+    }
+
+    &.role-cashier {
+      background: rgba(#4caf50, 0.15);
+      color: #4caf50;
+    }
+  }
+}
+
+.staff-meta {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  flex-wrap: wrap;
+
+  .meta-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+
+    mat-icon {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+    }
+  }
+}
+
+.more-btn {
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+
+  mat-icon {
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}
+
+// ============================================
+// FAB ADD BUTTON
+// ============================================
+
+.fab-add {
+  position: absolute;
+  bottom: v.$spacing-md;
+  right: v.$spacing-md;
+  z-index: 10;
+  background: v.$light-primary !important;
+  color: white !important;
+
+  @include m.dark-theme {
+    background: v.$dark-primary !important;
+    color: black !important;
+  }
+
+  mat-icon {
+    font-size: 24px;
+    width: 24px;
+    height: 24px;
+  }
+}
+
+// ============================================
+// LOADING & EMPTY STATES
+// ============================================
+
+.loading-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+  color: v.$light-text-secondary;
+
+  @include m.dark-theme {
+    color: v.$dark-text-secondary;
+  }
+
+  mat-icon {
+    font-size: 56px;
+    width: 56px;
+    height: 56px;
+    margin-bottom: v.$spacing-md;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0 0 v.$spacing-md;
+    font-size: 14px;
+    text-align: center;
+  }
+
+  button {
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      margin-right: 4px;
+      opacity: 1;
+    }
+  }
+}
+
+// ============================================
+// MENU STYLES
+// ============================================
+
+.delete-action {
+  color: v.$light-error;
+
+  mat-icon {
+    color: v.$light-error;
+  }
+}

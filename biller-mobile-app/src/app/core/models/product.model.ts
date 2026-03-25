@@ -1,0 +1,63 @@
+export interface Product {
+  productId: string;
+  name: string;
+  nameHi?: string;  // Hindi name (optional) - used when receipt language is Hindi
+  category: string;
+  description?: string;
+  unitPrice: number;
+  costPrice?: number;
+  stockQuantity: number;
+  lowStockAlert?: number;
+  imageUrl?: string;
+  barcode?: string;
+  status: 'active' | 'inactive';
+  metadata?: ProductMetadata;
+  // Loose item fields (grocery mode)
+  isLooseItem?: boolean;  // Whether this is a loose item (sold by weight/volume)
+  unit?: string;          // Unit symbol (kg, ltr, g, ml, pcs)
+  // Electronics fields
+  warrantyMonths?: number; // Warranty period in months (0 = no warranty)
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface ProductMetadata {
+  // Clothing
+  size?: string;
+  color?: string;
+  brand?: string;
+  season?: string;
+  
+  // Electronics
+  serialNumber?: string;
+  warranty?: number;
+  modelNumber?: string;
+  manufacturer?: string;
+  
+  // Grocery
+  weight?: number;
+  expiryDate?: string;
+  batchNumber?: string;
+  
+  // Hotel
+  roomNumber?: string;
+  serviceType?: string;
+}
+
+export interface CartItem extends Product {
+  quantity: number;
+  discount: number;
+  discountType: 'percentage' | 'fixed';
+  lineTotal: number;
+  note?: string; // Optional note for hotel mode (e.g., Spicy, No salt)
+}
+
+export interface ProductResponse {
+  success: boolean;
+  data: {
+    products: Product[];
+    total: number;
+    page: number;
+    totalPages: number;
+  };
+}

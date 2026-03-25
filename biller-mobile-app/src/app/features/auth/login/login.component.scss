@@ -1,0 +1,258 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+// ============================================
+// MOBILE FULL-SCREEN LOGIN
+// Premium Dark Design System
+// ============================================
+
+.login-container {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding: v.$spacing-xl v.$spacing-lg;
+  padding-top: calc(v.$spacing-xl + env(safe-area-inset-top, 0));
+  padding-bottom: calc(v.$spacing-xl + env(safe-area-inset-bottom, 0));
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(160deg, v.$dark-background 0%, v.$dark-surface 50%, v.$dark-background 100%);
+}
+
+// Background shapes - Subtle animated blobs
+.login-background {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+  z-index: 0;
+  pointer-events: none;
+
+  .shape {
+    position: absolute;
+    border-radius: 50%;
+    background: linear-gradient(135deg, rgba(v.$light-primary, 0.25), rgba(96, 165, 250, 0.15));
+    filter: blur(60px);
+    animation: float 25s ease-in-out infinite;
+  }
+
+  .shape-1 {
+    width: 320px;
+    height: 320px;
+    top: -120px;
+    left: -80px;
+    animation-delay: 0s;
+  }
+
+  .shape-2 {
+    width: 240px;
+    height: 240px;
+    bottom: 5%;
+    right: -60px;
+    animation-delay: -8s;
+  }
+
+  .shape-3 {
+    width: 180px;
+    height: 180px;
+    top: 45%;
+    right: 15%;
+    opacity: 0.4;
+    animation-delay: -16s;
+  }
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  50% {
+    transform: translateY(-25px) scale(1.08);
+  }
+}
+
+// Logo section
+.logo-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: v.$spacing-xl * 2;
+  margin-bottom: v.$spacing-xl * 2;
+
+  .logo-container {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    margin-bottom: v.$spacing-xs;
+
+    .logo-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      color: v.$dark-primary;
+    }
+
+    h1 {
+      font-size: 36px;
+      font-weight: 700;
+      color: v.$dark-text-primary;
+      margin: 0;
+      letter-spacing: -0.5px;
+    }
+  }
+
+  .subtitle {
+    color: v.$dark-text-secondary;
+    font-size: 14px;
+    margin: 0;
+  }
+}
+
+// Form section
+.form-section {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 400px;
+  margin: 0 auto;
+
+  form {
+    display: flex;
+    flex-direction: column;
+    gap: v.$spacing-md;
+  }
+
+  mat-form-field {
+    width: 100%;
+
+    ::ng-deep {
+      .mat-mdc-text-field-wrapper {
+        background: v.$dark-surface-light;
+        border-radius: 12px;
+      }
+
+      .mat-mdc-form-field-flex {
+        padding: 0 16px;
+      }
+
+      .mdc-notched-outline__leading,
+      .mdc-notched-outline__notch,
+      .mdc-notched-outline__trailing {
+        border-color: v.$dark-divider !important;
+      }
+
+      .mat-mdc-form-field-infix {
+        min-height: 56px;
+        padding: 16px 0;
+      }
+
+      .mat-mdc-floating-label {
+        color: v.$dark-text-secondary;
+      }
+
+      .mdc-text-field--focused {
+        .mdc-notched-outline__leading,
+        .mdc-notched-outline__notch,
+        .mdc-notched-outline__trailing {
+          border-color: v.$dark-primary !important;
+        }
+      }
+
+      input.mat-mdc-input-element {
+        color: v.$dark-text-primary;
+
+        &::placeholder {
+          color: v.$dark-text-tertiary;
+        }
+      }
+    }
+
+    mat-icon[matSuffix] {
+      color: v.$dark-text-tertiary;
+    }
+
+    button[matSuffix] {
+      color: v.$dark-text-tertiary;
+
+      &:hover {
+        color: v.$dark-text-secondary;
+      }
+    }
+  }
+
+  .login-button {
+    width: 100%;
+    height: 56px;
+    font-size: 16px;
+    font-weight: 600;
+    border-radius: 12px;
+    margin-top: v.$spacing-sm;
+    background: linear-gradient(135deg, v.$light-primary 0%, v.$dark-primary 100%);
+    color: white;
+    text-transform: none;
+    letter-spacing: 0;
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4);
+
+    &:not(:disabled):hover {
+      background: linear-gradient(135deg, v.$light-primary-dark 0%, v.$light-primary 100%);
+      box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+    }
+
+    &:disabled {
+      opacity: 0.6;
+      box-shadow: none;
+    }
+
+    .button-content {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: v.$spacing-sm;
+    }
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+
+    mat-spinner {
+      ::ng-deep circle {
+        stroke: white;
+      }
+    }
+  }
+
+  .hint {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: v.$spacing-xs;
+    font-size: 12px;
+    color: v.$dark-text-tertiary;
+    margin: auto 0 0 0;
+    padding-top: v.$spacing-xl;
+    text-align: center;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      opacity: 0.7;
+    }
+  }
+}
+
+// Dark theme adjustments (login is always dark-styled)
+:host-context(.dark-theme) {
+  .login-container {
+    background: linear-gradient(160deg, #050810 0%, v.$dark-surface 50%, #050810 100%);
+  }
+}
