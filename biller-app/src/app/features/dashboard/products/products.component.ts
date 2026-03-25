@@ -17,12 +17,13 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { ScrollingModule } from '@angular/cdk/scrolling';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil, fromEvent } from 'rxjs';
+import { Subject, Subscription, debounceTime, distinctUntilChanged, takeUntil, fromEvent } from 'rxjs';
 
 import { ProductService } from '../../../core/services/product.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { BeepService } from '../../../core/services/beep.service';
 import { TranslateService } from '../../../core/services/translate.service';
+import { BarcodeScannerService } from '../../../core/services/barcode-scanner.service';
 import { Product } from '../../../core/models/product.model';
 import { ProductDialogComponent } from './product-dialog/product-dialog.component';
 import { BarcodePrintDialogComponent } from './barcode-print-dialog/barcode-print-dialog.component';
@@ -78,6 +79,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
   private searchSubject = new Subject<string>();
   private destroy$ = new Subject<void>();
+  private scannerSubscription: Subscription | null = null;
 
   constructor(
     public productService: ProductService,
@@ -85,7 +87,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
     public translateService: TranslateService,
     private dialog: MatDialog,
     private snackBar: MatSnackBar,
-    private beepService: BeepService
+    private beepService: BeepService,
+    private barcodeScannerService: BarcodeScannerService
   ) {
     // Update displayedColumns based on settings
     effect(() => {
@@ -149,11 +152,27 @@ export class ProductsComponent implements OnInit, OnDestroy {
       this.searchQuery.set(query);
       this.loadProducts(true); // Reset and reload
     });
+
+    // Subscribe to barcode scanner events (USB scanner like Brontix)
+    if (this.settingsService.settings().scannerType === 'usb') {
+      this.scannerSubscription = this.barcodeScannerService.scan$.subscribe(scanResult => {
+        this.handleBarcodeScan(scanResult.barcode);
+      });
+      // Ensure scanner is listening
+      if (!this.barcodeScannerService.isListening()) {
+        this.barcodeScannerService.startListening();
+      }
+    }
   }
 
   ngOnDestroy(): void {
     this.destroy$.next();
     this.destroy$.complete();
+    
+    // Cleanup scanner subscription
+    if (this.scannerSubscription) {
+      this.scannerSubscription.unsubscribe();
+    }
   }
 
   ngAfterViewInit(): void {
@@ -230,6 +249,71 @@ export class ProductsComponent implements OnInit, OnDestroy {
 
   onCategoryChange(): void {
     this.loadProducts(true); // Reset and reload
+  }
+
+  /**
+   * Handle barcode scan from USB scanner (Brontix 1D/2D)
+   * If product with barcode exists, open edit dialog
+   * If not found, open create dialog with barcode pre-filled
+   */
+  private handleBarcodeScan(barcode: string): void {
+    const cleanBarcode = barcode.trim().replace(/[\r\n]/g, '');
+    
+    if (cleanBarcode.length < 3) {
+      return; // Too short to be a valid barcode
+    }
+
+    console.log('USB Scanner (Products) - Barcode received:', cleanBarcode);
+
+    // Search for product by barcode
+    this.productService.searchProducts(cleanBarcode).subscribe({
+      next: (response) => {
+        const products: Product[] = response.data || [];
+        
+        // Try exact match first by barcode field
+        let product = products.find((p: Product) => 
+          p.barcode === cleanBarcode || 
+          p.barcode?.toLowerCase() === cleanBarcode.toLowerCase()
+        );
+        
+        // If no exact barcode match, try productId
+        if (!product) {
+          product = products.find((p: Product) =>
+            p.productId === cleanBarcode ||
+            p.productId.toLowerCase() === cleanBarcode.toLowerCase()
+          );
+        }
+
+        if (product) {
+          // Product found - open edit dialog
+          this.beepService.playSuccess();
+          this.snackBar.open(`Product found: ${product.name}`, 'Close', {
+            duration: 2000,
+            panelClass: ['success-snackbar']
+          });
+          this.openEditDialog(product);
+          console.log('USB Scanner (Products) - Opening edit for:', product.name);
+        } else {
+          // Product not found - open create dialog with barcode pre-filled
+          this.beepService.playDoubleBeep();
+          this.snackBar.open(`New barcode: ${cleanBarcode} - Create new product`, 'Close', {
+            duration: 3000,
+            panelClass: ['info-snackbar']
+          });
+          this.openAddDialog(cleanBarcode);
+          console.log('USB Scanner (Products) - Opening create with barcode:', cleanBarcode);
+        }
+      },
+      error: () => {
+        // Error searching - still open create dialog
+        this.beepService.playError();
+        this.snackBar.open('Search failed - Creating new product', 'Close', {
+          duration: 3000,
+          panelClass: ['warning-snackbar']
+        });
+        this.openAddDialog(cleanBarcode);
+      }
+    });
   }
 
   openAddDialog(barcode?: string): void {

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, ViewChild, ElementRef, inject, TemplateRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, ViewChild, ElementRef, inject, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -16,7 +16,7 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
-import { debounceTime, Subject } from 'rxjs';
+import { debounceTime, Subject, Subscription } from 'rxjs';
 
 import { ProductService } from '../../../core/services/product.service';
 import { BillService } from '../../../core/services/bill.service';
@@ -25,6 +25,7 @@ import { BeepService } from '../../../core/services/beep.service';
 import { CustomerService } from '../../../core/services/customer.service';
 import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
+import { BarcodeScannerService } from '../../../core/services/barcode-scanner.service';
 import { Product, CartItem } from '../../../core/models/product.model';
 import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
@@ -80,13 +81,16 @@ interface AttendedTableState {
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
-export class HomeComponent implements OnInit {
+export class HomeComponent implements OnInit, OnDestroy {
   @ViewChild('searchInput') searchInput!: ElementRef;
 
   searchQuery = signal('');
   searchResults = signal<Product[]>([]);
   searching = signal(false);
   highlightedProductId = signal<string | null>(null);
+
+  // Barcode scanner subscription
+  private scannerSubscription: Subscription | null = null;
 
   // Hotel mode state
   selectedTable = signal<RestaurantTable | null>(null);
@@ -157,11 +161,30 @@ export class HomeComponent implements OnInit {
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
     private beepService: BeepService,
-    private customerService: CustomerService
+    private customerService: CustomerService,
+    private barcodeScannerService: BarcodeScannerService
   ) {
   }
 
+  ngOnDestroy(): void {
+    // Cleanup scanner subscription
+    if (this.scannerSubscription) {
+      this.scannerSubscription.unsubscribe();
+    }
+  }
+
   ngOnInit(): void {
+    // Subscribe to barcode scanner events (USB scanner like Brontix)
+    if (this.settingsService.settings().scannerType === 'usb') {
+      this.scannerSubscription = this.barcodeScannerService.scan$.subscribe(scanResult => {
+        this.handleBarcodeScan(scanResult.barcode);
+      });
+      // Ensure scanner is listening
+      if (!this.barcodeScannerService.isListening()) {
+        this.barcodeScannerService.startListening();
+      }
+    }
+
     // Setup search with debounce - products loaded on search only
     this.searchSubject.pipe(
       debounceTime(300)
@@ -658,6 +681,66 @@ export class HomeComponent implements OnInit {
             duration: 3000,
             panelClass: ['error-snackbar']
           });
+        }
+      },
+      error: () => {
+        this.beepService.playError();
+        this.snackBar.open('Failed to search product', 'Close', {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
+      }
+    });
+  }
+
+  /**
+   * Handle barcode scan from USB scanner (Brontix 1D/2D)
+   * Searches for product by barcode and adds to cart automatically
+   */
+  private handleBarcodeScan(barcode: string): void {
+    const cleanBarcode = barcode.trim().replace(/[\r\n]/g, '');
+    
+    if (cleanBarcode.length < 3) {
+      return; // Too short to be a valid barcode
+    }
+
+    console.log('USB Scanner - Barcode received:', cleanBarcode);
+
+    // Search for product by barcode
+    this.productService.searchProducts(cleanBarcode).subscribe({
+      next: (response) => {
+        const products: Product[] = response.data || [];
+        
+        // Try exact match first by barcode field
+        let product = products.find((p: Product) => 
+          p.barcode === cleanBarcode || 
+          p.barcode?.toLowerCase() === cleanBarcode.toLowerCase()
+        );
+        
+        // If no exact barcode match, try productId
+        if (!product) {
+          product = products.find((p: Product) =>
+            p.productId === cleanBarcode ||
+            p.productId.toLowerCase() === cleanBarcode.toLowerCase()
+          );
+        }
+
+        if (product) {
+          this.beepService.playSuccess();
+          this.selectProduct(product);
+          console.log('USB Scanner - Product added:', product.name);
+        } else if (products.length > 0) {
+          // Add first match if no exact match
+          this.beepService.playSuccess();
+          this.selectProduct(products[0]);
+          console.log('USB Scanner - First match added:', products[0].name);
+        } else {
+          this.beepService.playError();
+          this.snackBar.open(`Product not found: ${cleanBarcode}`, 'Close', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+          console.log('USB Scanner - Product not found:', cleanBarcode);
         }
       },
       error: () => {
