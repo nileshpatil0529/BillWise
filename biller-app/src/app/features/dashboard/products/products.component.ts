@@ -58,6 +58,7 @@ import { BarcodePrintDialogComponent } from './barcode-print-dialog/barcode-prin
 export class ProductsComponent implements OnInit, OnDestroy {
   @ViewChild(MatSort) sort!: MatSort;
   @ViewChild('tableContainer') tableContainer!: ElementRef;
+  @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
   // All available columns
   private allColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'warranty', 'status', 'actions'];
@@ -261,6 +262,13 @@ export class ProductsComponent implements OnInit, OnDestroy {
     
     if (cleanBarcode.length < 3) {
       return; // Too short to be a valid barcode
+    }
+
+    // Clear search input (scanner may have typed into it)
+    if (this.searchInput?.nativeElement) {
+      this.searchInput.nativeElement.value = '';
+      this.searchQuery.set('');
+      this.searchSubject.next('');
     }
 
     // Search for product by barcode

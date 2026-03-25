@@ -193,6 +193,44 @@
     </div>
   }
 
+  <!-- Out of Stock Dialog -->
+  @if (showOutOfStockDialog()) {
+    <div class="out-of-stock-overlay" (click)="closeOutOfStockDialog()">
+      <mat-card class="out-of-stock-dialog" (click)="$event.stopPropagation()">
+        <div class="out-of-stock-icon-container">
+          <div class="icon-circle">
+            <mat-icon>remove_shopping_cart</mat-icon>
+          </div>
+        </div>
+        <mat-card-content>
+          <h2 class="out-of-stock-title">Out of Stock</h2>
+          <p class="out-of-stock-product">{{ outOfStockProduct()?.name }}</p>
+          <p class="out-of-stock-message">This product is currently unavailable and cannot be added to cart.</p>
+          <div class="out-of-stock-details">
+            <div class="detail-row">
+              <span class="label">Product ID:</span>
+              <span class="value">{{ outOfStockProduct()?.productId }}</span>
+            </div>
+            <div class="detail-row">
+              <span class="label">Price:</span>
+              <span class="value">{{ formatCurrency(outOfStockProduct()?.unitPrice || 0) }}</span>
+            </div>
+            <div class="detail-row stock-row">
+              <span class="label">Stock:</span>
+              <span class="value stock-zero">{{ outOfStockProduct()?.stockQuantity || 0 }}</span>
+            </div>
+          </div>
+        </mat-card-content>
+        <mat-card-actions>
+          <button mat-raised-button color="primary" (click)="closeOutOfStockDialog()">
+            <mat-icon>close</mat-icon>
+            Close
+          </button>
+        </mat-card-actions>
+      </mat-card>
+    </div>
+  }
+
   <!-- Search Section -->
   <mat-card class="search-card" [class.hidden]="needsTableSelection()">
     <div class="search-row">
@@ -217,14 +255,27 @@
     @if (searchResults().length > 0) {
       <div class="search-results">
         @for (product of searchResults(); track product.productId) {
-          <div class="search-result-item" (click)="selectProduct(product)">
+          <div class="search-result-item" 
+               [class.out-of-stock]="product.stockQuantity <= 0"
+               [class.in-cart]="getCartQuantity(product.productId) > 0"
+               (click)="selectProduct(product)">
             <div class="product-info">
               <span class="product-name">{{ getDisplayName(product) }}</span>
               <span class="product-code">{{ product.productId }}</span>
             </div>
             <div class="product-price">{{ formatCurrency(product.unitPrice) }}</div>
-            @if (product.stockQuantity <= 10) {
-              <mat-chip color="warn">Low Stock: {{ product.stockQuantity }}</mat-chip>
+            @if (product.stockQuantity <= 0) {
+              <mat-chip class="stock-chip out-of-stock-chip">
+                <mat-icon>block</mat-icon>
+                Out of Stock
+              </mat-chip>
+            } @else if (getCartQuantity(product.productId) > 0) {
+              <mat-chip class="stock-chip in-cart-chip">
+                <mat-icon>shopping_cart</mat-icon>
+                {{ product.stockQuantity }} left
+              </mat-chip>
+            } @else if (product.stockQuantity <= 10) {
+              <mat-chip color="accent" class="stock-chip">Low Stock: {{ product.stockQuantity }}</mat-chip>
             }
           </div>
         }

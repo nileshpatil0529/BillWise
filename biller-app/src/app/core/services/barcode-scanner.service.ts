@@ -17,6 +17,9 @@ export class BarcodeScannerService implements OnDestroy {
   // Last scanned barcode
   lastScannedCode = signal<string | null>(null);
   
+  // Timestamp of last successful scan (used to prevent duplicate processing)
+  lastScanTimestamp = signal<number>(0);
+  
   // Subject for emitting scan events
   private scanSubject = new Subject<ScanResult>();
   
@@ -73,7 +76,8 @@ export class BarcodeScannerService implements OnDestroy {
     }
 
     this.ngZone.runOutsideAngular(() => {
-      this.keydownSubscription = fromEvent<KeyboardEvent>(document, 'keydown')
+      // Use capture phase so we intercept events BEFORE they reach Angular handlers on input elements
+      this.keydownSubscription = fromEvent<KeyboardEvent>(document, 'keydown', { capture: true })
         .subscribe(event => this.handleKeydown(event));
     });
 
@@ -144,11 +148,12 @@ export class BarcodeScannerService implements OnDestroy {
     // Handle Enter key
     if (event.key === 'Enter') {
       if (this.charBuffer.length >= this.MIN_BARCODE_LENGTH) {
-        // We have a valid barcode
+        // We have a valid barcode from scanner
         const barcode = this.charBuffer.join('');
         this.processBarcode(barcode);
+        // Stop event from reaching Angular's input handlers
         event.preventDefault();
-        event.stopPropagation();
+        event.stopImmediatePropagation();
       }
       this.clearBuffer();
       return;
@@ -207,9 +212,10 @@ export class BarcodeScannerService implements OnDestroy {
       return; // Too short to be valid
     }
     
-    // Update last scanned code
+    // Update last scanned code and timestamp
     this.ngZone.run(() => {
       this.lastScannedCode.set(cleanBarcode);
+      this.lastScanTimestamp.set(Date.now());
       
       // Emit the scan event
       this.scanSubject.next({
@@ -217,6 +223,13 @@ export class BarcodeScannerService implements OnDestroy {
         timestamp: new Date()
       });
     });
+  }
+
+  /**
+   * Check if a scan was processed recently (within given ms)
+   */
+  wasScanProcessedRecently(withinMs: number = 500): boolean {
+    return (Date.now() - this.lastScanTimestamp()) < withinMs;
   }
 
   /**

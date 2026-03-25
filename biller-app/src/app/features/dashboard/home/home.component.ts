@@ -441,6 +441,13 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   onSearchEnter(event: Event): void {
     event.preventDefault();
+    
+    // Skip if a barcode scan was just processed (prevents duplicate adds)
+    if (this.barcodeScannerService.wasScanProcessedRecently(300)) {
+      this.clearSearch();
+      return;
+    }
+    
     const query = this.searchQuery().trim();
     
     if (!query) return;
@@ -474,7 +481,12 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.searching.set(true);
     this.productService.searchProducts(query).subscribe({
       next: (response) => {
-        this.searchResults.set(response.data || []);
+        // Adjust stock quantities based on cart contents
+        const products = (response.data || []).map((product: Product) => ({
+          ...product,
+          stockQuantity: product.stockQuantity - this.getCartQuantity(product.productId)
+        }));
+        this.searchResults.set(products);
         this.searching.set(false);
       },
       error: () => {
@@ -484,6 +496,16 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   selectProduct(product: Product): void {
+    // stockQuantity is already adjusted (original - cart qty) from search/barcode scan
+    // Check if no stock available
+    if (product.stockQuantity <= 0) {
+      this.beepService.playError();
+      this.openOutOfStockDialog(product);
+      this.searchQuery.set('');
+      this.searchResults.set([]);
+      return;
+    }
+
     // Check if it's a loose item in grocery mode - need to prompt for quantity
     const isGroceryMode = this.settingsService.settings().applicationType === 'grocery';
     if (isGroceryMode && product.isLooseItem) {
@@ -502,6 +524,26 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.snackBar.open(`${product.name} added to cart`, 'Close', {
       duration: 2000
     });
+  }
+
+  // Helper to get current quantity in cart for a product
+  getCartQuantity(productId: string): number {
+    const cartItem = this.billService.cartItems().find(item => item.productId === productId);
+    return cartItem ? cartItem.quantity : 0;
+  }
+
+  // Out of stock dialog
+  showOutOfStockDialog = signal(false);
+  outOfStockProduct = signal<Product | null>(null);
+
+  openOutOfStockDialog(product: Product): void {
+    this.outOfStockProduct.set(product);
+    this.showOutOfStockDialog.set(true);
+  }
+
+  closeOutOfStockDialog(): void {
+    this.showOutOfStockDialog.set(false);
+    this.outOfStockProduct.set(null);
   }
 
   // Open dialog to enter quantity for loose items
@@ -529,6 +571,20 @@ export class HomeComponent implements OnInit, OnDestroy {
     
     if (!product || quantity <= 0) {
       this.snackBar.open('Please enter a valid quantity', 'Close', { duration: 2000 });
+      return;
+    }
+
+    // Check if total quantity would exceed stock
+    const currentCartQty = this.getCartQuantity(product.productId);
+    const totalQty = currentCartQty + quantity;
+    if (totalQty > product.stockQuantity) {
+      this.beepService.playError();
+      const available = product.stockQuantity - currentCartQty;
+      this.snackBar.open(
+        `Only ${available.toFixed(2)} ${product.unit || 'pcs'} available (${currentCartQty.toFixed(2)} already in cart)`, 
+        'Close', 
+        { duration: 3000, panelClass: ['warning-snackbar'] }
+      );
       return;
     }
 
@@ -564,6 +620,17 @@ export class HomeComponent implements OnInit, OnDestroy {
     const newQuantity = item.quantity + change;
     // For loose items, use 0.01 as minimum, for regular items use 1
     const minQuantity = item.isLooseItem ? 0.01 : 1;
+    
+    // Check stock limit when increasing quantity
+    if (change > 0 && newQuantity > item.stockQuantity) {
+      this.beepService.playError();
+      this.snackBar.open(`Only ${item.stockQuantity} available in stock`, 'Close', {
+        duration: 3000,
+        panelClass: ['warning-snackbar']
+      });
+      return;
+    }
+    
     if (newQuantity >= minQuantity) {
       this.billService.updateCartItem(item.productId, { quantity: newQuantity });
     } else if (newQuantity <= 0) {
@@ -653,28 +720,32 @@ export class HomeComponent implements OnInit, OnDestroy {
         const products: Product[] = response.data || [];
         
         // Try to find exact match by productId or barcode
-        const product = products.find((p: Product) => 
+        let product = products.find((p: Product) => 
           p.productId === cleanBarcode || 
           p.barcode === cleanBarcode ||
           p.productId.toLowerCase() === cleanBarcode.toLowerCase() ||
           p.barcode?.toLowerCase() === cleanBarcode.toLowerCase()
         );
 
+        // If no exact match, use first result
+        if (!product && products.length > 0) {
+          product = products[0];
+        }
+
         if (product) {
-          this.beepService.playSuccess();
-          this.selectProduct(product);
-          this.snackBar.open(`${product.name} added to cart`, 'Close', {
-            duration: 2000,
-            panelClass: ['success-snackbar']
-          });
-        } else if (products.length > 0) {
-          // Add first match if no exact match
-          this.beepService.playSuccess();
-          this.selectProduct(products[0]);
-          this.snackBar.open(`${products[0].name} added to cart`, 'Close', {
-            duration: 2000,
-            panelClass: ['success-snackbar']
-          });
+          // Adjust stock quantity based on cart contents
+          const adjustedProduct = {
+            ...product,
+            stockQuantity: product.stockQuantity - this.getCartQuantity(product.productId)
+          };
+          
+          if (adjustedProduct.stockQuantity <= 0) {
+            this.beepService.playError();
+            this.openOutOfStockDialog(adjustedProduct);
+          } else {
+            this.beepService.playSuccess();
+            this.selectProduct(adjustedProduct);
+          }
         } else {
           this.beepService.playError();
           this.snackBar.open(`Product not found for barcode: ${barcode}`, 'Close', {
@@ -704,6 +775,9 @@ export class HomeComponent implements OnInit, OnDestroy {
       return; // Too short to be a valid barcode
     }
 
+    // Clear search input (scanner types in the input field)
+    this.clearSearch();
+
     // Search for product by barcode
     this.productService.searchProducts(cleanBarcode).subscribe({
       next: (response) => {
@@ -723,13 +797,25 @@ export class HomeComponent implements OnInit, OnDestroy {
           );
         }
 
+        // If no exact match, use first result
+        if (!product && products.length > 0) {
+          product = products[0];
+        }
+
         if (product) {
-          this.beepService.playSuccess();
-          this.selectProduct(product);
-        } else if (products.length > 0) {
-          // Add first match if no exact match
-          this.beepService.playSuccess();
-          this.selectProduct(products[0]);
+          // Adjust stock quantity based on cart contents (same as search)
+          const adjustedProduct = {
+            ...product,
+            stockQuantity: product.stockQuantity - this.getCartQuantity(product.productId)
+          };
+          
+          if (adjustedProduct.stockQuantity <= 0) {
+            this.beepService.playError();
+            this.openOutOfStockDialog(adjustedProduct);
+          } else {
+            this.beepService.playSuccess();
+            this.selectProduct(adjustedProduct);
+          }
         } else {
           this.beepService.playError();
           this.snackBar.open(`Product not found: ${cleanBarcode}`, 'Close', {
