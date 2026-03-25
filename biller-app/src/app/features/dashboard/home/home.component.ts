@@ -283,6 +283,15 @@ export class HomeComponent implements OnInit {
     return this.settingsService.settings().applicationType === 'electronics';
   }
 
+  // Get display name based on receipt language setting (Hindi if selected and available, else English)
+  getDisplayName(item: { name: string; nameHi?: string }): string {
+    const settings = this.settingsService.settings();
+    if (settings.receiptLanguage === 'hi' && item.nameHi) {
+      return item.nameHi;
+    }
+    return item.name;
+  }
+
   // Check if table selection is required (hotel mode without selected table)
   needsTableSelection(): boolean {
     // Don't show table selection until hotel mode is initialized

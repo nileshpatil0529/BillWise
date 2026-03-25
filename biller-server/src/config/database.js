@@ -70,12 +70,13 @@ const initializeDatabase = () => {
   db.exec(`CREATE INDEX IF NOT EXISTS idx_products_status ON products(status)`);
   db.exec(`CREATE INDEX IF NOT EXISTS idx_products_productId ON products(productId)`);
 
-  // Create FTS5 virtual table for fast full-text search
+  // Create FTS5 virtual table for fast full-text search (includes Hindi names)
   // FTS5 uses inverted index - O(1) lookup instead of O(n) table scan
   db.exec(`
     CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
       productId,
       name,
+      nameHi,
       barcode,
       category,
       content='products',
@@ -86,24 +87,24 @@ const initializeDatabase = () => {
   // Triggers to keep FTS index in sync with products table
   db.exec(`
     CREATE TRIGGER IF NOT EXISTS products_ai AFTER INSERT ON products BEGIN
-      INSERT INTO products_fts(rowid, productId, name, barcode, category)
-      VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.barcode, NEW.category);
+      INSERT INTO products_fts(rowid, productId, name, nameHi, barcode, category)
+      VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.nameHi, NEW.barcode, NEW.category);
     END
   `);
 
   db.exec(`
     CREATE TRIGGER IF NOT EXISTS products_ad AFTER DELETE ON products BEGIN
-      INSERT INTO products_fts(products_fts, rowid, productId, name, barcode, category)
-      VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.barcode, OLD.category);
+      INSERT INTO products_fts(products_fts, rowid, productId, name, nameHi, barcode, category)
+      VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.nameHi, OLD.barcode, OLD.category);
     END
   `);
 
   db.exec(`
     CREATE TRIGGER IF NOT EXISTS products_au AFTER UPDATE ON products BEGIN
-      INSERT INTO products_fts(products_fts, rowid, productId, name, barcode, category)
-      VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.barcode, OLD.category);
-      INSERT INTO products_fts(rowid, productId, name, barcode, category)
-      VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.barcode, NEW.category);
+      INSERT INTO products_fts(products_fts, rowid, productId, name, nameHi, barcode, category)
+      VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.nameHi, OLD.barcode, OLD.category);
+      INSERT INTO products_fts(rowid, productId, name, nameHi, barcode, category)
+      VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.nameHi, NEW.barcode, NEW.category);
     END
   `);
 
@@ -424,8 +425,93 @@ const initializeDatabase = () => {
       db.exec('ALTER TABLE products ADD COLUMN warrantyMonths INTEGER DEFAULT 0');
       console.log('✅ Migration: Added warrantyMonths column to products');
     }
+    // Hindi name for products (for bilingual receipts)
+    const hasNameHi = productColumns.some(col => col.name === 'nameHi');
+    if (!hasNameHi) {
+      db.exec('ALTER TABLE products ADD COLUMN nameHi TEXT');
+      console.log('✅ Migration: Added nameHi column to products');
+    }
   } catch (e) {
     // Columns might already exist
+  }
+
+  // Migration: Update FTS5 index to include nameHi for Hindi search
+  try {
+    // Check if FTS already has nameHi by trying to query it
+    let needsRebuild = false;
+    try {
+      // This will fail if nameHi column doesn't exist in FTS
+      db.prepare("SELECT * FROM products_fts WHERE nameHi MATCH 'test' LIMIT 1").get();
+    } catch (e) {
+      needsRebuild = true;
+    }
+    
+    if (needsRebuild) {
+      console.log('🔄 Upgrading FTS index to include Hindi names...');
+      
+      // Drop old triggers
+      db.exec('DROP TRIGGER IF EXISTS products_ai');
+      db.exec('DROP TRIGGER IF EXISTS products_ad');
+      db.exec('DROP TRIGGER IF EXISTS products_au');
+      
+      // Drop old FTS table
+      db.exec('DROP TABLE IF EXISTS products_fts');
+      
+      // Create new FTS table with nameHi
+      db.exec(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS products_fts USING fts5(
+          productId,
+          name,
+          nameHi,
+          barcode,
+          category,
+          content='products',
+          content_rowid='rowid'
+        )
+      `);
+      
+      // Create new triggers with nameHi
+      db.exec(`
+        CREATE TRIGGER products_ai AFTER INSERT ON products BEGIN
+          INSERT INTO products_fts(rowid, productId, name, nameHi, barcode, category)
+          VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.nameHi, NEW.barcode, NEW.category);
+        END
+      `);
+      
+      db.exec(`
+        CREATE TRIGGER products_ad AFTER DELETE ON products BEGIN
+          INSERT INTO products_fts(products_fts, rowid, productId, name, nameHi, barcode, category)
+          VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.nameHi, OLD.barcode, OLD.category);
+        END
+      `);
+      
+      db.exec(`
+        CREATE TRIGGER products_au AFTER UPDATE ON products BEGIN
+          INSERT INTO products_fts(products_fts, rowid, productId, name, nameHi, barcode, category)
+          VALUES ('delete', OLD.rowid, OLD.productId, OLD.name, OLD.nameHi, OLD.barcode, OLD.category);
+          INSERT INTO products_fts(rowid, productId, name, nameHi, barcode, category)
+          VALUES (NEW.rowid, NEW.productId, NEW.name, NEW.nameHi, NEW.barcode, NEW.category);
+        END
+      `);
+      
+      // Rebuild index with all existing data
+      db.exec(`INSERT INTO products_fts(products_fts) VALUES('rebuild')`);
+      console.log('✅ Migration: FTS index upgraded to include Hindi names');
+    }
+  } catch (e) {
+    console.error('FTS migration error:', e.message);
+  }
+
+  // Migration: Add receiptLanguage to settings
+  try {
+    const settingsColumns = db.prepare('PRAGMA table_info(settings)').all();
+    const hasReceiptLanguage = settingsColumns.some(col => col.name === 'receiptLanguage');
+    if (!hasReceiptLanguage) {
+      db.exec("ALTER TABLE settings ADD COLUMN receiptLanguage TEXT DEFAULT 'en'");
+      console.log('✅ Migration: Added receiptLanguage column to settings');
+    }
+  } catch (e) {
+    // Column might already exist
   }
 
   // Update existing admin users to have all permissions if they don't have any

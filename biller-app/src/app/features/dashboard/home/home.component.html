@@ -219,7 +219,7 @@
         @for (product of searchResults(); track product.productId) {
           <div class="search-result-item" (click)="selectProduct(product)">
             <div class="product-info">
-              <span class="product-name">{{ product.name }}</span>
+              <span class="product-name">{{ getDisplayName(product) }}</span>
               <span class="product-code">{{ product.productId }}</span>
             </div>
             <div class="product-price">{{ formatCurrency(product.unitPrice) }}</div>
@@ -364,7 +364,7 @@
                 <td mat-cell *matCellDef="let item" [class.highlight-row]="highlightedProductId() === item.productId">
                   <div class="product-cell">
                     <div class="product-name-row">
-                      <span class="product-name">{{ item.name }}</span>
+                      <span class="product-name">{{ getDisplayName(item) }}</span>
                       @if (isHotelMode() && isItemKotPrinted(item.productId)) {
                         <mat-icon class="kot-sent-icon" matTooltip="Sent to Kitchen">check_circle</mat-icon>
                       }

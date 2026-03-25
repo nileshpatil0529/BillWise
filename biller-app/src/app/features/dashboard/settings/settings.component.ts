@@ -82,6 +82,7 @@ export class SettingsComponent implements OnInit {
   
   // Language
   selectedLanguage = signal<LanguageType>('en');
+  selectedReceiptLanguage = signal<LanguageType>('en');
   
   // Hotel Management
   newTableStartNumber = signal<number>(1);
@@ -206,7 +207,8 @@ export class SettingsComponent implements OnInit {
       showLogo: [true],
       footerText: ['Thank you for your business!'],
       invoicePrefix: ['INV'],
-      invoiceStartNumber: [1, [Validators.required, Validators.min(1)]]
+      invoiceStartNumber: [1, [Validators.required, Validators.min(1)]],
+      receiptLanguage: ['en']
     });
   }
 
@@ -238,8 +240,12 @@ export class SettingsComponent implements OnInit {
       showLogo: !!settings.logo,
       footerText: settings.footerText,
       invoicePrefix: settings.invoicePrefix,
-      invoiceStartNumber: settings.invoiceStartNumber
+      invoiceStartNumber: settings.invoiceStartNumber,
+      receiptLanguage: settings.receiptLanguage || 'en'
     });
+
+    // Load receipt language preference
+    this.selectedReceiptLanguage.set(settings.receiptLanguage || 'en');
 
     if (settings.logo) {
       this.logoPreview.set(settings.logo);
@@ -406,11 +412,13 @@ export class SettingsComponent implements OnInit {
     const settings: Partial<Settings> = {
       footerText: formValue.footerText,
       invoicePrefix: formValue.invoicePrefix,
-      invoiceStartNumber: formValue.invoiceStartNumber
+      invoiceStartNumber: formValue.invoiceStartNumber,
+      receiptLanguage: formValue.receiptLanguage || 'en'
     };
 
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
+        this.selectedReceiptLanguage.set(formValue.receiptLanguage || 'en');
         this.snackBar.open('Receipt settings saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },

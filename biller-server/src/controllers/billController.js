@@ -515,7 +515,9 @@ export const printBill = async (req, res) => {
 
     // Get bill items from bill_items table
     const billItems = db.prepare(`
-      SELECT * FROM bill_items WHERE billId = ?
+      SELECT bi.*, p.nameHi FROM bill_items bi
+      LEFT JOIN products p ON bi.productId = p.productId
+      WHERE bi.billId = ?
     `).all(billId);
     
     console.log(`Bill ${bill.billNumber} has ${billItems.length} items`);
@@ -572,6 +574,9 @@ export const printBill = async (req, res) => {
     
     receiptText += '--------------------------------\n';
     
+    // Check if Hindi language is selected for receipts
+    const isHindi = settings?.receiptLanguage === 'hi';
+    
     // Items header
     receiptText += 'Item         Qty  Price  Total\n';
     receiptText += '--------------------------------\n';
@@ -579,7 +584,9 @@ export const printBill = async (req, res) => {
     // Items list
     if (billItems && billItems.length > 0) {
       billItems.forEach(item => {
-        const name = (item.name || 'Unknown').substring(0, 13).padEnd(13);
+        // Use Hindi name if available and Hindi is selected, otherwise use English name
+        const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
+        const name = displayName.substring(0, 13).padEnd(13);
         const qty = (item.quantity || 0).toString().padStart(3);
         const price = Math.round(item.unitPrice || 0).toString().padStart(6);
         const total = Math.round(item.finalTotal || item.itemTotal || 0).toString().padStart(7);
@@ -644,8 +651,13 @@ export const printBill = async (req, res) => {
     
     // Footer (Center)
     receiptText += ESC + 'a' + '\x01'; // Center align
-    receiptText += '\nThank you for your business!\n';
-    receiptText += 'Visit again!\n\n';
+    if (isHindi) {
+      receiptText += '\nधन्यवाद!\n';
+      receiptText += 'फिर आना!\n\n';
+    } else {
+      receiptText += '\nThank you for your business!\n';
+      receiptText += 'Visit again!\n\n';
+    }
     
     // Cut paper
     receiptText += GS + 'V' + '\x41' + '\x03'; // Cut

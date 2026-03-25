@@ -1041,6 +1041,19 @@ mat-tab-group {
   }
 }
 
+// Language Section (for Receipt Language Toggle)
+.language-section {
+  margin: v.$spacing-md 0;
+  
+  .section-title {
+    margin-bottom: v.$spacing-xs;
+  }
+  
+  .section-hint {
+    margin-bottom: v.$spacing-sm;
+  }
+}
+
 // Hotel Tables Management Section
 .hotel-tables-section {
   .add-tables-form {

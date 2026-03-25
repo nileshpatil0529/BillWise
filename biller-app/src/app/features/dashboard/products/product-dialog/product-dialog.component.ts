@@ -60,6 +60,13 @@ interface DialogData {
           </mat-form-field>
         </div>
 
+        <!-- Hindi Name Field -->
+        <mat-form-field appearance="outline" class="full-width">
+          <mat-label>Product Name (Hindi) - वैकल्पिक</mat-label>
+          <input matInput formControlName="nameHi" placeholder="उत्पाद का नाम हिंदी में (Optional)">
+          <mat-hint>Used when receipt language is set to Hindi. If empty, English name will be used.</mat-hint>
+        </mat-form-field>
+
         <mat-form-field appearance="outline" class="full-width">
           <mat-label>Description</mat-label>
           <textarea matInput formControlName="description" rows="2"></textarea>
@@ -260,6 +267,7 @@ export class ProductDialogComponent {
     
     this.productForm = this.fb.group({
       name: [product?.name || '', Validators.required],
+      nameHi: [product?.nameHi || ''],
       category: [product?.category || 'General'],
       description: [product?.description || ''],
       barcode: [product?.barcode || ''],

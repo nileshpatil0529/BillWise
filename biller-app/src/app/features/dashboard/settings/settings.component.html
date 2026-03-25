@@ -604,6 +604,27 @@
 
               <mat-divider></mat-divider>
 
+              <!-- Receipt Language Toggle -->
+              <div class="language-section">
+                <div class="section-title">
+                  <mat-icon>translate</mat-icon>
+                  <span>{{ translateService.t('settings.receiptLanguage') }}</span>
+                </div>
+                <p class="section-hint">{{ translateService.t('settings.receiptLanguageHint') }}</p>
+                <div class="language-toggle">
+                  <button mat-stroked-button (click)="receiptForm.patchValue({ receiptLanguage: 'en' })" [class.active]="receiptForm.get('receiptLanguage')?.value === 'en'">
+                    <mat-icon>language</mat-icon>
+                    English
+                  </button>
+                  <button mat-stroked-button (click)="receiptForm.patchValue({ receiptLanguage: 'hi' })" [class.active]="receiptForm.get('receiptLanguage')?.value === 'hi'">
+                    <mat-icon>translate</mat-icon>
+                    हिंदी (Hindi)
+                  </button>
+                </div>
+              </div>
+
+              <mat-divider></mat-divider>
+
               <div class="form-row two-col">
                 <mat-form-field appearance="outline">
                   <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>

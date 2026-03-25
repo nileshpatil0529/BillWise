@@ -1,6 +1,7 @@
 export interface Product {
   productId: string;
   name: string;
+  nameHi?: string;  // Hindi name (optional) - used when receipt language is Hindi
   category: string;
   description?: string;
   unitPrice: number;

@@ -126,6 +126,15 @@ export class ProductsComponent implements OnInit, OnDestroy {
     return productId;
   }
 
+  // Get display name based on receipt language setting
+  getDisplayName(product: Product): string {
+    const settings = this.settingsService.settings();
+    if (settings.receiptLanguage === 'hi' && product.nameHi) {
+      return product.nameHi;
+    }
+    return product.name;
+  }
+
   ngOnInit(): void {
     // Load categories and initial products
     this.productService.getCategories().subscribe();

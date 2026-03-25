@@ -50,13 +50,13 @@ export const getAllProducts = async (req, res) => {
         ftsParams.push(parseInt(limit), offset);
         products = db.prepare(ftsSearch).all(...ftsParams);
       } catch (ftsError) {
-        // Fallback to LIKE search
+        // Fallback to LIKE search (includes Hindi name)
         const searchPattern = `%${query}%`;
         let likeSearch = `
           SELECT * FROM products 
-          WHERE (name LIKE ? OR productId LIKE ? OR barcode LIKE ? OR category LIKE ?)
+          WHERE (name LIKE ? OR nameHi LIKE ? OR productId LIKE ? OR barcode LIKE ? OR category LIKE ?)
         `;
-        const likeParams = [searchPattern, searchPattern, searchPattern, searchPattern];
+        const likeParams = [searchPattern, searchPattern, searchPattern, searchPattern, searchPattern];
 
         if (category) {
           likeSearch += ' AND category = ?';
@@ -105,7 +105,8 @@ export const getAllProducts = async (req, res) => {
       ...p,
       metadata: p.metadata ? JSON.parse(p.metadata) : {},
       isLooseItem: Boolean(p.isLooseItem),
-      warrantyMonths: p.warrantyMonths || 0
+      warrantyMonths: p.warrantyMonths || 0,
+      nameHi: p.nameHi || null
     }));
 
     res.json({
@@ -144,7 +145,8 @@ export const getProductById = async (req, res) => {
         ...product,
         metadata: product.metadata ? JSON.parse(product.metadata) : {},
         isLooseItem: Boolean(product.isLooseItem),
-        warrantyMonths: product.warrantyMonths || 0
+        warrantyMonths: product.warrantyMonths || 0,
+        nameHi: product.nameHi || null
       }
     });
   } catch (error) {
@@ -201,11 +203,12 @@ export const createProduct = async (req, res) => {
       const now = new Date().toISOString();
       
       db.prepare(`
-        INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (productId, name, nameHi, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         productId,
         productName,
+        productData.nameHi || null,
         productData.category || 'General',
         productData.description || '',
         productBarcode,
@@ -263,6 +266,7 @@ export const updateProduct = async (req, res) => {
     db.prepare(`
       UPDATE products SET
         name = COALESCE(?, name),
+        nameHi = COALESCE(?, nameHi),
         category = COALESCE(?, category),
         description = COALESCE(?, description),
         barcode = COALESCE(?, barcode),
@@ -280,6 +284,7 @@ export const updateProduct = async (req, res) => {
       WHERE productId = ?
     `).run(
       updates.name,
+      updates.nameHi !== undefined ? updates.nameHi : null,
       updates.category,
       updates.description,
       updates.barcode,
@@ -401,24 +406,25 @@ export const searchProducts = async (req, res) => {
       results = [];
     }
 
-    // Strategy 4: Fallback to LIKE if FTS returns nothing (handles special chars, partial matches)
+    // Strategy 4: Fallback to LIKE if FTS returns nothing (handles special chars, partial matches, Hindi names)
     if (results.length === 0) {
       const searchPattern = `%${query}%`;
       results = db.prepare(`
         SELECT * FROM products 
         WHERE status = 'active' 
-          AND (name LIKE ? OR productId LIKE ? OR barcode LIKE ? OR category LIKE ?)
+          AND (name LIKE ? OR nameHi LIKE ? OR productId LIKE ? OR barcode LIKE ? OR category LIKE ?)
         ORDER BY 
           CASE 
             WHEN barcode LIKE ? THEN 1
             WHEN productId LIKE ? THEN 2
             WHEN name LIKE ? THEN 3
-            ELSE 4
+            WHEN nameHi LIKE ? THEN 4
+            ELSE 5
           END
         LIMIT 15
       `).all(
-        searchPattern, searchPattern, searchPattern, searchPattern,
-        searchPattern, searchPattern, `${query}%`
+        searchPattern, searchPattern, searchPattern, searchPattern, searchPattern,
+        searchPattern, searchPattern, `${query}%`, `${query}%`
       );
     }
 
@@ -473,13 +479,13 @@ export const importProducts = async (req, res) => {
     let errors = [];
 
     const insertProduct = db.prepare(`
-      INSERT INTO products (productId, name, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+      INSERT INTO products (productId, name, nameHi, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
     `);
 
     const updateProduct = db.prepare(`
       UPDATE products 
-      SET name = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, isLooseItem = ?, unit = ?, warrantyMonths = ?, updatedAt = ? 
+      SET name = ?, nameHi = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, isLooseItem = ?, unit = ?, warrantyMonths = ?, updatedAt = ? 
       WHERE productId = ?
     `);
 
@@ -551,12 +557,16 @@ export const importProducts = async (req, res) => {
           // Parse warranty months (for electronics mode)
           const warrantyMonths = parseInt(row.warrantyMonths || row.WarrantyMonths || row['Warranty (Months)'] || row['Warranty'] || 0) || 0;
 
-          console.log(`Row ${i + 2}: Name="${productName}", Barcode="${productBarcode}", Exists=${!!existingProduct}`);
+          // Parse Hindi name (optional)
+          const productNameHi = (row.nameHi || row.NameHi || row['Name (Hindi)'] || row['Product Name (Hindi)'] || '').toString().trim() || null;
+
+          console.log(`Row ${i + 2}: Name="${productName}", NameHi="${productNameHi || ''}", Barcode="${productBarcode}", Exists=${!!existingProduct}`);
 
           if (existingProduct) {
             // Update existing product - replace all values with new values
             updateProduct.run(
               productName,
+              productNameHi,
               productCategory,
               row.description || row.Description || '',
               productBarcode,
@@ -583,6 +593,7 @@ export const importProducts = async (req, res) => {
             insertProduct.run(
               newProductId,
               productName,
+              productNameHi,
               productCategory,
               row.description || row.Description || '',
               productBarcode,
@@ -678,6 +689,7 @@ export const exportProducts = async (req, res) => {
     // Define columns - include loose item fields for grocery mode
     const columns = [
       { header: 'Product Name', key: 'name', width: 30 },
+      { header: 'Name (Hindi)', key: 'nameHi', width: 30 },
       { header: 'Barcode', key: 'barcode', width: 20 },
       { header: 'Category', key: 'category', width: 20 },
       { header: 'Description', key: 'description', width: 40 },
@@ -705,6 +717,7 @@ export const exportProducts = async (req, res) => {
     products.forEach(p => {
       const row = {
         name: p.name,
+        nameHi: p.nameHi || '',
         barcode: p.barcode || '',
         category: p.category,
         description: p.description,

@@ -66,6 +66,7 @@ export interface Settings {
   tableColumns?: TableColumnPreferences;
   viewMode?: ViewMode; // 'desktop' or 'mobile' - affects table display
   language?: LanguageType; // 'en' or 'hi' - UI language
+  receiptLanguage?: LanguageType; // 'en' or 'hi' - Receipt/Bill language
   units?: Unit[]; // Units for loose items (grocery mode)
   updatedAt: string;
 }

@@ -220,6 +220,15 @@
         white-space: nowrap;
       }
       
+      .product-name-secondary {
+        font-size: 10px;
+        color: v.$light-text-secondary;
+
+        @include m.dark-theme {
+          color: rgba(255, 255, 255, 0.6);
+        }
+      }
+      
       .product-category-inline {
         font-size: 10px;
         color: v.$light-text-secondary;
