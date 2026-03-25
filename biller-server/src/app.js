@@ -64,7 +64,8 @@ const publicPath = path.join(__dirname, '..', 'public', 'browser');
 app.use(express.static(publicPath));
 
 // SPA fallback - redirect all non-API routes to index.html
-app.get('*', (req, res, next) => {
+// Express 5 requires named wildcard parameter
+app.get('/{*splat}', (req, res, next) => {
   // Skip API routes
   if (req.path.startsWith('/api')) {
     return next();
@@ -73,7 +74,7 @@ app.get('*', (req, res, next) => {
 });
 
 // API 404 handler (only for /api routes)
-app.use('/api/*', notFound);
+app.use('/api/{*splat}', notFound);
 app.use(errorHandler);
 
 // Get local IP address for display

@@ -48,6 +48,7 @@ const initializeDatabase = () => {
     CREATE TABLE IF NOT EXISTS products (
       productId TEXT PRIMARY KEY,
       name TEXT NOT NULL,
+      nameHi TEXT,
       category TEXT DEFAULT 'General',
       description TEXT,
       barcode TEXT,
@@ -62,6 +63,18 @@ const initializeDatabase = () => {
       updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Migration: Add nameHi column if missing (for existing databases)
+  try {
+    const productColumns = db.prepare('PRAGMA table_info(products)').all();
+    const hasNameHi = productColumns.some(col => col.name === 'nameHi');
+    if (!hasNameHi) {
+      db.exec('ALTER TABLE products ADD COLUMN nameHi TEXT');
+      console.log('✅ Migration: Added nameHi column to products');
+    }
+  } catch (e) {
+    // Column might already exist
+  }
 
   // Create index for barcode lookup
   db.exec(`CREATE INDEX IF NOT EXISTS idx_products_barcode ON products(barcode)`);
@@ -195,10 +208,11 @@ const initializeDatabase = () => {
       currencyCode TEXT DEFAULT 'INR',
       applicationType TEXT DEFAULT 'general',
       theme TEXT DEFAULT 'dark',
-      scannerType TEXT DEFAULT 'none',
+      scannerType TEXT DEFAULT 'usb',
       taxEnabled INTEGER DEFAULT 1,
       taxRates TEXT DEFAULT '[{"name":"GST 5%","rate":5},{"name":"GST 12%","rate":12},{"name":"GST 18%","rate":18}]',
       discountEnabled INTEGER DEFAULT 1,
+      debtEnabled INTEGER DEFAULT 1,
       categories TEXT DEFAULT '[{"name":"General","enabled":true}]',
       tableColumns TEXT,
       viewMode TEXT DEFAULT 'desktop',
@@ -285,7 +299,7 @@ const initializeDatabase = () => {
     }
     const hasDebtEnabled = columns.some(col => col.name === 'debtEnabled');
     if (!hasDebtEnabled) {
-      db.exec('ALTER TABLE settings ADD COLUMN debtEnabled INTEGER DEFAULT 0');
+      db.exec('ALTER TABLE settings ADD COLUMN debtEnabled INTEGER DEFAULT 1');
       console.log('✅ Migration: Added debtEnabled column');
     }
     const hasCategories = columns.some(col => col.name === 'categories');
@@ -424,12 +438,6 @@ const initializeDatabase = () => {
     if (!hasWarrantyMonths) {
       db.exec('ALTER TABLE products ADD COLUMN warrantyMonths INTEGER DEFAULT 0');
       console.log('✅ Migration: Added warrantyMonths column to products');
-    }
-    // Hindi name for products (for bilingual receipts)
-    const hasNameHi = productColumns.some(col => col.name === 'nameHi');
-    if (!hasNameHi) {
-      db.exec('ALTER TABLE products ADD COLUMN nameHi TEXT');
-      console.log('✅ Migration: Added nameHi column to products');
     }
   } catch (e) {
     // Columns might already exist
