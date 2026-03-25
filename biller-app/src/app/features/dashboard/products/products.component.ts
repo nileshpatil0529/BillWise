@@ -263,8 +263,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
       return; // Too short to be a valid barcode
     }
 
-    console.log('USB Scanner (Products) - Barcode received:', cleanBarcode);
-
     // Search for product by barcode
     this.productService.searchProducts(cleanBarcode).subscribe({
       next: (response) => {
@@ -292,7 +290,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
             panelClass: ['success-snackbar']
           });
           this.openEditDialog(product);
-          console.log('USB Scanner (Products) - Opening edit for:', product.name);
         } else {
           // Product not found - open create dialog with barcode pre-filled
           this.beepService.playDoubleBeep();
@@ -301,7 +298,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
             panelClass: ['info-snackbar']
           });
           this.openAddDialog(cleanBarcode);
-          console.log('USB Scanner (Products) - Opening create with barcode:', cleanBarcode);
         }
       },
       error: () => {

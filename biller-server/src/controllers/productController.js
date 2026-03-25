@@ -455,11 +455,6 @@ export const importProducts = async (req, res) => {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
 
-    // Debug: Log the column headers from the first row
-    if (data.length > 0) {
-      console.log('Excel columns detected:', Object.keys(data[0]));
-    }
-
     // Get enabled categories from settings for validation
     const settings = db.prepare('SELECT categories FROM settings WHERE id = 1').get();
     let validCategories = ['General'];
@@ -560,8 +555,6 @@ export const importProducts = async (req, res) => {
           // Parse Hindi name (optional)
           const productNameHi = (row.nameHi || row.NameHi || row['Name (Hindi)'] || row['Product Name (Hindi)'] || '').toString().trim() || null;
 
-          console.log(`Row ${i + 2}: Name="${productName}", NameHi="${productNameHi || ''}", Barcode="${productBarcode}", Exists=${!!existingProduct}`);
-
           if (existingProduct) {
             // Update existing product - replace all values with new values
             updateProduct.run(
@@ -631,8 +624,6 @@ export const importProducts = async (req, res) => {
     if (errors.length > 0) {
       message += `. ${errors.length} rows had errors`;
     }
-
-    console.log(`Import Summary: Total=${data.length}, Updated=${updated}, Inserted=${inserted}, Errors=${errors.length}`);
 
     res.json({
       success: errors.length === 0 || imported > 0,
@@ -957,8 +948,6 @@ export const printBarcode = async (req, res) => {
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
-    
-    console.log(`Printing ${quantity} QR label(s) to: ${printerPath}`);
 
     // ESC/POS commands for QR code label printing
     const ESC = '\x1B';
@@ -1028,8 +1017,6 @@ export const printBarcode = async (req, res) => {
           message: `Failed to print: ${err.message}. Check PRINTER_INTERFACE in .env file.`
         });
       }
-
-      console.log(`Successfully sent ${quantity} QR label(s) to printer for product: ${product.name}`);
       
       res.json({
         success: true,

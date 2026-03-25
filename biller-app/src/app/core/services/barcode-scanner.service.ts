@@ -1,6 +1,5 @@
 import { Injectable, NgZone, signal, OnDestroy } from '@angular/core';
-import { Subject, Observable, fromEvent, Subscription } from 'rxjs';
-import { BeepService } from './beep.service';
+import { Subject, fromEvent, Subscription } from 'rxjs';
 import { SettingsService } from './settings.service';
 
 export interface ScanResult {
@@ -53,7 +52,6 @@ export class BarcodeScannerService implements OnDestroy {
 
   constructor(
     private ngZone: NgZone,
-    private beepService: BeepService,
     private settingsService: SettingsService
   ) {
     // Auto-start if USB scanner is enabled in settings
@@ -80,7 +78,6 @@ export class BarcodeScannerService implements OnDestroy {
     });
 
     this.isActive.set(true);
-    console.log('Barcode scanner service started listening');
   }
 
   /**
@@ -93,7 +90,6 @@ export class BarcodeScannerService implements OnDestroy {
     }
     this.clearBuffer();
     this.isActive.set(false);
-    console.log('Barcode scanner service stopped listening');
   }
 
   /**
@@ -210,8 +206,6 @@ export class BarcodeScannerService implements OnDestroy {
     if (cleanBarcode.length < this.MIN_BARCODE_LENGTH) {
       return; // Too short to be valid
     }
-
-    console.log('Barcode scanned:', cleanBarcode);
     
     // Update last scanned code
     this.ngZone.run(() => {

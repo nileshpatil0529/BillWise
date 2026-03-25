@@ -83,9 +83,7 @@ export class LoginComponent {
           } else {
             // Use setTimeout to ensure navigation happens after auth state is fully updated
             setTimeout(() => {
-              this.router.navigate([this.returnUrl]).then(() => {
-                console.log('Navigated to:', this.returnUrl);
-              });
+              this.router.navigate([this.returnUrl]);
             }, 100);
           }
         } else {

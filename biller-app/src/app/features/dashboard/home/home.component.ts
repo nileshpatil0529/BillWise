@@ -704,8 +704,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       return; // Too short to be a valid barcode
     }
 
-    console.log('USB Scanner - Barcode received:', cleanBarcode);
-
     // Search for product by barcode
     this.productService.searchProducts(cleanBarcode).subscribe({
       next: (response) => {
@@ -728,19 +726,16 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (product) {
           this.beepService.playSuccess();
           this.selectProduct(product);
-          console.log('USB Scanner - Product added:', product.name);
         } else if (products.length > 0) {
           // Add first match if no exact match
           this.beepService.playSuccess();
           this.selectProduct(products[0]);
-          console.log('USB Scanner - First match added:', products[0].name);
         } else {
           this.beepService.playError();
           this.snackBar.open(`Product not found: ${cleanBarcode}`, 'Close', {
             duration: 3000,
             panelClass: ['error-snackbar']
           });
-          console.log('USB Scanner - Product not found:', cleanBarcode);
         }
       },
       error: () => {
@@ -1231,7 +1226,7 @@ ${items.map(item => {
     
     kotContent += `\n----------------------------`;
     
-    console.log(kotContent);
+    // TODO: Send to actual printer when printing is implemented
     this.snackBar.open('KOT sent to kitchen!', 'Close', { duration: 3000 });
   }
 

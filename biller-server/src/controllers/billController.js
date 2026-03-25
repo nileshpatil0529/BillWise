@@ -519,17 +519,12 @@ export const printBill = async (req, res) => {
       LEFT JOIN products p ON bi.productId = p.productId
       WHERE bi.billId = ?
     `).all(billId);
-    
-    console.log(`Bill ${bill.billNumber} has ${billItems.length} items`);
-    console.log('Items:', JSON.stringify(billItems, null, 2));
 
     // Get business settings
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
-    
-    console.log(`Printing bill to: ${printerPath}`);
 
     // ESC/POS commands for receipt printing
     const ESC = '\x1B';
@@ -673,8 +668,6 @@ export const printBill = async (req, res) => {
           message: `Failed to print: ${err.message}. Check PRINTER_INTERFACE in .env file.`
         });
       }
-
-      console.log(`Successfully sent bill ${bill.billNumber} to printer`);
       
       res.json({
         success: true,
