@@ -14,6 +14,7 @@ export default {
   },
   defaultPassword: 'User@123',
   cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:4200'
+    // Allow all origins in development for local network access
+    origin: process.env.CORS_ORIGIN || true
   }
 };
