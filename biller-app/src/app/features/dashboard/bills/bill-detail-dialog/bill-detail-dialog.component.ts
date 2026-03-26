@@ -4,6 +4,7 @@ import { MAT_DIALOG_DATA, MatDialogModule, MatDialogRef } from '@angular/materia
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
 
 import { Bill, BillItem } from '../../../../core/models/bill.model';
 
@@ -16,117 +17,157 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
     MatButtonModule,
     MatIconModule,
     MatChipsModule,
+    MatDividerModule,
     CurrencyPipe,
     DatePipe
   ],
   template: `
-    <div class="dialog-title-row">
-      <h2 mat-dialog-title>Bill Details</h2>
-      <mat-chip [class]="'status-' + data.paymentStatus">
-        <mat-icon>{{ getStatusIcon() }}</mat-icon>
-        {{ data.paymentStatus | titlecase }}
-      </mat-chip>
-    </div>
-
-    <mat-dialog-content>
-      <div class="bill-info">
-        <div class="info-row">
-          <span class="label">Bill Number:</span>
-          <span class="value bill-number">{{ data.billNumber }}</span>
-        </div>
-        <div class="info-row">
-          <span class="label">Date & Time:</span>
-          <span class="value">{{ data.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
-        </div>
-        @if (data.customerName) {
-          <div class="info-row">
-            <span class="label">Customer:</span>
-            <span class="value">{{ data.customerName }}</span>
+    <div class="bill-detail-container">
+      <!-- Header -->
+      <div class="header" [class]="'status-' + data.paymentStatus">
+        <div class="header-left">
+          <div class="bill-number-section">
+            <span class="label">Invoice</span>
+            <span class="bill-number">{{ data.billNumber }}</span>
           </div>
-        }
-        @if (data.customerPhone) {
-          <div class="info-row">
-            <span class="label">Phone:</span>
-            <span class="value">{{ data.customerPhone }}</span>
+        </div>
+        <div class="header-right">
+          <div class="status-badge" [class]="'status-' + data.paymentStatus">
+            <mat-icon>{{ getStatusIcon() }}</mat-icon>
+            {{ data.paymentStatus | titlecase }}
           </div>
-        }
-        <div class="info-row">
-          <span class="label">Payment Method:</span>
-          <span class="value">
-            <mat-icon class="payment-icon">{{ getPaymentIcon() }}</mat-icon>
-            {{ data.paymentMethod | titlecase }}
-          </span>
+          <button mat-icon-button class="close-btn" (click)="onClose()">
+            <mat-icon>close</mat-icon>
+          </button>
         </div>
       </div>
 
-      <div class="items-section">
-        <h4>Items ({{ data.items.length }})</h4>
-        <div class="items-table">
-          <div class="items-header">
-            <span class="col-name">Item</span>
-            <span class="col-qty">Qty</span>
-            <span class="col-price">Price</span>
-            <span class="col-total">Total</span>
+      <!-- Content -->
+      <div class="content">
+        <!-- Info Cards -->
+        <div class="info-cards">
+          <div class="info-card">
+            <mat-icon class="card-icon">calendar_today</mat-icon>
+            <div class="card-content">
+              <span class="card-label">Date</span>
+              <span class="card-value">{{ data.createdAt | date:'dd MMM yyyy' }}</span>
+              <span class="card-sub">{{ data.createdAt | date:'hh:mm a' }}</span>
+            </div>
           </div>
-          @for (item of data.items; track item.productId) {
-            <div class="items-row">
-              <span class="col-name">{{ item.name }}</span>
-              <span class="col-qty">{{ item.quantity }}</span>
-              <span class="col-price">{{ item.unitPrice | currency:'INR' }}</span>
-              <span class="col-total">{{ item.finalTotal | currency:'INR' }}</span>
+
+          <div class="info-card">
+            <mat-icon class="card-icon">{{ getPaymentIcon() }}</mat-icon>
+            <div class="card-content">
+              <span class="card-label">Payment</span>
+              <span class="card-value">{{ data.paymentMethod | titlecase }}</span>
+            </div>
+          </div>
+
+          @if (data.customerName) {
+            <div class="info-card wide">
+              <mat-icon class="card-icon">person</mat-icon>
+              <div class="card-content">
+                <span class="card-label">Customer</span>
+                <span class="card-value">{{ data.customerName }}</span>
+                @if (data.customerPhone) {
+                  <span class="card-sub">{{ data.customerPhone }}</span>
+                }
+              </div>
             </div>
           }
         </div>
+
+        <!-- Items Section -->
+        <div class="items-section">
+          <div class="section-title">
+            <mat-icon>receipt_long</mat-icon>
+            <span>Items</span>
+            <span class="item-count">{{ data.items.length }}</span>
+          </div>
+
+          <div class="items-table">
+            <div class="items-header">
+              <span class="col-name">Item</span>
+              <span class="col-qty">Qty</span>
+              <span class="col-price">Rate</span>
+              <span class="col-total">Amount</span>
+            </div>
+            <div class="items-body">
+              @for (item of data.items; track item.productId; let i = $index) {
+                <div class="items-row" [class.alternate]="i % 2 === 1">
+                  <span class="col-name">{{ item.name }}</span>
+                  <span class="col-qty">{{ item.quantity }}</span>
+                  <span class="col-price">{{ item.unitPrice | currency:'INR':'symbol':'1.0-0' }}</span>
+                  <span class="col-total">{{ item.finalTotal | currency:'INR':'symbol':'1.0-0' }}</span>
+                </div>
+              }
+            </div>
+          </div>
+        </div>
+
+        <!-- Summary Section -->
+        <div class="summary-section">
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span>{{ data.subtotal | currency:'INR':'symbol':'1.2-2' }}</span>
+          </div>
+
+          @if (data.discountTotal > 0) {
+            <div class="summary-row discount">
+              <span><mat-icon>sell</mat-icon> Discount</span>
+              <span>-{{ data.discountTotal | currency:'INR':'symbol':'1.2-2' }}</span>
+            </div>
+          }
+
+          @if (data.taxTotal > 0) {
+            <div class="summary-row">
+              <span>Tax</span>
+              <span>{{ data.taxTotal | currency:'INR':'symbol':'1.2-2' }}</span>
+            </div>
+          }
+
+          <mat-divider></mat-divider>
+
+          <div class="grand-total-row">
+            <span>Grand Total</span>
+            <span class="amount">{{ data.grandTotal | currency:'INR':'symbol':'1.2-2' }}</span>
+          </div>
+
+          @if (data.amountPaid !== data.grandTotal) {
+            <div class="payment-info">
+              <div class="summary-row paid">
+                <span>Paid</span>
+                <span>{{ data.amountPaid | currency:'INR':'symbol':'1.2-2' }}</span>
+              </div>
+              <div class="summary-row due">
+                <span>Balance Due</span>
+                <span>{{ data.grandTotal - data.amountPaid | currency:'INR':'symbol':'1.2-2' }}</span>
+              </div>
+            </div>
+          }
+        </div>
+
+        <!-- Notes Section -->
+        @if (data.notes) {
+          <div class="notes-section">
+            <div class="section-title small">
+              <mat-icon>sticky_note_2</mat-icon>
+              <span>Notes</span>
+            </div>
+            <p class="notes-text">{{ data.notes }}</p>
+          </div>
+        }
       </div>
 
-      <div class="totals-section">
-        <div class="total-row">
-          <span>Subtotal</span>
-          <span>{{ data.subtotal | currency:'INR' }}</span>
-        </div>
-        @if (data.discountTotal > 0) {
-          <div class="total-row discount">
-            <span>Discount</span>
-            <span>-{{ data.discountTotal | currency:'INR' }}</span>
-          </div>
-        }
-        @if (data.taxTotal > 0) {
-          <div class="total-row">
-            <span>Tax</span>
-            <span>{{ data.taxTotal | currency:'INR' }}</span>
-          </div>
-        }
-        <div class="total-row grand-total">
-          <span>Grand Total</span>
-          <span>{{ data.grandTotal | currency:'INR' }}</span>
-        </div>
-        @if (data.amountPaid !== data.grandTotal) {
-          <div class="total-row">
-            <span>Paid Amount</span>
-            <span>{{ data.amountPaid | currency:'INR' }}</span>
-          </div>
-          <div class="total-row due">
-            <span>Due Amount</span>
-            <span>{{ data.grandTotal - data.amountPaid | currency:'INR' }}</span>
-          </div>
-        }
+      <!-- Footer Actions -->
+      <div class="footer">
+        <button mat-stroked-button (click)="onClose()">Close</button>
+        <button mat-flat-button color="primary" (click)="onPrint()">
+          <mat-icon>print</mat-icon>
+          Print Receipt
+        </button>
       </div>
-
-      @if (data.notes) {
-        <div class="notes-section">
-          <h4>Notes</h4>
-          <p>{{ data.notes }}</p>
-        </div>
-      }
-    </mat-dialog-content>
-
-    <mat-dialog-actions align="end">
-      <button mat-button (click)="onClose()">Close</button>
-      <button mat-raised-button color="primary" (click)="onPrint()">
-        <mat-icon>print</mat-icon>
-        Print
-      </button>
-    </mat-dialog-actions>
+    </div>
   `,
   styles: [`
     @use '../../../../../styles/variables' as v;
@@ -136,218 +177,362 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
       display: block;
     }
 
-    .dialog-title-row {
+    .bill-detail-container {
+      display: flex;
+      flex-direction: column;
+      max-height: 90vh;
+      overflow: hidden;
+    }
+
+    // Header
+    .header {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 16px 24px;
-      
-      h2 {
-        margin: 0;
-        padding: 0;
+      padding: 20px 24px;
+      background: linear-gradient(135deg, v.$light-primary 0%, darken(v.$light-primary, 10%) 100%);
+      color: white;
+
+      @include m.dark-theme {
+        background: linear-gradient(135deg, v.$dark-primary 0%, darken(v.$dark-primary, 10%) 100%);
+        color: #1a1a2e;
       }
 
-      mat-chip {
-        mat-icon {
-          font-size: 14px;
-          width: 14px;
-          height: 14px;
-          margin-right: 4px;
-        }
+      &.status-paid {
+        background: linear-gradient(135deg, #43a047 0%, #2e7d32 100%);
+      }
 
-        &.status-paid {
-          --mdc-chip-elevated-container-color: #{rgba(v.$light-success, 0.15)};
-          --mdc-chip-label-text-color: #{v.$light-success};
+      &.status-pending {
+        background: linear-gradient(135deg, #fb8c00 0%, #ef6c00 100%);
+      }
 
-          @include m.dark-theme {
-            --mdc-chip-elevated-container-color: #{rgba(v.$dark-success, 0.2)};
-            --mdc-chip-label-text-color: #{v.$dark-success};
+      &.status-partial {
+        background: linear-gradient(135deg, #1e88e5 0%, #1565c0 100%);
+      }
+
+      .header-left {
+        .bill-number-section {
+          display: flex;
+          flex-direction: column;
+          gap: 4px;
+
+          .label {
+            font-size: 12px;
+            opacity: 0.9;
+            text-transform: uppercase;
+            letter-spacing: 1px;
           }
-        }
 
-        &.status-pending {
-          --mdc-chip-elevated-container-color: #{rgba(v.$light-warning, 0.15)};
-          --mdc-chip-label-text-color: #{v.$light-warning};
-
-          @include m.dark-theme {
-            --mdc-chip-elevated-container-color: #{rgba(v.$dark-warning, 0.2)};
-            --mdc-chip-label-text-color: #{v.$dark-warning};
-          }
-        }
-
-        &.status-partial {
-          --mdc-chip-elevated-container-color: #{rgba(v.$light-primary, 0.15)};
-          --mdc-chip-label-text-color: #{v.$light-primary};
-
-          @include m.dark-theme {
-            --mdc-chip-elevated-container-color: #{rgba(v.$dark-primary, 0.2)};
-            --mdc-chip-label-text-color: #{v.$dark-primary};
+          .bill-number {
+            font-size: 20px;
+            font-weight: 700;
+            font-family: 'Roboto Mono', monospace;
+            letter-spacing: 0.5px;
           }
         }
       }
-    }
 
-    mat-dialog-content {
-      min-width: 550px;
-      max-width: 100%;
-      max-height: 65vh;
-      overflow-y: auto;
-      padding: 16px 24px !important;
-      
-      @media (max-width: 600px) {
-        min-width: auto;
-        padding: 12px 16px !important;
-      }
-    }
-
-    .bill-info {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 16px;
-
-      .info-row {
+      .header-right {
         display: flex;
-        justify-content: space-between;
         align-items: center;
+        gap: 12px;
 
-        .label {
-          color: v.$light-text-secondary;
-          font-size: 13px;
-          
-          @include m.dark-theme {
-            color: rgba(255, 255, 255, 0.6);
-          }
-        }
-
-        .value {
-          font-weight: 500;
+        .status-badge {
           display: flex;
           align-items: center;
           gap: 6px;
+          padding: 6px 14px;
+          background: rgba(255, 255, 255, 0.2);
+          border-radius: 20px;
           font-size: 13px;
+          font-weight: 600;
+          backdrop-filter: blur(4px);
 
-          @include m.dark-theme {
-            color: white;
-          }
-
-          &.bill-number {
-            font-family: 'Roboto Mono', monospace;
-            color: v.$light-primary;
-            font-weight: 600;
-
-            @include m.dark-theme {
-              color: v.$dark-primary;
-            }
-          }
-
-          .payment-icon {
+          mat-icon {
             font-size: 16px;
             width: 16px;
             height: 16px;
           }
         }
+
+        .close-btn {
+          color: inherit;
+          opacity: 0.8;
+
+          &:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.1);
+          }
+        }
       }
     }
 
-    .items-section {
-      margin-bottom: 16px;
-      
-      h4 {
-        margin: 0 0 8px;
-        font-weight: 600;
+    // Content
+    .content {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px 24px;
+      background: #f8f9fa;
+
+      @include m.dark-theme {
+        background: #1a1a2e;
+      }
+
+      @include m.custom-scrollbar;
+    }
+
+    // Info Cards
+    .info-cards {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+
+      @media (max-width: 500px) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .info-card {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 14px 16px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+      @include m.dark-theme {
+        background: #252540;
+      }
+
+      &.wide {
+        grid-column: span 2;
+
+        @media (max-width: 500px) {
+          grid-column: span 1;
+        }
+      }
+
+      .card-icon {
+        width: 36px;
+        height: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(v.$light-primary, 0.1);
+        border-radius: 10px;
+        color: v.$light-primary;
+        font-size: 18px;
+
+        @include m.dark-theme {
+          background: rgba(v.$dark-primary, 0.15);
+          color: v.$dark-primary;
+        }
+      }
+
+      .card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+
+        .card-label {
+          font-size: 11px;
+          color: v.$light-text-secondary;
+          text-transform: uppercase;
+          letter-spacing: 0.5px;
+
+          @include m.dark-theme {
+            color: rgba(255, 255, 255, 0.5);
+          }
+        }
+
+        .card-value {
+          font-size: 14px;
+          font-weight: 600;
+          color: v.$light-text-primary;
+
+          @include m.dark-theme {
+            color: white;
+          }
+        }
+
+        .card-sub {
+          font-size: 12px;
+          color: v.$light-text-secondary;
+
+          @include m.dark-theme {
+            color: rgba(255, 255, 255, 0.5);
+          }
+        }
+      }
+    }
+
+    // Section Title
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      font-weight: 600;
+      font-size: 14px;
+      color: v.$light-text-primary;
+
+      @include m.dark-theme {
+        color: white;
+      }
+
+      &.small {
         font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+        color: v.$light-primary;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+      }
+
+      .item-count {
+        margin-left: auto;
+        padding: 2px 10px;
+        background: v.$light-primary;
+        color: white;
+        border-radius: 12px;
+        font-size: 12px;
+        font-weight: 500;
+
+        @include m.dark-theme {
+          background: v.$dark-primary;
+          color: #1a1a2e;
+        }
+      }
+    }
+
+    // Items Section
+    .items-section {
+      margin-bottom: 20px;
+
+      .items-table {
+        background: white;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+        @include m.dark-theme {
+          background: #252540;
+        }
+      }
+
+      .items-header {
+        display: grid;
+        grid-template-columns: 2fr 0.6fr 1fr 1fr;
+        padding: 12px 16px;
+        background: v.$light-primary;
+        color: white;
+        font-weight: 600;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+
+        @include m.dark-theme {
+          background: v.$dark-primary;
+          color: #1a1a2e;
+        }
+
+        .col-qty, .col-price, .col-total {
+          text-align: right;
+        }
+      }
+
+      .items-body {
+        max-height: 180px;
+        overflow-y: auto;
+        @include m.custom-scrollbar;
+      }
+
+      .items-row {
+        display: grid;
+        grid-template-columns: 2fr 0.6fr 1fr 1fr;
+        padding: 12px 16px;
+        font-size: 13px;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+
+        @include m.dark-theme {
+          border-color: rgba(255, 255, 255, 0.05);
+          color: white;
+        }
+
+        &:last-child {
+          border-bottom: none;
+        }
+
+        &.alternate {
+          background: rgba(0, 0, 0, 0.02);
+
+          @include m.dark-theme {
+            background: rgba(255, 255, 255, 0.02);
+          }
+        }
+
+        .col-name {
+          font-weight: 500;
+        }
+
+        .col-qty {
+          text-align: center;
+        }
+
+        .col-price, .col-total {
+          text-align: right;
+          font-family: 'Roboto Mono', monospace;
+        }
+
+        .col-total {
+          font-weight: 600;
+          color: v.$light-primary;
+
+          @include m.dark-theme {
+            color: v.$dark-primary;
+          }
+        }
+      }
+    }
+
+    // Summary Section
+    .summary-section {
+      background: white;
+      border-radius: 12px;
+      padding: 16px 20px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+      @include m.dark-theme {
+        background: #252540;
+      }
+
+      mat-divider {
+        margin: 12px 0;
+      }
+
+      .summary-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 6px 0;
+        font-size: 14px;
         color: v.$light-text-primary;
 
         @include m.dark-theme {
           color: white;
         }
-      }
 
-      .items-table {
-        border: 1px solid rgba(0, 0, 0, 0.1);
-        border-radius: 8px;
-        overflow: hidden;
-
-        @include m.dark-theme {
-          border-color: rgba(255, 255, 255, 0.1);
-        }
-
-        .items-header,
-        .items-row {
-          display: grid;
-          grid-template-columns: 2fr 0.6fr 1fr 1fr;
-          padding: 8px 12px;
-          gap: 8px;
-          align-items: center;
-        }
-
-        .items-header {
-          background: v.$light-primary;
-          color: white;
-          font-weight: 600;
-          font-size: 11px;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-
-          @include m.dark-theme {
-            background: v.$dark-primary;
-            color: #1a1a2e;
-          }
-
-          .col-qty,
-          .col-price,
-          .col-total {
-            text-align: right;
-          }
-        }
-
-        .items-row {
-          border-top: 1px solid rgba(0, 0, 0, 0.06);
-          font-size: 13px;
-
-          @include m.dark-theme {
-            border-color: rgba(255, 255, 255, 0.06);
-            color: white;
-          }
-
-          .col-name {
-            font-weight: 500;
-          }
-
-          .col-qty {
-            text-align: center;
-          }
-
-          .col-price,
-          .col-total {
-            text-align: right;
-          }
-
-          .col-total {
-            font-weight: 600;
-            color: v.$light-primary;
-            
-            @include m.dark-theme {
-              color: v.$dark-primary;
-            }
-          }
-        }
-      }
-    }
-
-    .totals-section {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-
-      .total-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 13px;
-
-        @include m.dark-theme {
-          color: white;
+        span:last-child {
+          font-family: 'Roboto Mono', monospace;
         }
 
         &.discount {
@@ -356,56 +541,91 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
           @include m.dark-theme {
             color: v.$dark-success;
           }
+
+          span:first-child {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+
+            mat-icon {
+              font-size: 14px;
+              width: 14px;
+              height: 14px;
+            }
+          }
         }
 
-        &.grand-total {
-          font-size: 16px;
-          font-weight: 700;
-          padding-top: 8px;
-          margin-top: 4px;
-          border-top: 1px solid rgba(0, 0, 0, 0.1);
+        &.paid {
+          color: v.$light-success;
 
           @include m.dark-theme {
-            border-color: rgba(255, 255, 255, 0.1);
-            color: white;
+            color: v.$dark-success;
           }
         }
 
         &.due {
           color: v.$light-warning;
+          font-weight: 600;
 
           @include m.dark-theme {
             color: v.$dark-warning;
           }
         }
       }
-    }
 
-    .notes-section {
-      margin-top: 16px;
-      padding: 12px;
-      background: rgba(0, 0, 0, 0.03);
-      border-radius: 8px;
-      
-      @include m.dark-theme {
-        background: rgba(255, 255, 255, 0.03);
-      }
-      
-      h4 {
-        margin: 0 0 6px;
-        font-weight: 600;
-        font-size: 13px;
+      .grand-total-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 8px 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: v.$light-text-primary;
 
         @include m.dark-theme {
           color: white;
         }
+
+        .amount {
+          font-size: 20px;
+          font-family: 'Roboto Mono', monospace;
+          color: v.$light-primary;
+
+          @include m.dark-theme {
+            color: v.$dark-primary;
+          }
+        }
       }
 
-      p {
+      .payment-info {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px dashed rgba(0, 0, 0, 0.1);
+
+        @include m.dark-theme {
+          border-color: rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+
+    // Notes Section
+    .notes-section {
+      margin-top: 16px;
+      background: white;
+      border-radius: 12px;
+      padding: 14px 16px;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+
+      @include m.dark-theme {
+        background: #252540;
+      }
+
+      .notes-text {
         margin: 0;
+        font-size: 13px;
         color: v.$light-text-secondary;
         font-style: italic;
-        font-size: 13px;
+        line-height: 1.5;
 
         @include m.dark-theme {
           color: rgba(255, 255, 255, 0.6);
@@ -413,13 +633,50 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
       }
     }
 
-    mat-dialog-actions {
-      padding: 12px 24px !important;
-      
+    // Footer
+    .footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      padding: 16px 24px;
+      background: white;
+      border-top: 1px solid rgba(0, 0, 0, 0.08);
+
+      @include m.dark-theme {
+        background: #1a1a2e;
+        border-color: rgba(255, 255, 255, 0.08);
+      }
+
       button {
+        min-width: 100px;
+        height: 40px;
+        font-weight: 500;
+
         mat-icon {
-          margin-right: 4px;
+          margin-right: 6px;
         }
+      }
+    }
+
+    // Responsive
+    @media (max-width: 500px) {
+      .header {
+        padding: 16px;
+      }
+
+      .content {
+        padding: 16px;
+      }
+
+      .footer {
+        padding: 12px 16px;
+      }
+
+      .items-section .items-header,
+      .items-section .items-row {
+        grid-template-columns: 1.5fr 0.5fr 1fr 1fr;
+        padding: 10px 12px;
+        font-size: 12px;
       }
     }
   `]
