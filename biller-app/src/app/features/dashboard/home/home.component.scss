@@ -1571,7 +1571,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  z-index: 500;
+  z-index: 1100;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1637,6 +1637,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: v.$spacing-md;
+  justify-content: center;
   
   @include m.mobile {
     gap: v.$spacing-sm;
@@ -1826,7 +1827,14 @@
       font-size: 18px;
       width: 18px;
       height: 18px;
-      margin-right: 4px;
+      line-height: 18px;
+      vertical-align: middle;
+      margin-right: 6px !important;
+    }
+    
+    span {
+      line-height: 18px;
+      vertical-align: middle;
     }
   }
 }

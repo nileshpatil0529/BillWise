@@ -62,25 +62,22 @@
       </div>
     }
 
-    <div class="table-container" #tableContainer [class.mobile-mode]="isMobileMode()">
+    <div class="table-container" #tableContainer>
       <table mat-table [dataSource]="dataSource" matSort class="products-table">
         <!-- Product ID Column -->
         <ng-container matColumnDef="productId">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('products.productId') }}</th>
           <td mat-cell *matCellDef="let product">
-            <span class="product-id" [matTooltip]="isMobileMode() ? product.productId : ''">{{ formatProductId(product.productId) }}</span>
+            <span class="product-id">{{ formatProductId(product.productId) }}</span>
           </td>
         </ng-container>
 
         <!-- Name Column -->
         <ng-container matColumnDef="name">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ isMobileMode() ? translateService.t('home.product') : translateService.t('products.productName') }}</th>
+          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('products.productName') }}</th>
           <td mat-cell *matCellDef="let product">
             <div class="product-name-cell">
               <span class="product-name">{{ getDisplayName(product) }}</span>
-              @if (isMobileMode() && product.category) {
-                <span class="product-category-inline">{{ product.category }}</span>
-              }
             </div>
           </td>
         </ng-container>

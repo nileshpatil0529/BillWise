@@ -300,10 +300,10 @@
             <mat-chip [highlighted]="true">
               @if (selectedTable()?.tableType === 'dine-in') {
                 <mat-icon>table_restaurant</mat-icon>
-                <span>T{{ selectedTable()?.tableNumber }}</span>
+                <span>{{ selectedTable()?.tableNumber }}</span>
               } @else {
                 <mat-icon>takeout_dining</mat-icon>
-                <span>P{{ selectedTable()?.tableNumber }}</span>
+                <span>{{ selectedTable()?.tableNumber }}</span>
               }
             </mat-chip>
             <button mat-icon-button color="primary" (click)="startChangeTable()" matTooltip="Change Table">
@@ -401,7 +401,7 @@
             <p>{{ translateService.t('home.emptyCart') }}</p>
           </div>
         } @else {
-          <div class="cart-table-container" [class.mobile-mode]="isMobileMode()">
+          <div class="cart-table-container">
             <table mat-table [dataSource]="billService.cartItems()" class="cart-table">
               <!-- S.No Column -->
               <ng-container matColumnDef="sno">
@@ -416,16 +416,8 @@
                   <div class="product-cell">
                     <div class="product-name-row">
                       <span class="product-name">{{ getDisplayName(item) }}</span>
-                      @if (isHotelMode() && isItemKotPrinted(item.productId)) {
-                        <mat-icon class="kot-sent-icon" matTooltip="Sent to Kitchen">check_circle</mat-icon>
-                      }
                     </div>
-                    @if (!isMobileMode()) {
-                      <span class="product-id">{{ item.productId }}</span>
-                    }
-                    @if (isMobileMode()) {
-                      <span class="product-price-inline">{{ formatCurrency(item.unitPrice) }}</span>
-                    }
+                    <span class="product-id">{{ item.productId }}</span>
                   </div>
                 </td>
               </ng-container>

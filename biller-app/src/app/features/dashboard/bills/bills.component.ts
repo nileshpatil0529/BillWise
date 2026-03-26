@@ -67,8 +67,6 @@ export class BillsComponent implements OnInit {
 
   // All available columns
   private allColumns = ['billNumber', 'createdAt', 'table', 'itemsCount', 'grandTotal', 'paymentMethod', 'paymentStatus', 'actions'];
-  // Columns to hide in mobile mode
-  private mobileHiddenColumns = ['itemsCount', 'paymentMethod'];
   displayedColumns: string[] = [];
   
   dataSource = new MatTableDataSource<Bill>([]);
@@ -130,41 +128,17 @@ export class BillsComponent implements OnInit {
     // Update displayedColumns based on settings
     effect(() => {
       const settings = this.settingsService.settings();
-      const tableColumns = settings.tableColumns?.bills;
       const isHotelMode = settings.applicationType === 'hotel';
-      const isMobileMode = settings.viewMode === 'mobile';
       
       // Start with all columns, but filter out 'table' if not hotel mode
-      let columns = isHotelMode 
+      this.displayedColumns = isHotelMode 
         ? [...this.allColumns] 
         : this.allColumns.filter(col => col !== 'table');
-      
-      // In mobile mode, auto-hide less important columns
-      if (isMobileMode) {
-        columns = columns.filter(col => !this.mobileHiddenColumns.includes(col));
-      }
-      
-      if (tableColumns) {
-        columns = columns.filter(col => {
-          const columnSetting = tableColumns.find(tc => tc.key === col);
-          return columnSetting ? columnSetting.visible : true;
-        });
-      }
-      
-      this.displayedColumns = columns;
     });
   }
 
-  // Check if mobile mode is enabled
-  isMobileMode(): boolean {
-    return this.settingsService.settings().viewMode === 'mobile';
-  }
-
-  // Get formatted bill number (truncated for mobile)
+  // Get formatted bill number
   formatBillNumber(billNumber: string): string {
-    if (this.isMobileMode() && billNumber && billNumber.length > 6) {
-      return '...' + billNumber.slice(-6);
-    }
     return billNumber;
   }
 
@@ -306,6 +280,8 @@ export class BillsComponent implements OnInit {
 
   viewBill(bill: Bill): void {
     this.dialog.open(BillDetailDialogComponent, {
+      width: '600px',
+      maxHeight: '90vh',
       data: bill,
       panelClass: 'bill-detail-dialog'
     });

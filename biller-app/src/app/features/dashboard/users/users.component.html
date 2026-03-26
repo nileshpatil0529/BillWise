@@ -12,21 +12,23 @@
     </div>
   </div>
 
-  <!-- Search Bar -->
-  <mat-card class="search-card">
-    <mat-form-field appearance="outline" class="search-field">
-      <mat-label>{{ translateService.t('users.searchUsers') }}</mat-label>
-      <input matInput 
-             [value]="searchQuery()" 
-             (input)="onSearchInput($event)"
-             placeholder="Search by name or phone...">
-      <mat-icon matPrefix>search</mat-icon>
-      @if (searchQuery()) {
-        <button mat-icon-button matSuffix (click)="clearSearch()">
-          <mat-icon>close</mat-icon>
-        </button>
-      }
-    </mat-form-field>
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>{{ translateService.t('users.searchUsers') }}</mat-label>
+        <input matInput 
+               [value]="searchQuery()" 
+               (input)="onSearchInput($event)"
+               placeholder="Search by name or phone...">
+        <mat-icon matPrefix>search</mat-icon>
+        @if (searchQuery()) {
+          <button mat-icon-button matSuffix (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+    </div>
   </mat-card>
 
   <!-- Users Table -->

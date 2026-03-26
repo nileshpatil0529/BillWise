@@ -12,21 +12,23 @@
     </div>
   </div>
 
-  <!-- Search Bar -->
-  <mat-card class="search-card">
-    <mat-form-field appearance="outline" class="search-field">
-      <mat-label>{{ translateService.t('customers.searchCustomers') }}</mat-label>
-      <input matInput 
-             [value]="searchQuery()" 
-             (input)="onSearchInput($event)"
-             placeholder="Search by name or phone...">
-      <mat-icon matPrefix>search</mat-icon>
-      @if (searchQuery()) {
-        <button mat-icon-button matSuffix (click)="clearSearch()">
-          <mat-icon>close</mat-icon>
-        </button>
-      }
-    </mat-form-field>
+  <!-- Filters -->
+  <mat-card class="filters-card">
+    <div class="filters-row">
+      <mat-form-field appearance="outline" class="search-field">
+        <mat-label>{{ translateService.t('customers.searchCustomers') }}</mat-label>
+        <input matInput 
+               [value]="searchQuery()" 
+               (input)="onSearchInput($event)"
+               placeholder="Search by name or phone...">
+        <mat-icon matPrefix>search</mat-icon>
+        @if (searchQuery()) {
+          <button mat-icon-button matSuffix (click)="clearSearch()">
+            <mat-icon>close</mat-icon>
+          </button>
+        }
+      </mat-form-field>
+    </div>
   </mat-card>
 
   <!-- customers Table -->
@@ -37,7 +39,7 @@
       </div>
     }
 
-    <div class="table-container" #tableContainer [class.mobile-mode]="isMobileMode()">
+    <div class="table-container" #tableContainer>
       <table mat-table [dataSource]="dataSource" matSort class="customers-table">
         <!-- Name Column -->
         <ng-container matColumnDef="name">
@@ -51,11 +53,7 @@
         <ng-container matColumnDef="phone">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('common.phone') }}</th>
           <td mat-cell *matCellDef="let customer">
-            @if (isMobileMode()) {
-              {{ customer.phone?.slice(-10) }}
-            } @else {
-              {{ customer.phone }}
-            }
+            {{ customer.phone }}
           </td>
         </ng-container>
 

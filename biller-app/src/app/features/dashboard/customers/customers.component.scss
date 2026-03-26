@@ -2,13 +2,17 @@
 @use '../../../../styles/mixins' as m;
 
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px - 32px);
 }
 
-.borrowers-container {
+.customers-container {
   display: flex;
   flex-direction: column;
   gap: v.$spacing-md;
+  height: 100%;
+  overflow: hidden;
 }
 
 // Page Header
@@ -52,16 +56,29 @@
   }
 }
 
-// Search Card
-.search-card {
-  padding: v.$spacing-md;
+// Filters Card
+.filters-card {
+  .filters-row {
+    display: flex;
+    gap: v.$spacing-md;
+    flex-wrap: wrap;
+    align-items: flex-start;
 
-  .search-field {
-    width: 100%;
-    margin-bottom: 0;
+    .search-field {
+      flex: 1;
+      min-width: 250px;
+      
+      @include m.mobile {
+        min-width: 100%;
+      }
+    }
 
-    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-      display: none;
+    mat-form-field {
+      margin-bottom: 0;
+
+      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
     }
   }
 }
@@ -70,6 +87,10 @@
 .table-card {
   padding: 0;
   position: relative;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
   .loading-overlay {
     position: absolute;
@@ -89,14 +110,10 @@
   }
 
   .table-container {
-    max-height: calc(100vh - 240px);
+    flex: 1;
     overflow-x: auto;
     overflow-y: auto;
     @include m.custom-scrollbar;
-    
-    @include m.mobile {
-      max-height: calc(100vh - 200px);
-    }
   }
   
   .loading-more {

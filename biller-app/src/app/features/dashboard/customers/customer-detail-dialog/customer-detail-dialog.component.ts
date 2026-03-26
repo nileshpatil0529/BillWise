@@ -441,6 +441,8 @@ export class CustomerDetailDialogComponent implements OnInit {
       next: (response) => {
         if (response.success) {
           this.dialog.open(BillDetailDialogComponent, {
+            width: '600px',
+            maxHeight: '90vh',
             data: response.data,
             panelClass: 'bill-detail-dialog'
           });

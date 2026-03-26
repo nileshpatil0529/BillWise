@@ -25,7 +25,7 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
-import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit, ViewMode, LanguageType } from '../../../core/models/settings.model';
+import { Settings, ApplicationType, ThemeType, ScannerType, Category, Unit, LanguageType } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
@@ -96,41 +96,7 @@ export class SettingsComponent implements OnInit {
   newUnitSymbol = signal<string>('');
   newUnitAllowDecimal = signal<boolean>(false);
   
-  // Table column preferences
-  productsColumns = signal<TableColumn[]>([]);
-  billsColumns = signal<TableColumn[]>([]);
-  customersColumns = signal<TableColumn[]>([]);
-  viewMode = signal<ViewMode>('desktop');
 
-  // Default table columns configuration
-  private defaultProductsColumns: TableColumn[] = [
-    { key: 'productId', label: 'Product ID', visible: true },
-    { key: 'name', label: 'Product Name', visible: true },
-    { key: 'barcode', label: 'Barcode', visible: true },
-    { key: 'category', label: 'Category', visible: true },
-    { key: 'unitPrice', label: 'Unit Price', visible: true },
-    { key: 'stockQuantity', label: 'Stock', visible: true },
-    { key: 'status', label: 'Status', visible: true },
-    { key: 'actions', label: 'Actions', visible: true }
-  ];
-
-  private defaultBillsColumns: TableColumn[] = [
-    { key: 'billNumber', label: 'Bill Number', visible: true },
-    { key: 'createdAt', label: 'Date', visible: true },
-    { key: 'table', label: 'Table', visible: true },
-    { key: 'itemsCount', label: 'Items', visible: true },
-    { key: 'grandTotal', label: 'Total', visible: true },
-    { key: 'paymentMethod', label: 'Payment Method', visible: true },
-    { key: 'paymentStatus', label: 'Payment Status', visible: true },
-    { key: 'actions', label: 'Actions', visible: true }
-  ];
-
-  private defaultCustomersColumns: TableColumn[] = [
-    { key: 'name', label: 'Name', visible: true },
-    { key: 'phone', label: 'Phone', visible: true },
-    { key: 'totalDebt', label: 'Total Debt', visible: true },
-    { key: 'actions', label: 'Actions', visible: true }
-  ];
 
   applicationTypes: { value: ApplicationType; label: string; icon: string }[] = [
     { value: 'hotel', label: 'Hotel / Restaurant', icon: 'restaurant' },
@@ -263,20 +229,6 @@ export class SettingsComponent implements OnInit {
       { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
     ];
     this.units.set(settings.units || defaultUnits);
-    
-    // Load table columns preferences
-    if (settings.tableColumns) {
-      this.productsColumns.set(settings.tableColumns.products || this.defaultProductsColumns);
-      this.billsColumns.set(settings.tableColumns.bills || this.defaultBillsColumns);
-      this.customersColumns.set(settings.tableColumns.customers || this.defaultCustomersColumns);
-    } else {
-      this.productsColumns.set([...this.defaultProductsColumns]);
-      this.billsColumns.set([...this.defaultBillsColumns]);
-      this.customersColumns.set([...this.defaultCustomersColumns]);
-    }
-    
-    // Load view mode preference
-    this.viewMode.set(settings.viewMode || 'desktop');
     
     // Load language preference
     const lang = settings.language || 'en';
@@ -488,71 +440,6 @@ export class SettingsComponent implements OnInit {
       },
       error: () => {
         this.snackBar.open('Failed to save categories', 'Close', { duration: 3000 });
-        this.saving.set(false);
-      }
-    });
-  }
-
-  // Table Column Management Methods
-  toggleProductColumn(index: number): void {
-    const columns = [...this.productsColumns()];
-    columns[index].visible = !columns[index].visible;
-    this.productsColumns.set(columns);
-  }
-
-  toggleBillColumn(index: number): void {
-    const columns = [...this.billsColumns()];
-    columns[index].visible = !columns[index].visible;
-    this.billsColumns.set(columns);
-  }
-
-  toggleCustomerColumn(index: number): void {
-    const columns = [...this.customersColumns()];
-    columns[index].visible = !columns[index].visible;
-    this.customersColumns.set(columns);
-  }
-
-  getVisibleProductsCount(): number {
-    return this.productsColumns().filter(c => c.visible).length;
-  }
-
-  getVisibleBillsCount(): number {
-    return this.billsColumns().filter(c => c.visible).length;
-  }
-
-  getVisibleCustomersCount(): number {
-    return this.customersColumns().filter(c => c.visible).length;
-  }
-
-  resetTableColumns(): void {
-    this.productsColumns.set([...this.defaultProductsColumns]);
-    this.billsColumns.set([...this.defaultBillsColumns]);
-    this.customersColumns.set([...this.defaultCustomersColumns]);
-  }
-
-  setViewMode(mode: ViewMode): void {
-    this.viewMode.set(mode);
-  }
-
-  saveTableColumns(): void {
-    this.saving.set(true);
-    
-    const settings: Partial<Settings> = {
-      tableColumns: {
-        products: this.productsColumns(),
-        bills: this.billsColumns(),
-        customers: this.customersColumns()
-      },
-      viewMode: this.viewMode()
-    };
-
-    this.settingsService.updateSettings(settings).subscribe({
-      next: () => {
-        this.snackBar.open('Table columns preferences saved successfully', 'Close', { duration: 3000 });
-        this.saving.set(false);
-      },
-      error: () => {
-        this.snackBar.open('Failed to save table columns', 'Close', { duration: 3000 });
         this.saving.set(false);
       }
     });

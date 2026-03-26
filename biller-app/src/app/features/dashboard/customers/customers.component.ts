@@ -75,25 +75,8 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
     public settingsService: SettingsService,
     public translateService: TranslateService
   ) {
-    // Update displayedColumns based on settings
-    effect(() => {
-      const settings = this.settingsService.settings();
-      const tableColumns = settings.tableColumns?.customers;
-      
-      if (!tableColumns) {
-        this.displayedColumns = [...this.allColumns];
-      } else {
-        this.displayedColumns = this.allColumns.filter(col => {
-          const columnSetting = tableColumns.find(tc => tc.key === col);
-          return columnSetting ? columnSetting.visible : true;
-        });
-      }
-    });
-  }
-
-  // Check if mobile mode is enabled
-  isMobileMode(): boolean {
-    return this.settingsService.settings().viewMode === 'mobile';
+    // Set displayedColumns to all columns
+    this.displayedColumns = [...this.allColumns];
   }
 
   ngOnInit(): void {

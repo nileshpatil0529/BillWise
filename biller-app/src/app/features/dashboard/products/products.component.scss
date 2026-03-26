@@ -2,13 +2,17 @@
 @use '../../../../styles/mixins' as m;
 
 :host {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 64px - 32px);
 }
 
 .products-container {
   display: flex;
   flex-direction: column;
   gap: v.$spacing-md;
+  height: 100%;
+  overflow: hidden;
 }
 
 // Page Header
@@ -124,6 +128,10 @@
 .table-card {
   position: relative;
   padding: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 
   .loading-overlay {
     position: absolute;
@@ -143,16 +151,10 @@
   }
 
   .table-container {
-    max-height: calc(100vh - 240px);
-    min-height: 400px;
+    flex: 1;
     overflow-x: auto;
     overflow-y: auto;
     @include m.custom-scrollbar;
-    
-    @include m.mobile {
-      max-height: calc(100vh - 200px);
-      min-height: 300px;
-    }
   }
   
   .loading-more {

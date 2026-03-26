@@ -27,20 +27,6 @@ export interface Unit {
   allowDecimal: boolean; // Whether decimals are allowed
 }
 
-export interface TableColumn {
-  key: string;
-  label: string;
-  visible: boolean;
-}
-
-export interface TableColumnPreferences {
-  products: TableColumn[];
-  bills: TableColumn[];
-  customers: TableColumn[];
-}
-
-export type ViewMode = 'desktop' | 'mobile';
-
 export interface Settings {
   businessName: string;
   logo: string;
@@ -63,8 +49,6 @@ export interface Settings {
   footerText: string;
   lowStockAlertEnabled: boolean;
   lowStockThreshold: number;
-  tableColumns?: TableColumnPreferences;
-  viewMode?: ViewMode; // 'desktop' or 'mobile' - affects table display
   language?: LanguageType; // 'en' or 'hi' - UI language
   receiptLanguage?: LanguageType; // 'en' or 'hi' - Receipt/Bill language
   units?: Unit[]; // Units for loose items (grocery mode)

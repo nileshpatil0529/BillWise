@@ -127,27 +127,13 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // Cart table columns - dynamically includes 'note' for hotel mode, 'warranty' for electronics mode
   get displayedColumns(): string[] {
-    const isMobile = this.settingsService.settings().viewMode === 'mobile';
-    
     if (this.isHotelMode()) {
-      // In mobile mode, hide price column and show more compact view
-      return isMobile 
-        ? ['sno', 'name', 'quantity', 'note', 'total', 'actions']
-        : ['sno', 'name', 'price', 'quantity', 'note', 'total', 'actions'];
+      return ['sno', 'name', 'price', 'quantity', 'note', 'total', 'actions'];
     }
     if (this.isElectronicsMode()) {
-      return isMobile
-        ? ['sno', 'name', 'quantity', 'warranty', 'total', 'actions']
-        : ['sno', 'name', 'price', 'quantity', 'warranty', 'total', 'actions'];
+      return ['sno', 'name', 'price', 'quantity', 'warranty', 'total', 'actions'];
     }
-    return isMobile
-      ? ['sno', 'name', 'quantity', 'total', 'actions']
-      : ['sno', 'name', 'price', 'quantity', 'total', 'actions'];
-  }
-
-  // Check if mobile view mode is enabled
-  isMobileMode(): boolean {
-    return this.settingsService.settings().viewMode === 'mobile';
+    return ['sno', 'name', 'price', 'quantity', 'total', 'actions'];
   }
 
   private searchSubject = new Subject<string>();

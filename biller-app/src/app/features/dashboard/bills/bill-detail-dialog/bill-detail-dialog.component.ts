@@ -20,115 +20,113 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
     DatePipe
   ],
   template: `
-    <div class="dialog-container">
-      <div class="dialog-header">
-        <span class="title">Bill Details</span>
-        <mat-chip [class]="'status-' + data.paymentStatus">
-          <mat-icon>{{ getStatusIcon() }}</mat-icon>
-          {{ data.paymentStatus | titlecase }}
-        </mat-chip>
+    <div class="dialog-title-row">
+      <h2 mat-dialog-title>Bill Details</h2>
+      <mat-chip [class]="'status-' + data.paymentStatus">
+        <mat-icon>{{ getStatusIcon() }}</mat-icon>
+        {{ data.paymentStatus | titlecase }}
+      </mat-chip>
+    </div>
+
+    <mat-dialog-content>
+      <div class="bill-info">
+        <div class="info-row">
+          <span class="label">Bill Number:</span>
+          <span class="value bill-number">{{ data.billNumber }}</span>
+        </div>
+        <div class="info-row">
+          <span class="label">Date & Time:</span>
+          <span class="value">{{ data.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        @if (data.customerName) {
+          <div class="info-row">
+            <span class="label">Customer:</span>
+            <span class="value">{{ data.customerName }}</span>
+          </div>
+        }
+        @if (data.customerPhone) {
+          <div class="info-row">
+            <span class="label">Phone:</span>
+            <span class="value">{{ data.customerPhone }}</span>
+          </div>
+        }
+        <div class="info-row">
+          <span class="label">Payment Method:</span>
+          <span class="value">
+            <mat-icon class="payment-icon">{{ getPaymentIcon() }}</mat-icon>
+            {{ data.paymentMethod | titlecase }}
+          </span>
+        </div>
       </div>
 
-      <div class="dialog-body">
-        <div class="bill-info">
-          <div class="info-row">
-            <span class="label">Bill Number:</span>
-            <span class="value bill-number">{{ data.billNumber }}</span>
+      <div class="items-section">
+        <h4>Items ({{ data.items.length }})</h4>
+        <div class="items-table">
+          <div class="items-header">
+            <span class="col-name">Item</span>
+            <span class="col-qty">Qty</span>
+            <span class="col-price">Price</span>
+            <span class="col-total">Total</span>
           </div>
-          <div class="info-row">
-            <span class="label">Date & Time:</span>
-            <span class="value">{{ data.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
-          </div>
-          @if (data.customerName) {
-            <div class="info-row">
-              <span class="label">Customer:</span>
-              <span class="value">{{ data.customerName }}</span>
+          @for (item of data.items; track item.productId) {
+            <div class="items-row">
+              <span class="col-name">{{ item.name }}</span>
+              <span class="col-qty">{{ item.quantity }}</span>
+              <span class="col-price">{{ item.unitPrice | currency:'INR' }}</span>
+              <span class="col-total">{{ item.finalTotal | currency:'INR' }}</span>
             </div>
           }
-          @if (data.customerPhone) {
-            <div class="info-row">
-              <span class="label">Phone:</span>
-              <span class="value">{{ data.customerPhone }}</span>
-            </div>
-          }
-          <div class="info-row">
-            <span class="label">Payment Method:</span>
-            <span class="value">
-              <mat-icon class="payment-icon">{{ getPaymentIcon() }}</mat-icon>
-              {{ data.paymentMethod | titlecase }}
-            </span>
-          </div>
         </div>
+      </div>
 
-        <div class="items-section">
-          <h4>Items ({{ data.items.length }})</h4>
-          <div class="items-table">
-            <div class="items-header">
-              <span class="col-name">Item</span>
-              <span class="col-qty">Qty</span>
-              <span class="col-price">Price</span>
-              <span class="col-total">Total</span>
-            </div>
-            @for (item of data.items; track item.productId) {
-              <div class="items-row">
-                <span class="col-name">{{ item.name }}</span>
-                <span class="col-qty">{{ item.quantity }}</span>
-                <span class="col-price">{{ item.unitPrice | currency:'INR' }}</span>
-                <span class="col-total">{{ item.finalTotal | currency:'INR' }}</span>
-              </div>
-            }
-          </div>
+      <div class="totals-section">
+        <div class="total-row">
+          <span>Subtotal</span>
+          <span>{{ data.subtotal | currency:'INR' }}</span>
         </div>
-
-        <div class="totals-section">
+        @if (data.discountTotal > 0) {
+          <div class="total-row discount">
+            <span>Discount</span>
+            <span>-{{ data.discountTotal | currency:'INR' }}</span>
+          </div>
+        }
+        @if (data.taxTotal > 0) {
           <div class="total-row">
-            <span>Subtotal</span>
-            <span>{{ data.subtotal | currency:'INR' }}</span>
+            <span>Tax</span>
+            <span>{{ data.taxTotal | currency:'INR' }}</span>
           </div>
-          @if (data.discountTotal > 0) {
-            <div class="total-row discount">
-              <span>Discount</span>
-              <span>-{{ data.discountTotal | currency:'INR' }}</span>
-            </div>
-          }
-          @if (data.taxTotal > 0) {
-            <div class="total-row">
-              <span>Tax</span>
-              <span>{{ data.taxTotal | currency:'INR' }}</span>
-            </div>
-          }
-          <div class="total-row grand-total">
-            <span>Grand Total</span>
-            <span>{{ data.grandTotal | currency:'INR' }}</span>
-          </div>
-          @if (data.amountPaid !== data.grandTotal) {
-            <div class="total-row">
-              <span>Paid Amount</span>
-              <span>{{ data.amountPaid | currency:'INR' }}</span>
-            </div>
-            <div class="total-row due">
-              <span>Due Amount</span>
-              <span>{{ data.grandTotal - data.amountPaid | currency:'INR' }}</span>
-            </div>
-          }
+        }
+        <div class="total-row grand-total">
+          <span>Grand Total</span>
+          <span>{{ data.grandTotal | currency:'INR' }}</span>
         </div>
-
-        @if (data.notes) {
-          <div class="notes-section">
-            <h4>Notes</h4>
-            <p>{{ data.notes }}</p>
+        @if (data.amountPaid !== data.grandTotal) {
+          <div class="total-row">
+            <span>Paid Amount</span>
+            <span>{{ data.amountPaid | currency:'INR' }}</span>
+          </div>
+          <div class="total-row due">
+            <span>Due Amount</span>
+            <span>{{ data.grandTotal - data.amountPaid | currency:'INR' }}</span>
           </div>
         }
       </div>
 
-      <div class="dialog-footer">
-        <button mat-button (click)="onClose()">Close</button>
-        <button mat-flat-button color="primary" (click)="onPrint()">
-          <mat-icon>print</mat-icon>
-          Print
-        </button>
-      </div>
-    </div>
+      @if (data.notes) {
+        <div class="notes-section">
+          <h4>Notes</h4>
+          <p>{{ data.notes }}</p>
+        </div>
+      }
+    </mat-dialog-content>
+
+    <mat-dialog-actions align="end">
+      <button mat-button (click)="onClose()">Close</button>
+      <button mat-raised-button color="primary" (click)="onPrint()">
+        <mat-icon>print</mat-icon>
+        Print
+      </button>
+    </mat-dialog-actions>
   `,
   styles: [`
     @use '../../../../../styles/variables' as v;
@@ -138,38 +136,15 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
       display: block;
     }
 
-    .dialog-container {
-      display: flex;
-      flex-direction: column;
-      max-height: 85vh;
-      width: 480px;
-      max-width: 95vw;
-      
-      @include m.mobile {
-        width: 100vw;
-        max-width: 100vw;
-        max-height: 100vh;
-      }
-    }
-
-    .dialog-header {
+    .dialog-title-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      padding: 12px 16px;
-      flex-shrink: 0;
+      padding: 16px 24px;
       
-      @include m.mobile {
-        padding: 10px 8px;
-      }
-
-      .title {
-        font-size: 18px;
-        font-weight: 600;
-        
-        @include m.dark-theme {
-          color: white;
-        }
+      h2 {
+        margin: 0;
+        padding: 0;
       }
 
       mat-chip {
@@ -212,37 +187,23 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
       }
     }
 
-    .dialog-body {
-      flex: 1;
+    mat-dialog-content {
+      min-width: 550px;
+      max-width: 100%;
+      max-height: 65vh;
       overflow-y: auto;
-      padding: 0 16px 16px;
+      padding: 16px 24px !important;
       
-      @include m.mobile {
-        padding: 0 8px 12px;
-      }
-      
-      &::-webkit-scrollbar {
-        width: 6px;
-      }
-      
-      &::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      
-      &::-webkit-scrollbar-thumb {
-        background: rgba(0, 0, 0, 0.2);
-        border-radius: 3px;
-        
-        @include m.dark-theme {
-          background: rgba(255, 255, 255, 0.2);
-        }
+      @media (max-width: 600px) {
+        min-width: auto;
+        padding: 12px 16px !important;
       }
     }
 
     .bill-info {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       margin-bottom: 16px;
 
       .info-row {
@@ -319,11 +280,6 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
           padding: 8px 12px;
           gap: 8px;
           align-items: center;
-          
-          @include m.mobile {
-            padding: 8px;
-            gap: 4px;
-          }
         }
 
         .items-header {
@@ -457,44 +413,13 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
       }
     }
 
-    .dialog-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: 8px;
-      padding: 12px 16px;
-      flex-shrink: 0;
-      
-      @include m.mobile {
-        padding: 10px 8px;
-      }
+    mat-dialog-actions {
+      padding: 12px 24px !important;
       
       button {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        height: 36px;
-        
         mat-icon {
-          font-size: 18px;
-          width: 18px;
-          height: 18px;
+          margin-right: 4px;
         }
-      }
-      
-      button[color="primary"] {
-        background: v.$light-primary;
-        color: white;
-        
-        @include m.dark-theme {
-          background: v.$dark-primary;
-          color: #1a1a2e;
-        }
-      }
-    }
-
-    @media (max-width: v.$breakpoint-sm) {
-      .dialog-container {
-        width: 100%;
       }
     }
   `]
