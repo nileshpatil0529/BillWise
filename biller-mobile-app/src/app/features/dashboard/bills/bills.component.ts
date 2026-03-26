@@ -74,7 +74,7 @@ export class BillsComponent implements OnInit {
   reportData = signal<ReportData | null>(null);
 
   // Quick date presets - values only (labels from translations)
-  private allPresetValues = ['today', 'yesterday', 'week', 'month', 'custom'];
+  private allPresetValues = ['today', 'yesterday', 'week', 'month'];
   
   // Filtered presets based on user role - with translated labels
   get datePresets() {
@@ -83,8 +83,7 @@ export class BillsComponent implements OnInit {
       'today': t('bills.today'),
       'yesterday': t('bills.yesterday'),
       'week': t('bills.thisWeek'),
-      'month': t('bills.thisMonth'),
-      'custom': t('bills.custom')
+      'month': t('bills.thisMonth')
     };
     
     const allPresets = this.allPresetValues.map(value => ({

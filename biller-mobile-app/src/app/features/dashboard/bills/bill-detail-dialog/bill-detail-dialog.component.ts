@@ -156,6 +156,7 @@ import { SettingsService } from '../../../../core/services/settings.service';
 
     :host {
       display: block;
+      overflow: hidden;
     }
 
     .dialog-container {
@@ -165,6 +166,8 @@ import { SettingsService } from '../../../../core/services/settings.service';
       width: 420px;
       max-width: 100vw;
       background: var(--mat-dialog-container-background-color);
+      overflow: hidden;
+      position: relative;
 
       @media (max-width: 600px) {
         width: 100%;
@@ -260,6 +263,8 @@ import { SettingsService } from '../../../../core/services/settings.service';
       top: 8px;
       right: 8px;
       color: rgba(255, 255, 255, 0.8);
+      overflow: hidden;
+      z-index: 10;
 
       .simple-header & {
         position: static;
@@ -548,6 +553,7 @@ import { SettingsService } from '../../../../core/services/settings.service';
       padding: 16px;
       border-top: 1px solid var(--mat-divider-color);
       flex-shrink: 0;
+      overflow: hidden;
 
       button {
         flex: 1;
@@ -557,6 +563,8 @@ import { SettingsService } from '../../../../core/services/settings.service';
         align-items: center;
         justify-content: center;
         gap: 8px;
+        overflow: hidden;
+        position: relative;
 
         mat-icon {
           font-size: 20px;

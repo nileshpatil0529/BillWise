@@ -81,25 +81,11 @@ input, textarea, [contenteditable] {
 // GLOBAL ICON BUTTON FIX - Proper centering
 // ============================================
 .mat-mdc-icon-button {
-  // Reset padding to ensure proper centering
-  padding: 0 !important;
-  
-  // Ensure icon buttons don't clip icons
+  // Ensure icon buttons center properly
   &.mat-mdc-button-base {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    
-    .mat-mdc-button-persistent-ripple {
-      border-radius: 50%;
-    }
-    
-    .mat-mdc-button-touch-target {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-    }
   }
   
   // Ensure mat-icon inside button is properly sized and centered
@@ -109,7 +95,6 @@ input, textarea, [contenteditable] {
     align-items: center;
     justify-content: center;
     margin: 0 !important;
-    position: relative;
     line-height: 1;
   }
 }
@@ -885,6 +870,7 @@ h3 {
 .bill-detail-dialog {
   .mat-mdc-dialog-container {
     padding: 0 !important;
+    overflow: hidden;
     
     .mdc-dialog__surface {
       border-radius: 12px !important;
@@ -895,10 +881,24 @@ h3 {
   .mat-mdc-dialog-content {
     padding: 0 !important;
     max-height: none !important;
+    overflow: hidden;
   }
   
   .mat-mdc-dialog-actions {
     padding: 0 !important;
+  }
+  
+  // Fix button ripple/state layer overflow
+  button.mat-mdc-button-base {
+    overflow: hidden;
+    
+    .mat-mdc-button-persistent-ripple,
+    .mdc-button__ripple,
+    .mat-mdc-focus-indicator,
+    .mat-mdc-button-touch-target {
+      overflow: hidden;
+      border-radius: inherit;
+    }
   }
   
   @media (max-width: 600px) {
