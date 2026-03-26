@@ -321,6 +321,33 @@
       }
     }
 
+    .stock-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+
+      .action-btn.delete {
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: v.$light-error;
+
+        @include m.dark-theme {
+          color: v.$dark-error;
+        }
+
+        mat-icon {
+          font-size: 16px;
+          width: 16px;
+          height: 16px;
+          margin: 0;
+        }
+      }
+    }
+
     .stock-info {
       font-size: 11px;
       font-weight: 600;
