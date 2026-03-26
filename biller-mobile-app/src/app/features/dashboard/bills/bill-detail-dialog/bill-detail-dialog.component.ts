@@ -37,16 +37,10 @@ import { SettingsService } from '../../../../core/services/settings.service';
               </a>
             }
           </div>
-          <button mat-icon-button class="close-btn" (click)="onClose()">
-            <mat-icon>close</mat-icon>
-          </button>
         </div>
       } @else {
         <div class="simple-header">
           <span class="title">Bill Details</span>
-          <button mat-icon-button class="close-btn" (click)="onClose()">
-            <mat-icon>close</mat-icon>
-          </button>
         </div>
       }
 
@@ -255,20 +249,6 @@ import { SettingsService } from '../../../../core/services/settings.service';
         @include m.dark-theme {
           color: white;
         }
-      }
-    }
-
-    .close-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      color: rgba(255, 255, 255, 0.8);
-      overflow: hidden;
-      z-index: 10;
-
-      .simple-header & {
-        position: static;
-        color: inherit;
       }
     }
 

@@ -571,9 +571,13 @@ export class SettingsComponent implements OnInit {
       reader.onload = () => {
         this.profilePhotoPreview.set(reader.result as string);
         this.profilePhotoChanged.set(true);
+        // Auto-save the profile photo after selection
+        this.saveProfilePhoto();
       };
       reader.readAsDataURL(file);
     }
+    // Reset the input so the same file can be selected again
+    input.value = '';
   }
 
   removeProfilePhoto(): void {
