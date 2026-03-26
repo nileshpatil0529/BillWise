@@ -331,6 +331,26 @@ input, textarea, [contenteditable] {
         color: v.$dark-primary;
       }
     }
+
+    .user-info-card {
+      .user-details {
+        .user-name {
+          color: white !important;
+        }
+
+        .user-role {
+          color: v.$dark-primary !important;
+        }
+      }
+    }
+  }
+
+  .user-info-card .user-details .user-name {
+    color: white !important;
+  }
+
+  .user-info-card .user-details .user-role {
+    color: v.$dark-primary !important;
   }
 
   // List
@@ -540,6 +560,26 @@ body.dark-theme {
         color: v.$dark-primary;
       }
     }
+
+    .user-info-card {
+      .user-details {
+        .user-name {
+          color: white !important;
+        }
+
+        .user-role {
+          color: v.$dark-primary !important;
+        }
+      }
+    }
+  }
+
+  .user-info-card .user-details .user-name {
+    color: white !important;
+  }
+
+  .user-info-card .user-details .user-role {
+    color: v.$dark-primary !important;
   }
 
   .mat-divider {
