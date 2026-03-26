@@ -1,10 +1,10 @@
-<mat-card class="user-dialog-card">
-  <mat-card-header>
-    <mat-icon mat-card-avatar>{{ data.user ? 'edit' : 'person_add' }}</mat-icon>
-    <mat-card-title>{{ data.user ? 'Edit User' : 'Create New User' }}</mat-card-title>
-  </mat-card-header>
+<div class="user-dialog">
+  <h2 mat-dialog-title>
+    <mat-icon>{{ data.user ? 'edit' : 'person_add' }}</mat-icon>
+    <span>{{ data.user ? 'Edit User' : 'Create New User' }}</span>
+  </h2>
 
-  <mat-card-content>
+  <mat-dialog-content>
     <form [formGroup]="userForm" class="user-form">
       <mat-form-field appearance="outline" class="full-width">
         <mat-label>Display Name</mat-label>
@@ -92,9 +92,9 @@
         </div>
       }
     </form>
-  </mat-card-content>
+  </mat-dialog-content>
 
-  <mat-card-actions align="end">
+  <mat-dialog-actions align="end">
     <button mat-button mat-dialog-close>Cancel</button>
     <button 
       mat-raised-button 
@@ -107,5 +107,5 @@
       <mat-icon>{{ data.user ? 'save' : 'add' }}</mat-icon>
       {{ data.user ? 'Save Changes' : 'Create User' }}
     </button>
-  </mat-card-actions>
-</mat-card>
+  </mat-dialog-actions>
+</div>

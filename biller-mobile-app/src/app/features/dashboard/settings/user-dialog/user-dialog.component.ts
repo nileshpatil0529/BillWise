@@ -11,7 +11,6 @@ import { MatSlideToggleModule } from '@angular/material/slide-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatCardModule } from '@angular/material/card';
 import { UserService } from '../../../../core/services/user.service';
 import { User } from '../../../../core/models/user.model';
 
@@ -30,8 +29,7 @@ import { User } from '../../../../core/models/user.model';
     MatSlideToggleModule,
     MatIconModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule,
-    MatCardModule
+    MatSnackBarModule
   ],
   templateUrl: './user-dialog.component.html',
   styleUrls: ['./user-dialog.component.scss']
