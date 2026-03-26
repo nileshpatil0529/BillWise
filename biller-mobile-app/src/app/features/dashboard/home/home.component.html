@@ -293,7 +293,7 @@
           <button mat-icon-button 
                   (click)="toggleAttendedTablesMenu()"
                   class="attended-tables-btn">
-            <mat-icon [matBadge]="getOccupiedTables().length" matBadgeColor="warn" matBadgeSize="small">
+            <mat-icon [matBadge]="getOccupiedTables().length" matBadgeColor="warn" matBadgeSize="small" aria-hidden="false">
               grid_view
             </mat-icon>
           </button>
@@ -356,7 +356,7 @@
         }
         <button mat-icon-button color="warn" (click)="clearCart()" 
                 [disabled]="billService.cartItems().length === 0">
-          <mat-icon>delete_sweep</mat-icon>
+          <mat-icon>delete</mat-icon>
         </button>
       </div>
     </div>

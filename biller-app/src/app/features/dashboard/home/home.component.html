@@ -320,7 +320,7 @@
                     (click)="toggleAttendedTablesMenu()"
                     [matTooltip]="'Occupied Tables (' + getOccupiedTables().length + ')'"
                     class="attended-tables-btn">
-              <mat-icon [matBadge]="getOccupiedTables().length" matBadgeColor="accent" matBadgeSize="small">
+              <mat-icon [matBadge]="getOccupiedTables().length" matBadgeColor="accent" matBadgeSize="small" aria-hidden="false">
                 grid_view
               </mat-icon>
             </button>
