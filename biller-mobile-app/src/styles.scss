@@ -78,6 +78,43 @@ input, textarea, [contenteditable] {
 }
 
 // ============================================
+// GLOBAL ICON BUTTON FIX - Proper centering
+// ============================================
+.mat-mdc-icon-button {
+  // Reset padding to ensure proper centering
+  padding: 0 !important;
+  
+  // Ensure icon buttons don't clip icons
+  &.mat-mdc-button-base {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    
+    .mat-mdc-button-persistent-ripple {
+      border-radius: 50%;
+    }
+    
+    .mat-mdc-button-touch-target {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+  }
+  
+  // Ensure mat-icon inside button is properly sized and centered
+  .mat-icon,
+  mat-icon {
+    display: inline-flex !important;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+    position: relative;
+    line-height: 1;
+  }
+}
+
+// ============================================
 // GLOBAL CARD STYLES - No border radius
 // ============================================
 .mat-mdc-card {
@@ -1046,6 +1083,13 @@ button.mat-mdc-stroked-button {
 
 // Mobile icon buttons
 button.mat-mdc-icon-button {
+  // Prevent icon clipping in Material icon buttons
+  .mat-mdc-button-persistent-ripple,
+  .mat-mdc-button-touch-target {
+    width: 100%;
+    height: 100%;
+  }
+  
   @media (max-width: 600px) {
     width: 40px;
     height: 40px;

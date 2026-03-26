@@ -112,6 +112,30 @@
       border-radius: 50%;
       transition: background-color v.$transition-fast;
       
+      // Force proper centering for mat-icon-button
+      padding: 0;
+      
+      ::ng-deep {
+        .mat-mdc-button-touch-target {
+          width: 40px;
+          height: 40px;
+        }
+        
+        .mat-mdc-button-persistent-ripple {
+          width: 40px;
+          height: 40px;
+          left: 0;
+          top: 0;
+          border-radius: 50%;
+        }
+        
+        .mdc-icon-button__icon {
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+      }
+      
       &:hover {
         background: rgba(255, 255, 255, 0.12);
       }
@@ -129,6 +153,9 @@
         font-size: 22px;
         width: 22px;
         height: 22px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
       }
     }
 
