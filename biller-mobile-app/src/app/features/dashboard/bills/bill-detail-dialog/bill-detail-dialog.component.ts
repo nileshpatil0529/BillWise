@@ -73,7 +73,7 @@ import { SettingsService } from '../../../../core/services/settings.service';
       <div class="items-section">
         <span class="section-title">Items ({{ data.items.length }})</span>
         <div class="items-list">
-          @for (item of data.items; track item.productId) {
+          @for (item of data.items; track $index) {
             <div class="item-row">
               <div class="item-info">
                 <span class="item-name">{{ item.name }}</span>
