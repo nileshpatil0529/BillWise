@@ -1,4 +1,104 @@
 <div class="bills-container">
+  @if (selectedBill()) {
+    <!-- Bill Detail View -->
+    <div class="bill-view-container">
+      <!-- Header with Back Button -->
+      <div class="bill-view-header">
+        <button mat-icon-button class="back-btn" (click)="closeBillView()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="header-info">
+          <h2 class="bill-number">Bill #{{ selectedBill()!.billNumber || selectedBill()!.billId.slice(-8) }}</h2>
+          <span class="bill-date">{{ formatDate(selectedBill()!.createdAt) }}</span>
+        </div>
+        @if (selectedBill()!.tableId) {
+          <div class="table-tag">
+            <mat-icon>table_restaurant</mat-icon>
+            <span>{{ selectedBill()!.tableId }}</span>
+          </div>
+        }
+        <mat-chip [class]="getStatusClass()">
+          {{ getStatusText() }}
+        </mat-chip>
+      </div>
+
+      <!-- Items Section -->
+      <mat-card class="items-card">
+        <table mat-table [dataSource]="selectedBill()!.items" class="items-table">
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Item</th>
+            <td mat-cell *matCellDef="let item">{{ item.name }}</td>
+          </ng-container>
+
+          <!-- Quantity Column -->
+          <ng-container matColumnDef="quantity">
+            <th mat-header-cell *matHeaderCellDef>Qty</th>
+            <td mat-cell *matCellDef="let item">{{ item.quantity }}</td>
+          </ng-container>
+
+          <!-- Unit Price Column -->
+          <ng-container matColumnDef="unitPrice">
+            <th mat-header-cell *matHeaderCellDef>Price</th>
+            <td mat-cell *matCellDef="let item">{{ formatCurrency(item.unitPrice) }}</td>
+          </ng-container>
+
+          <!-- Discount Column -->
+          <ng-container matColumnDef="discount">
+            <th mat-header-cell *matHeaderCellDef>Discount</th>
+            <td mat-cell *matCellDef="let item">
+              @if (item.discountAmount > 0) {
+                <span class="discount-value">-{{ formatCurrency(item.discountAmount) }}</span>
+              } @else {
+                -
+              }
+            </td>
+          </ng-container>
+
+          <!-- Total Column -->
+          <ng-container matColumnDef="total">
+            <th mat-header-cell *matHeaderCellDef>Total</th>
+            <td mat-cell *matCellDef="let item" class="total-cell">{{ formatCurrency(item.finalTotal) }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="itemColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: itemColumns;"></tr>
+        </table>
+      </mat-card>
+
+      <!-- Grand Total Sticky Footer -->
+      <div class="grand-total-bar">
+        <div class="total-calculation">
+          @if (selectedBill()!.taxTotal > 0) {
+            <span class="calc-detail">{{ formatCurrency(selectedBill()!.subtotal - selectedBill()!.discountTotal) }} + {{ formatCurrency(selectedBill()!.taxTotal) }} (Tax)</span>
+          }
+        </div>
+        <div class="grand-total-amount">
+          <span class="grand-label">Grand Total</span>
+          <span class="grand-value">{{ formatCurrency(selectedBill()!.grandTotal) }}</span>
+        </div>
+      </div>
+
+      @if (selectedBill()!.notes) {
+        <mat-card class="notes-card">
+          <h3 class="section-title">Notes</h3>
+          <p class="notes-text">{{ selectedBill()!.notes }}</p>
+        </mat-card>
+      }
+
+      <!-- Footer Actions -->
+      <div class="bill-footer-actions">
+        <button mat-stroked-button (click)="closeBillView()">
+          <mat-icon>arrow_back</mat-icon>
+          Back to Bills
+        </button>
+        <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
+          <mat-icon>print</mat-icon>
+          Print Bill
+        </button>
+      </div>
+    </div>
+  } @else {
   <!-- Header -->
   <div class="page-header">
     <div class="header-title">
@@ -287,4 +387,5 @@
       }
     </div>
   </mat-card>
+  }
 </div>
