@@ -80,20 +80,34 @@ export const getCustomerById = async (req, res) => {
       });
     }
 
-    // Get all debt bills for this customer
+    // Get first page of debt bills for this customer
+    const limit = 10;
     const debts = db.prepare(`
       SELECT billId, billNumber, grandTotal as amount, amountPaid as paidAmount, 
         (grandTotal - amountPaid) as remainingAmount, createdAt
       FROM bills
       WHERE customerPhone = ? AND paymentMethod = 'debt' AND paymentStatus != 'paid'
       ORDER BY createdAt DESC
-    `).all(customer.phone);
+      LIMIT ?
+    `).all(customer.phone, limit);
+
+    // Get total count of debts
+    const countResult = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM bills
+      WHERE customerPhone = ? AND paymentMethod = 'debt' AND paymentStatus != 'paid'
+    `).get(customer.phone);
+    const totalDebts = countResult.count;
 
     res.json({
       success: true,
       data: {
         ...customer,
-        debts
+        debts,
+        debtsPage: 1,
+        debtsTotalPages: Math.ceil(totalDebts / limit),
+        debtsTotal: totalDebts,
+        hasMoreDebts: debts.length < totalDebts
       }
     });
   } catch (error) {
@@ -101,6 +115,58 @@ export const getCustomerById = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch customer'
+    });
+  }
+};
+
+// Get paginated debts for a customer
+export const getCustomerDebts = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { page = 1, limit = 10 } = req.query;
+
+    const customer = db.prepare('SELECT * FROM customers WHERE customerId = ?').get(id);
+    if (!customer) {
+      return res.status(404).json({
+        success: false,
+        message: 'Customer not found'
+      });
+    }
+
+    // Get total count
+    const countResult = db.prepare(`
+      SELECT COUNT(*) as count
+      FROM bills
+      WHERE customerPhone = ? AND paymentMethod = 'debt' AND paymentStatus != 'paid'
+    `).get(customer.phone);
+    const total = countResult.count;
+
+    // Get paginated debts
+    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const debts = db.prepare(`
+      SELECT billId, billNumber, grandTotal as amount, amountPaid as paidAmount, 
+        (grandTotal - amountPaid) as remainingAmount, createdAt
+      FROM bills
+      WHERE customerPhone = ? AND paymentMethod = 'debt' AND paymentStatus != 'paid'
+      ORDER BY createdAt DESC
+      LIMIT ? OFFSET ?
+    `).all(customer.phone, parseInt(limit), offset);
+
+    res.json({
+      success: true,
+      data: {
+        debts,
+        page: parseInt(page),
+        totalPages: Math.ceil(total / parseInt(limit)),
+        total,
+        hasMore: offset + debts.length < total
+      }
+    });
+  } catch (error) {
+    console.error('Get customer debts error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch customer debts'
     });
   }
 };

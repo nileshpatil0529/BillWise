@@ -18,6 +18,21 @@ export interface CustomerDebt {
 
 export interface CustomerWithDebts extends Customer {
   debts: CustomerDebt[];
+  debtsPage?: number;
+  debtsTotalPages?: number;
+  debtsTotal?: number;
+  hasMoreDebts?: boolean;
+}
+
+export interface CustomerDebtsResponse {
+  success: boolean;
+  data: {
+    debts: CustomerDebt[];
+    page: number;
+    totalPages: number;
+    total: number;
+    hasMore: boolean;
+  };
 }
 
 export interface CustomerResponse {

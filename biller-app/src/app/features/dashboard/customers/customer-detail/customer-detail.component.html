@@ -23,8 +23,8 @@
       </div>
 
       <!-- Bill Info Section -->
-      <mat-card class="bill-info-card">
-        @if (selectedBill()!.tableId) {
+      @if (selectedBill()!.tableId) {
+        <mat-card class="bill-info-card">
           <div class="info-row">
             <span class="info-label">
               <mat-icon>table_restaurant</mat-icon>
@@ -32,59 +32,65 @@
             </span>
             <span class="info-value">{{ selectedBill()!.tableId }}</span>
           </div>
-        }
-        <div class="info-row">
-          <span class="info-label">
-            <mat-icon>payments</mat-icon>
-            Payment
-          </span>
-          <span class="info-value">{{ selectedBill()!.paymentMethod | titlecase }}</span>
-        </div>
-      </mat-card>
+        </mat-card>
+      }
 
       <!-- Items Section -->
       <mat-card class="items-card">
-        <h3 class="section-title">Items</h3>
-        <div class="items-list">
-          @for (item of selectedBill()!.items; track item.productId) {
-            <div class="item-row">
-              <div class="item-info">
-                <span class="item-name">{{ item.name }}</span>
-                <span class="item-qty">× {{ item.quantity }}</span>
-              </div>
-              <span class="item-total">{{ formatCurrency(item.finalTotal) }}</span>
-            </div>
-          }
-        </div>
+        <table mat-table [dataSource]="selectedBill()!.items" class="items-table">
+          <!-- Name Column -->
+          <ng-container matColumnDef="name">
+            <th mat-header-cell *matHeaderCellDef>Item</th>
+            <td mat-cell *matCellDef="let item">{{ item.name }}</td>
+          </ng-container>
+
+          <!-- Quantity Column -->
+          <ng-container matColumnDef="quantity">
+            <th mat-header-cell *matHeaderCellDef>Qty</th>
+            <td mat-cell *matCellDef="let item">{{ item.quantity }}</td>
+          </ng-container>
+
+          <!-- Unit Price Column -->
+          <ng-container matColumnDef="unitPrice">
+            <th mat-header-cell *matHeaderCellDef>Price</th>
+            <td mat-cell *matCellDef="let item">{{ formatCurrency(item.unitPrice) }}</td>
+          </ng-container>
+
+          <!-- Discount Column -->
+          <ng-container matColumnDef="discount">
+            <th mat-header-cell *matHeaderCellDef>Discount</th>
+            <td mat-cell *matCellDef="let item">
+              @if (item.discountAmount > 0) {
+                <span class="discount-value">-{{ formatCurrency(item.discountAmount) }}</span>
+              } @else {
+                -
+              }
+            </td>
+          </ng-container>
+
+          <!-- Total Column -->
+          <ng-container matColumnDef="total">
+            <th mat-header-cell *matHeaderCellDef>Total</th>
+            <td mat-cell *matCellDef="let item" class="total-cell">{{ formatCurrency(item.finalTotal) }}</td>
+          </ng-container>
+
+          <tr mat-header-row *matHeaderRowDef="itemColumns"></tr>
+          <tr mat-row *matRowDef="let row; columns: itemColumns;"></tr>
+        </table>
       </mat-card>
 
-      <!-- Totals Section -->
-      <mat-card class="totals-card">
-        <div class="total-row">
-          <span>Subtotal</span>
-          <span>{{ formatCurrency(selectedBill()!.subtotal) }}</span>
+      <!-- Grand Total Sticky Footer -->
+      <div class="grand-total-bar">
+        <div class="total-calculation">
+          @if (selectedBill()!.taxTotal > 0) {
+            <span class="calc-detail">{{ formatCurrency(selectedBill()!.subtotal - selectedBill()!.discountTotal) }} + {{ formatCurrency(selectedBill()!.taxTotal) }} (Tax)</span>
+          }
         </div>
-        @if (selectedBill()!.discountTotal > 0) {
-          <div class="total-row discount">
-            <span>Discount</span>
-            <span>-{{ formatCurrency(selectedBill()!.discountTotal) }}</span>
-          </div>
-        }
-        <mat-divider></mat-divider>
-        <div class="total-row grand-total">
-          <span>Grand Total</span>
-          <span>{{ formatCurrency(selectedBill()!.grandTotal) }}</span>
+        <div class="grand-total-amount">
+          <span class="grand-label">Grand Total</span>
+          <span class="grand-value">{{ formatCurrency(selectedBill()!.grandTotal) }}</span>
         </div>
-        <mat-divider></mat-divider>
-        <div class="total-row paid">
-          <span>Amount Paid</span>
-          <span>{{ formatCurrency(selectedBill()!.amountPaid) }}</span>
-        </div>
-        <div class="total-row remaining">
-          <span>Remaining</span>
-          <span class="remaining-amount">{{ formatCurrency(selectedBill()!.grandTotal - selectedBill()!.amountPaid) }}</span>
-        </div>
-      </mat-card>
+      </div>
 
       @if (selectedBill()!.notes) {
         <mat-card class="notes-card">
@@ -139,7 +145,7 @@
             <p>No unpaid bills</p>
           </div>
         } @else {
-          <div class="table-container">
+          <div class="table-container" (scroll)="onDebtsScroll($event)">
             <table mat-table [dataSource]="customer()!.debts" class="debts-table">
               <!-- Bill Number Column -->
               <ng-container matColumnDef="billNumber">
@@ -185,6 +191,12 @@
                   class="clickable-row"
                   matTooltip="Click to view bill details"></tr>
             </table>
+            @if (loadingMoreDebts()) {
+              <div class="loading-more">
+                <mat-spinner diameter="24"></mat-spinner>
+                <span>Loading more...</span>
+              </div>
+            }
           </div>
         }
       </mat-card>

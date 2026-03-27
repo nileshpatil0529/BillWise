@@ -28,7 +28,7 @@
 
 .page-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 12px;
   padding: 14px 24px;
   background: linear-gradient(135deg, v.$light-primary 0%, darken(v.$light-primary, 8%) 100%);
@@ -40,14 +40,13 @@
 
   .back-btn {
     color: white;
-    margin-top: 2px;
   }
 
   .header-content {
     flex: 1;
     display: flex;
     justify-content: space-between;
-    align-items: flex-start;
+    align-items: center;
     gap: 16px;
     flex-wrap: wrap;
   }
@@ -116,12 +115,10 @@
 .content-area {
   flex: 1;
   padding: 24px;
-  overflow-y: auto;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  gap: 24px;
-
-  @include m.custom-scrollbar;
+  min-height: 0;
 }
 
 .section-title {
@@ -137,6 +134,10 @@
 
 .bills-card {
   padding: 20px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
 
   .empty-state {
     display: flex;
@@ -160,6 +161,21 @@
 
   .table-container {
     overflow-x: auto;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+
+    @include m.custom-scrollbar;
+  }
+
+  .loading-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 16px;
+    color: var(--mdc-theme-text-secondary-on-background);
+    font-size: 13px;
   }
 
   .debts-table {
@@ -236,6 +252,23 @@
     display: flex;
     align-items: center;
     gap: 8px;
+  }
+
+  .pdf-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    mat-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    span {
+      line-height: 1;
+    }
   }
 }
 
@@ -340,54 +373,77 @@
 .items-card {
   margin: 24px;
   margin-bottom: 0;
-  padding: 20px;
+  padding: 0;
   flex: 1;
   overflow-y: auto;
 
   @include m.custom-scrollbar;
 
-  .items-list {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+  .items-table {
+    width: 100%;
+
+    th.mat-header-cell {
+      font-weight: 600;
+      font-size: 13px;
+      color: var(--mdc-theme-text-secondary-on-background);
+      padding: 12px 16px;
+      background: rgba(0, 0, 0, 0.03);
+
+      @include m.dark-theme {
+        background: rgba(255, 255, 255, 0.05);
+      }
+    }
+
+    td.mat-cell {
+      padding: 12px 16px;
+      font-size: 14px;
+    }
+
+    .discount-value {
+      color: #4caf50;
+    }
+
+    .total-cell {
+      font-weight: 500;
+    }
+  }
+}
+
+.grand-total-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background: linear-gradient(135deg, v.$light-primary 0%, darken(v.$light-primary, 8%) 100%);
+  color: white;
+  position: sticky;
+  bottom: 72px;
+  z-index: 10;
+
+  @include m.dark-theme {
+    background: linear-gradient(135deg, #424242 0%, #303030 100%);
   }
 
-  .item-row {
+  .total-calculation {
+    .calc-detail {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+  }
+
+  .grand-total-amount {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    padding: 12px 14px;
-    background: rgba(0, 0, 0, 0.03);
-    border-radius: 8px;
+    gap: 12px;
 
-    @include m.dark-theme {
-      background: rgba(255, 255, 255, 0.05);
+    .grand-label {
+      font-size: 14px;
+      opacity: 0.9;
     }
 
-    .item-info {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-
-      .item-name {
-        font-weight: 500;
-        white-space: nowrap;
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-
-      .item-qty {
-        color: var(--mdc-theme-text-secondary-on-background);
-        font-size: 13px;
-        flex-shrink: 0;
-      }
-    }
-
-    .item-total {
-      font-weight: 500;
-      flex-shrink: 0;
-      margin-left: 12px;
+    .grand-value {
+      font-size: 20px;
+      font-weight: 600;
     }
   }
 }

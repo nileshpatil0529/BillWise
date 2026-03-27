@@ -4,6 +4,7 @@ import {
   getCustomers,
   searchCustomers,
   getCustomerById,
+  getCustomerDebts,
   createCustomer,
   updateCustomer,
   deleteCustomer,
@@ -24,6 +25,9 @@ router.get('/search', searchCustomers);
 
 // GET /api/customers/:id/bills - Get all bills for a customer
 router.get('/:id/bills', getCustomerBills);
+
+// GET /api/customers/:id/debts - Get paginated debts for a customer
+router.get('/:id/debts', getCustomerDebts);
 
 // GET /api/customers/:id - Get customer by ID with debt details
 router.get('/:id', getCustomerById);

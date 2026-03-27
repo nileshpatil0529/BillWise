@@ -18,7 +18,6 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 
@@ -27,7 +26,6 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
-import { BillDetailDialogComponent } from './bill-detail-dialog/bill-detail-dialog.component';
 
 // jsPDF import for PDF generation
 declare var jspdf: any;
@@ -54,7 +52,6 @@ declare var jspdf: any;
     MatTabsModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
-    MatDialogModule,
     MatExpansionModule,
     ScrollingModule
   ],
@@ -89,6 +86,10 @@ export class BillsComponent implements OnInit {
   // Report data
   reportData = signal<ReportData | null>(null);
 
+  // Selected bill for inline view
+  selectedBill = signal<Bill | null>(null);
+  itemColumns = ['name', 'quantity', 'unitPrice', 'discount', 'total'];
+
   // Quick date presets - values only (labels from translations)
   private allPresetValues = ['today', 'yesterday', 'week', 'month', 'custom'];
   
@@ -122,8 +123,7 @@ export class BillsComponent implements OnInit {
     public settingsService: SettingsService,
     public authService: AuthService,
     public translateService: TranslateService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private snackBar: MatSnackBar
   ) {
     // Update displayedColumns based on settings
     effect(() => {
@@ -279,12 +279,31 @@ export class BillsComponent implements OnInit {
   }
 
   viewBill(bill: Bill): void {
-    this.dialog.open(BillDetailDialogComponent, {
-      width: '600px',
-      maxHeight: '90vh',
-      data: bill,
-      panelClass: 'bill-detail-dialog'
-    });
+    this.selectedBill.set(bill);
+  }
+
+  closeBillView(): void {
+    this.selectedBill.set(null);
+  }
+
+  formatDate(dateString: string): string {
+    const d = new Date(dateString);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  getStatusClass(): string {
+    const bill = this.selectedBill();
+    if (!bill) return '';
+    return `status-${bill.paymentStatus}`;
+  }
+
+  getStatusText(): string {
+    const bill = this.selectedBill();
+    if (!bill) return '';
+    return bill.paymentStatus.charAt(0).toUpperCase() + bill.paymentStatus.slice(1);
   }
 
   printBill(bill: Bill): void {
