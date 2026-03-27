@@ -30,3 +30,13 @@ export interface CustomerDetailResponse {
   success: boolean;
   data: CustomerWithDebts;
 }
+
+export interface CustomerDebtsResponse {
+  success: boolean;
+  data: {
+    debts: CustomerDebt[];
+    page: number;
+    hasMore: boolean;
+    total: number;
+  };
+}

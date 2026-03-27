@@ -1,4 +1,75 @@
 <div class="bills-container">
+  @if (selectedBill()) {
+    <!-- Bill Detail View -->
+    <div class="bill-view-container">
+      <!-- Header -->
+      <div class="bill-header">
+        <button mat-icon-button class="back-btn" (click)="closeBillView()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="header-info">
+          <span class="bill-number">Bill #{{ selectedBill()!.billNumber || selectedBill()!.billId.slice(-8) }}</span>
+          <span class="bill-date">{{ formatDate(selectedBill()!.createdAt) }}</span>
+        </div>
+        @if (selectedBill()!.tableId) {
+          <div class="table-tag">
+            <mat-icon>table_restaurant</mat-icon>
+            <span>{{ selectedBill()!.tableId }}</span>
+          </div>
+        }
+        <div class="status-badge" [class]="getStatusClass()">
+          {{ getStatusText() }}
+        </div>
+      </div>
+
+      <!-- Items List -->
+      <div class="items-section">
+        <div class="items-list">
+          @for (item of selectedBill()!.items; track item.productId) {
+            <div class="item-row">
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-qty">× {{ item.quantity }}</span>
+              </div>
+              <span class="item-total">{{ formatCurrency(item.finalTotal) }}</span>
+            </div>
+          }
+        </div>
+      </div>
+
+      <!-- Grand Total Bar -->
+      <div class="grand-total-bar">
+        <div class="total-calculation">
+          @if (selectedBill()!.taxTotal > 0) {
+            <span class="calc-detail">{{ formatCurrency(selectedBill()!.subtotal - selectedBill()!.discountTotal) }} + {{ formatCurrency(selectedBill()!.taxTotal) }} (Tax)</span>
+          }
+        </div>
+        <div class="grand-total-amount">
+          <span class="grand-label">Grand Total</span>
+          <span class="grand-value">{{ formatCurrency(selectedBill()!.grandTotal) }}</span>
+        </div>
+      </div>
+
+      @if (selectedBill()!.notes) {
+        <div class="notes-section">
+          <span class="section-title">Notes</span>
+          <p class="notes-text">{{ selectedBill()!.notes }}</p>
+        </div>
+      }
+
+      <!-- Footer Actions -->
+      <div class="bill-footer">
+        <button mat-stroked-button (click)="closeBillView()">
+          <mat-icon>arrow_back</mat-icon>
+          Back
+        </button>
+        <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
+          <mat-icon>print</mat-icon>
+          Print
+        </button>
+      </div>
+    </div>
+  } @else {
   <!-- Header with Date Presets -->
   <div class="header-section">
     <div class="page-header">
@@ -203,4 +274,5 @@
       }
     }
   </div>
+  }
 </div>

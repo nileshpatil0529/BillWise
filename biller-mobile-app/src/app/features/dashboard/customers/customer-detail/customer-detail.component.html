@@ -16,24 +16,14 @@
           <span class="bill-number">Bill #{{ selectedBill()!.billNumber || selectedBill()!.billId.slice(-8) }}</span>
           <span class="bill-date">{{ formatDate(selectedBill()!.createdAt) }}</span>
         </div>
-        <div class="status-badge" [class]="getStatusClass()">
-          {{ getStatusText() }}
-        </div>
-      </div>
-
-      <!-- Bill Info -->
-      <div class="bill-info-section">
         @if (selectedBill()!.tableId) {
-          <div class="info-row">
+          <div class="table-tag">
             <mat-icon>table_restaurant</mat-icon>
-            <span class="label">Table</span>
-            <span class="value">{{ selectedBill()!.tableId }}</span>
+            <span>{{ selectedBill()!.tableId }}</span>
           </div>
         }
-        <div class="info-row">
-          <mat-icon>payments</mat-icon>
-          <span class="label">Payment</span>
-          <span class="value">{{ selectedBill()!.paymentMethod | titlecase }}</span>
+        <div class="status-badge" [class]="getStatusClass()">
+          {{ getStatusText() }}
         </div>
       </div>
 
@@ -53,31 +43,16 @@
         </div>
       </div>
 
-      <!-- Totals -->
-      <div class="totals-section">
-        <div class="total-row">
-          <span>Subtotal</span>
-          <span>{{ formatCurrency(selectedBill()!.subtotal) }}</span>
+      <!-- Grand Total Bar -->
+      <div class="grand-total-bar">
+        <div class="total-calculation">
+          @if (selectedBill()!.taxTotal > 0) {
+            <span class="calc-detail">{{ formatCurrency(selectedBill()!.subtotal - selectedBill()!.discountTotal) }} + {{ formatCurrency(selectedBill()!.taxTotal) }} (Tax)</span>
+          }
         </div>
-        @if (selectedBill()!.discountTotal > 0) {
-          <div class="total-row discount">
-            <span>Discount</span>
-            <span>-{{ formatCurrency(selectedBill()!.discountTotal) }}</span>
-          </div>
-        }
-        <mat-divider></mat-divider>
-        <div class="total-row grand-total">
-          <span>Grand Total</span>
-          <span>{{ formatCurrency(selectedBill()!.grandTotal) }}</span>
-        </div>
-        <mat-divider></mat-divider>
-        <div class="total-row paid">
-          <span>Paid</span>
-          <span>{{ formatCurrency(selectedBill()!.amountPaid) }}</span>
-        </div>
-        <div class="total-row remaining">
-          <span>Remaining</span>
-          <span class="remaining-value">{{ formatCurrency(selectedBill()!.grandTotal - selectedBill()!.amountPaid) }}</span>
+        <div class="grand-total-amount">
+          <span class="grand-label">Grand Total</span>
+          <span class="grand-value">{{ formatCurrency(selectedBill()!.grandTotal) }}</span>
         </div>
       </div>
 
@@ -135,7 +110,7 @@
     </div>
 
     <!-- Bills List -->
-    <div class="bills-section">
+    <div class="bills-section" (scroll)="onDebtsScroll($event)">
       @if (customer()!.debts.length === 0) {
         <div class="empty-state">
           <mat-icon>verified</mat-icon>
@@ -145,28 +120,23 @@
         <div class="bills-list">
           @for (debt of customer()!.debts; track debt.billId) {
             <div class="bill-item" (click)="viewBillDetails(debt)">
-              <div class="bill-info">
-                <span class="bill-number">Bill #{{ debt.billNumber || debt.billId.slice(-6) }}</span>
+              <div class="bill-left">
+                <span class="bill-number">#{{ (debt.billNumber || debt.billId).slice(-6) }}</span>
                 <span class="bill-date">{{ formatDate(debt.createdAt) }}</span>
               </div>
-              <div class="bill-amounts">
-                <div class="amount-row">
-                  <span class="amount-label">Total:</span>
-                  <span class="amount-value">{{ formatCurrency(debt.amount) }}</span>
-                </div>
-                <div class="amount-row">
-                  <span class="amount-label">Paid:</span>
-                  <span class="amount-value paid">{{ formatCurrency(debt.paidAmount) }}</span>
-                </div>
-                <div class="amount-row">
-                  <span class="amount-label">Due:</span>
-                  <span class="amount-value remaining">{{ formatCurrency(debt.remainingAmount) }}</span>
-                </div>
+              <div class="bill-right">
+                <span class="due-amount">{{ formatCurrency(debt.remainingAmount) }}</span>
+                <span class="due-label">Due</span>
               </div>
               <mat-icon class="chevron">chevron_right</mat-icon>
             </div>
           }
         </div>
+        @if (loadingMoreDebts()) {
+          <div class="loading-more">
+            <mat-spinner diameter="24"></mat-spinner>
+          </div>
+        }
       }
     </div>
 

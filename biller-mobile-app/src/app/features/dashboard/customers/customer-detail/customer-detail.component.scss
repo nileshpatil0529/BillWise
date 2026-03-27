@@ -171,7 +171,7 @@
   .bills-list {
     display: flex;
     flex-direction: column;
-    gap: 8px;
+    gap: 10px;
     padding-bottom: 12px;
   }
 
@@ -179,64 +179,58 @@
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 12px 14px;
+    padding: 14px 16px;
     background: var(--mat-card-background-color);
-    border-radius: 10px;
+    border-radius: 12px;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: transform 0.1s, background-color 0.2s;
 
     &:active {
-      background: rgba(0, 0, 0, 0.08);
+      transform: scale(0.98);
+      background: rgba(0, 0, 0, 0.06);
 
       @include m.dark-theme {
         background: rgba(255, 255, 255, 0.08);
       }
     }
 
-    .bill-info {
+    .bill-left {
+      flex: 1;
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      min-width: 80px;
+      gap: 4px;
+      min-width: 0;
 
       .bill-number {
-        font-size: 13px;
+        font-size: 15px;
         font-weight: 600;
-        font-family: monospace;
+        font-family: 'SF Mono', 'Roboto Mono', monospace;
+        color: var(--mdc-theme-primary);
       }
 
       .bill-date {
-        font-size: 11px;
+        font-size: 12px;
         color: var(--mdc-theme-text-secondary-on-background);
       }
     }
 
-    .bill-amounts {
-      flex: 1;
+    .bill-right {
       display: flex;
       flex-direction: column;
+      align-items: flex-end;
       gap: 2px;
 
-      .amount-row {
-        display: flex;
-        justify-content: space-between;
-        font-size: 12px;
+      .due-amount {
+        font-size: 16px;
+        font-weight: 700;
+        color: #f44336;
+      }
 
-        .amount-label {
-          color: var(--mdc-theme-text-secondary-on-background);
-        }
-
-        .amount-value {
-          font-weight: 500;
-
-          &.paid {
-            color: #4caf50;
-          }
-
-          &.remaining {
-            color: #f44336;
-          }
-        }
+      .due-label {
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: var(--mdc-theme-text-secondary-on-background);
       }
     }
 
@@ -246,7 +240,15 @@
       width: 20px;
       height: 20px;
       flex-shrink: 0;
+      opacity: 0.5;
     }
+  }
+
+  .loading-more {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
   }
 }
 
@@ -361,39 +363,21 @@
       background: rgba(33, 150, 243, 0.9);
     }
   }
-}
 
-.bill-info-section {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  background: rgba(0, 0, 0, 0.02);
-
-  @include m.dark-theme {
-    background: rgba(255, 255, 255, 0.03);
-  }
-
-  .info-row {
+  .table-tag {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 13px;
+    gap: 4px;
+    background: rgba(255, 255, 255, 0.2);
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
 
     mat-icon {
-      font-size: 18px;
-      width: 18px;
-      height: 18px;
-      opacity: 0.6;
-    }
-
-    .label {
-      flex: 1;
-      color: var(--mdc-theme-text-secondary-on-background);
-    }
-
-    .value {
-      font-weight: 500;
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
     }
   }
 }
@@ -460,40 +444,38 @@
   }
 }
 
-.totals-section {
-  padding: 12px;
+.grand-total-bar {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
-  border-top: 1px solid var(--mat-divider-color);
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  color: white;
 
-  mat-divider {
-    margin: 6px 0;
+  @include m.dark-theme {
+    background: linear-gradient(135deg, #424242, #303030);
   }
 
-  .total-row {
+  .total-calculation {
+    .calc-detail {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+  }
+
+  .grand-total-amount {
     display: flex;
-    justify-content: space-between;
-    font-size: 13px;
+    align-items: center;
+    gap: 8px;
 
-    &.discount {
-      color: #4caf50;
+    .grand-label {
+      font-size: 13px;
+      opacity: 0.9;
     }
 
-    &.grand-total {
-      font-size: 15px;
-      font-weight: 600;
-    }
-
-    &.paid {
-      color: #4caf50;
-    }
-
-    &.remaining {
-      .remaining-value {
-        color: #f44336;
-        font-weight: 600;
-      }
+    .grand-value {
+      font-size: 20px;
+      font-weight: 700;
     }
   }
 }
@@ -525,6 +507,7 @@
   gap: 10px;
   padding: 10px 12px;
   border-top: 1px solid var(--mat-divider-color);
+  background: var(--mat-card-background-color);
 
   button {
     flex: 1;

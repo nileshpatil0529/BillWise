@@ -14,7 +14,6 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
-import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 
 import { BillService } from '../../../core/services/bill.service';
@@ -22,7 +21,6 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
-import { BillDetailDialogComponent } from './bill-detail-dialog/bill-detail-dialog.component';
 
 // jsPDF import for PDF generation
 declare var jspdf: any;
@@ -45,8 +43,7 @@ declare var jspdf: any;
     MatMenuModule,
     MatTooltipModule,
     MatProgressSpinnerModule,
-    MatSnackBarModule,
-    MatDialogModule
+    MatSnackBarModule
   ],
   templateUrl: './bills.component.html',
   styleUrl: './bills.component.scss'
@@ -56,6 +53,7 @@ export class BillsComponent implements OnInit {
   
   loading = signal(false);
   loadingMore = signal(false);
+  selectedBill = signal<Bill | null>(null);
 
   // Lazy loading state
   currentPage = signal(1);
@@ -105,8 +103,7 @@ export class BillsComponent implements OnInit {
     public settingsService: SettingsService,
     public authService: AuthService,
     public translateService: TranslateService,
-    private snackBar: MatSnackBar,
-    private dialog: MatDialog
+    private snackBar: MatSnackBar
   ) {}
 
   // Get formatted bill number (truncated for mobile)
@@ -251,10 +248,39 @@ export class BillsComponent implements OnInit {
   }
 
   viewBill(bill: Bill): void {
-    this.dialog.open(BillDetailDialogComponent, {
-      data: bill,
-      panelClass: 'bill-detail-dialog'
-    });
+    this.selectedBill.set(bill);
+  }
+
+  closeBillView(): void {
+    this.selectedBill.set(null);
+  }
+
+  formatDate(dateString: string): string {
+    const d = new Date(dateString);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const year = d.getFullYear();
+    return `${day}/${month}/${year}`;
+  }
+
+  getStatusClass(): string {
+    const bill = this.selectedBill();
+    if (!bill) return 'status-pending';
+    switch (bill.paymentStatus) {
+      case 'paid': return 'status-paid';
+      case 'partial': return 'status-partial';
+      default: return 'status-pending';
+    }
+  }
+
+  getStatusText(): string {
+    const bill = this.selectedBill();
+    if (!bill) return 'Pending';
+    switch (bill.paymentStatus) {
+      case 'paid': return 'Paid';
+      case 'partial': return 'Partial';
+      default: return 'Pending';
+    }
   }
 
   printBill(bill: Bill): void {

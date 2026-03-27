@@ -55,12 +55,12 @@ export class DashboardComponent implements OnInit {
       items.push({ icon: 'home', label: t('nav.home'), route: '/dashboard/home' });
     }
     
-    if (hasPermission('products')) {
-      items.push({ icon: 'inventory_2', label: t('nav.products'), route: '/dashboard/products' });
-    }
-    
     if (hasPermission('bills')) {
       items.push({ icon: 'receipt_long', label: t('nav.bills'), route: '/dashboard/bills' });
+    }
+    
+    if (hasPermission('products')) {
+      items.push({ icon: 'inventory_2', label: t('nav.products'), route: '/dashboard/products' });
     }
     
     if (hasPermission('customers') && this.settingsService.settings().debtEnabled) {

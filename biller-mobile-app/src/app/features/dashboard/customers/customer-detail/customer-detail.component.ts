@@ -53,6 +53,11 @@ export class CustomerDetailComponent implements OnInit {
   generatingPDF = signal(false);
   payAllAmount = signal(0);
 
+  // Debts pagination state
+  debtsPage = signal(1);
+  hasMoreDebts = signal(false);
+  loadingMoreDebts = signal(false);
+
   ngOnInit(): void {
     this.customerId = this.route.snapshot.paramMap.get('id') || '';
     if (this.customerId) {
@@ -78,10 +83,12 @@ export class CustomerDetailComponent implements OnInit {
   loadCustomer(): void {
     this.loading.set(true);
     this.customerService.getCustomerById(this.customerId).subscribe({
-      next: (response) => {
+      next: (response: any) => {
         if (response.success) {
           this.customer.set(response.data);
           this.payAllAmount.set(response.data.totalDebt);
+          this.debtsPage.set(response.data.debtsPage || 1);
+          this.hasMoreDebts.set(response.data.hasMoreDebts || false);
         }
         this.loading.set(false);
       },
@@ -89,6 +96,43 @@ export class CustomerDetailComponent implements OnInit {
         this.loading.set(false);
         this.snackBar.open('Failed to load customer details', 'Close', { duration: 3000 });
         this.goBack();
+      }
+    });
+  }
+
+  onDebtsScroll(event: Event): void {
+    const element = event.target as HTMLElement;
+    const threshold = 50;
+    const atBottom = element.scrollHeight - element.scrollTop - element.clientHeight < threshold;
+
+    if (atBottom && this.hasMoreDebts() && !this.loadingMoreDebts()) {
+      this.loadMoreDebts();
+    }
+  }
+
+  loadMoreDebts(): void {
+    const customerData = this.customer();
+    if (!customerData) return;
+
+    this.loadingMoreDebts.set(true);
+    const nextPage = this.debtsPage() + 1;
+
+    this.customerService.getCustomerDebts(this.customerId, nextPage).subscribe({
+      next: (response) => {
+        if (response.success) {
+          const updatedCustomer = {
+            ...customerData,
+            debts: [...customerData.debts, ...response.data.debts]
+          };
+          this.customer.set(updatedCustomer);
+          this.debtsPage.set(response.data.page);
+          this.hasMoreDebts.set(response.data.hasMore);
+        }
+        this.loadingMoreDebts.set(false);
+      },
+      error: () => {
+        this.loadingMoreDebts.set(false);
+        this.snackBar.open('Failed to load more debts', 'Close', { duration: 3000 });
       }
     });
   }

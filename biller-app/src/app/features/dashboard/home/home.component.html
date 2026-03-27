@@ -243,6 +243,7 @@
                (keydown.enter)="onSearchEnter($event)"
                placeholder="Search by name, code, or scan barcode..."
                autocomplete="off">
+        <mat-icon matPrefix>search</mat-icon>
         @if (searchQuery()) {
           <button mat-icon-button matSuffix (click)="clearSearch()">
             <mat-icon>close</mat-icon>

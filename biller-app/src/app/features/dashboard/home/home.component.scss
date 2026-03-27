@@ -20,11 +20,21 @@
   position: relative;
   z-index: 1000;
   flex-shrink: 0;
+  overflow: visible !important;
+
+  ::ng-deep .mdc-card {
+    overflow: visible !important;
+  }
+
+  ::ng-deep .mat-mdc-card-content {
+    overflow: visible !important;
+  }
 
   .search-row {
     display: flex;
     align-items: center;
     gap: v.$spacing-sm;
+    padding-top: 4px;
   }
 
   .search-field {
@@ -33,6 +43,10 @@
     
     ::ng-deep .mat-mdc-form-field-subscript-wrapper {
       display: none;
+    }
+
+    ::ng-deep .mdc-notched-outline {
+      overflow: visible;
     }
   }
 
