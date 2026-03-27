@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, effect, ViewChild, AfterViewInit, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
 import { MatTableModule, MatTableDataSource } from '@angular/material/table';
 import { MatSort, MatSortModule } from '@angular/material/sort';
@@ -21,7 +22,6 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { Customer } from '../../../core/models/customer.model';
 import { CustomerDialogComponent } from './customer-dialog/customer-dialog.component';
-import { CustomerDetailDialogComponent } from './customer-detail-dialog/customer-detail-dialog.component';
 
 @Component({
   selector: 'app-customers',
@@ -73,7 +73,8 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
     private snackBar: MatSnackBar,
     private customerService: CustomerService,
     public settingsService: SettingsService,
-    public translateService: TranslateService
+    public translateService: TranslateService,
+    private router: Router
   ) {
     // Set displayedColumns to all columns
     this.displayedColumns = [...this.allColumns];
@@ -238,17 +239,7 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   viewCustomerDetails(customer: Customer): void {
-    const isMobile = window.innerWidth <= 768;
-    this.dialog.open(CustomerDetailDialogComponent, {
-      width: isMobile ? '100vw' : '90vw',
-      maxWidth: isMobile ? '100vw' : '1200px',
-      height: isMobile ? '100vh' : '85vh',
-      maxHeight: isMobile ? '100vh' : '85vh',
-      panelClass: 'customer-detail-dialog',
-      data: { customerId: customer.customerId }
-    }).afterClosed().subscribe(() => {
-      this.loadCustomers(true);
-    });
+    this.router.navigate(['/dashboard/customers', customer.customerId]);
   }
 
   deleteCustomer(event: Event, customer: Customer): void {

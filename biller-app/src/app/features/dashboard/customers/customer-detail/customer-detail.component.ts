@@ -1,7 +1,8 @@
-import { Component, Inject, OnInit, signal, inject } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, signal, inject } from '@angular/core';
+import { CommonModule, Location } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { MAT_DIALOG_DATA, MatDialogRef, MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { ActivatedRoute, Router } from '@angular/router';
+import { MatCardModule } from '@angular/material/card';
 import { MatTableModule } from '@angular/material/table';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
@@ -12,28 +13,25 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 
 import { CustomerService } from '../../../../core/services/customer.service';
 import { SettingsService } from '../../../../core/services/settings.service';
 import { BillService } from '../../../../core/services/bill.service';
 import { CustomerWithDebts, CustomerDebt } from '../../../../core/models/customer.model';
+import { Bill } from '../../../../core/models/bill.model';
 import { BillDetailDialogComponent } from '../../bills/bill-detail-dialog/bill-detail-dialog.component';
-import { forkJoin } from 'rxjs';
 
 // jsPDF import for PDF generation
 declare var jspdf: any;
 
-export interface CustomerDetailDialogData {
-  customerId: string;
-}
-
 @Component({
-  selector: 'app-customer-detail-dialog',
+  selector: 'app-customer-detail',
   standalone: true,
   imports: [
     CommonModule,
     FormsModule,
-    MatDialogModule,
+    MatCardModule,
     MatTableModule,
     MatButtonModule,
     MatIconModule,
@@ -43,409 +41,68 @@ export interface CustomerDetailDialogData {
     MatChipsModule,
     MatDividerModule,
     MatSnackBarModule,
-    MatTooltipModule
+    MatTooltipModule,
+    MatDialogModule
   ],
-  template: `
-    @if (loading()) {
-      <div class="loading-container">
-        <mat-spinner diameter="40"></mat-spinner>
-        <p>Loading customer details...</p>
-      </div>
-    } @else if (customer()) {
-      <div class="dialog-header">
-        <div class="customer-info">
-          <h2 class="customer-name">{{ customer()!.name }}</h2>
-          <span class="customer-phone">
-            <mat-icon>phone</mat-icon>
-            {{ customer()!.phone }}
-          </span>
-        </div>
-        <div class="total-debt-container">
-          <span class="debt-label">Total Debt</span>
-          <mat-chip [class]="customer()!.totalDebt > 0 ? 'status-pending' : 'status-paid'">
-            {{ formatCurrency(customer()!.totalDebt) }}
-          </mat-chip>
-        </div>
-      </div>
-
-      <mat-divider></mat-divider>
-
-      <mat-dialog-content>
-        <h3>Unpaid Bills</h3>
-
-        @if (customer()!.debts.length === 0) {
-          <div class="empty-state">
-            <mat-icon>check_circle</mat-icon>
-            <p>No unpaid bills</p>
-          </div>
-        } @else {
-          <table mat-table [dataSource]="customer()!.debts" class="debts-table">
-            <!-- Remaining Column -->
-            <ng-container matColumnDef="remaining">
-              <th mat-header-cell *matHeaderCellDef>Remaining</th>
-              <td mat-cell *matCellDef="let debt" class="remaining-cell">
-                {{ formatCurrency(debt.remainingAmount) }}
-              </td>
-            </ng-container>
-
-            <!-- Date Column -->
-            <ng-container matColumnDef="date">
-              <th mat-header-cell *matHeaderCellDef>Date</th>
-              <td mat-cell *matCellDef="let debt">{{ formatDate(debt.createdAt) }}</td>
-            </ng-container>
-
-            <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
-            <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
-                (click)="viewBillDetails(row)"
-                class="clickable-row"
-                matTooltip="Click to view bill details"></tr>
-          </table>
-        }
-      </mat-dialog-content>
-
-      <mat-dialog-actions>
-        @if (customer()!.debts.length > 0) {
-          <div class="payment-footer">
-            <mat-form-field appearance="outline" class="payment-input">
-              <mat-label>Payment Amount</mat-label>
-              <input matInput 
-                     type="number" 
-                     [ngModel]="payAllAmount()"
-                     (ngModelChange)="payAllAmount.set($event)"
-                     [max]="customer()!.totalDebt"
-                     min="0"
-                     step="0.01">
-              <span matTextSuffix>{{ settingsService.settings().currency }}</span>
-            </mat-form-field>
-            <button mat-raised-button color="primary" 
-                    (click)="payAllDebts()" 
-                    [disabled]="paying() || payAllAmount() <= 0"
-                    class="pay-button">
-              <mat-icon>payments</mat-icon>
-              Pay Amount
-            </button>
-          </div>
-        }
-        <div class="action-buttons">
-          <button mat-raised-button color="accent" 
-                  class="pdf-button"
-                  (click)="downloadCustomerBillsPDF()" 
-                  [disabled]="generatingPDF() || customer()!.debts.length === 0"
-                  matTooltip="Download detailed PDF report of all customer bills">
-            <span class="button-content">
-              @if (generatingPDF()) {
-                <mat-spinner diameter="20"></mat-spinner>
-                <span>Generating...</span>
-              } @else {
-                <mat-icon>picture_as_pdf</mat-icon>
-                <span>PDF Report</span>
-              }
-            </span>
-          </button>
-          <button mat-raised-button mat-dialog-close>Close</button>
-        </div>
-      </mat-dialog-actions>
-    }
-  `,
-  styles: [`
-    /* Remove dialog margins on small displays */
-    @media (max-width: 768px) {
-      ::ng-deep .customer-detail-dialog .mat-mdc-dialog-container {
-        margin: 0 !important;
-        max-width: 100vw !important;
-        max-height: 100vh !important;
-        border-radius: 0 !important;
-      }
-    }
-
-    :host {
-      display: block;
-      width: 100%;
-      height: 100%;
-    }
-
-    .dialog-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      padding: 16px 24px;
-      gap: 16px;
-      flex-wrap: wrap;
-    }
-
-    .customer-info {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-      min-width: 0;
-      flex: 1;
-
-      .customer-name {
-        margin: 0;
-        font-size: 20px;
-        font-weight: 500;
-        word-break: break-word;
-      }
-
-      .customer-phone {
-        display: flex;
-        align-items: center;
-        gap: 4px;
-        color: var(--mdc-theme-text-secondary-on-background);
-        font-size: 14px;
-
-        mat-icon {
-          font-size: 16px;
-          width: 16px;
-          height: 16px;
-          flex-shrink: 0;
-        }
-      }
-    }
-
-    .total-debt-container {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 4px;
-      flex-shrink: 0;
-
-      .debt-label {
-        font-size: 12px;
-        color: var(--mdc-theme-text-secondary-on-background);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-      }
-    }
-
-    h3 {
-      margin: 16px 0 8px;
-      font-size: 16px;
-      font-weight: 500;
-    }
-
-    mat-dialog-content {
-      padding-top: 0;
-      min-height: 200px;
-      max-height: calc(85vh - 200px);
-      overflow-y: auto;
-    }
-
-    .loading-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 32px;
-      gap: 16px;
-    }
-
-    .empty-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 32px;
-      color: var(--mdc-theme-text-secondary-on-background);
-
-      mat-icon {
-        font-size: 48px;
-        width: 48px;
-        height: 48px;
-        color: #4caf50;
-      }
-    }
-
-    .table-container {
-      overflow-x: auto;
-    }
-
-    .debts-table {
-      width: 100%;
-      min-width: 280px;
-
-      .mat-mdc-row {
-        &.clickable-row {
-          cursor: pointer;
-          transition: background-color 0.2s ease;
-
-          &:hover {
-            background-color: rgba(0, 0, 0, 0.04);
-          }
-        }
-      }
-
-      .remaining-cell {
-        color: #f44336;
-        font-weight: 500;
-      }
-    }
-
-    mat-dialog-actions {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 16px 24px;
-      border-top: 1px solid var(--mat-divider-color);
-      flex-wrap: wrap;
-      gap: 12px;
-      position: sticky;
-      bottom: 0;
-      background: inherit;
-      z-index: 10;
-
-      .payment-footer {
-        display: flex;
-        align-items: flex-start;
-        gap: 12px;
-
-        .payment-input {
-          min-width: 200px;
-          max-width: 300px;
-
-          ::ng-deep .mat-mdc-form-field-subscript-wrapper {
-            display: none;
-          }
-        }
-
-        .pay-button {
-          margin-top: 4px;
-          min-width: 140px;
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-      }
-
-      .action-buttons {
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        margin-left: auto;
-      }
-
-      .pdf-button {
-        .button-content {
-          display: flex;
-          align-items: center;
-          gap: 8px;
-        }
-      }
-    }
-
-    mat-chip {
-      &.status-paid {
-        --mdc-chip-elevated-container-color: rgba(76, 175, 80, 0.15);
-        --mdc-chip-label-text-color: #4caf50;
-      }
-
-      &.status-pending {
-        --mdc-chip-elevated-container-color: rgba(255, 152, 0, 0.15);
-        --mdc-chip-label-text-color: #ff9800;
-      }
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      .dialog-header {
-        padding: 12px;
-      }
-
-      mat-dialog-content {
-        padding: 0 12px 12px;
-        max-height: calc(100vh - 200px);
-      }
-
-      mat-dialog-actions {
-        padding: 12px;
-
-        .payment-footer {
-          flex-direction: column;
-          width: 100%;
-
-          .payment-input {
-            max-width: 100%;
-            width: 100%;
-          }
-
-          .pay-button {
-            width: 100%;
-            justify-content: center;
-          }
-        }
-      }
-    }
-
-    @media (max-width: 480px) {
-      .dialog-header {
-        padding: 8px;
-      }
-
-      .customer-info .customer-name {
-        font-size: 18px;
-      }
-
-      mat-dialog-content {
-        padding: 0 8px 8px;
-        max-height: calc(100vh - 220px);
-      }
-
-      mat-dialog-actions {
-        padding: 8px;
-        flex-direction: column;
-        align-items: stretch;
-
-        .payment-footer {
-          order: -1;
-          margin-bottom: 12px;
-        }
-
-        .action-buttons {
-          width: 100%;
-          margin-left: 0;
-          justify-content: space-between;
-
-          button {
-            flex: 1;
-          }
-        }
-      }
-    }
-  `]
+  templateUrl: './customer-detail.component.html',
+  styleUrl: './customer-detail.component.scss'
 })
-export class CustomerDetailDialogComponent implements OnInit {
+export class CustomerDetailComponent implements OnInit {
+  private route = inject(ActivatedRoute);
+  private router = inject(Router);
+  private location = inject(Location);
   private customerService = inject(CustomerService);
   public settingsService = inject(SettingsService);
   private billService = inject(BillService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
+  customerId = '';
   customer = signal<CustomerWithDebts | null>(null);
+  selectedBill = signal<Bill | null>(null);
   loading = signal(true);
   paying = signal(false);
   generatingPDF = signal(false);
   payAllAmount = signal(0);
 
-  displayedColumns = ['remaining', 'date'];
-
-  constructor(
-    private dialogRef: MatDialogRef<CustomerDetailDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: CustomerDetailDialogData
-  ) {}
+  displayedColumns = ['billNumber', 'total', 'paid', 'remaining', 'date'];
 
   ngOnInit(): void {
-    this.loadCustomer();
+    this.customerId = this.route.snapshot.paramMap.get('id') || '';
+    if (this.customerId) {
+      this.loadCustomer();
+    } else {
+      this.goBack();
+    }
+  }
+
+  goBack(): void {
+    this.location.back();
+  }
+
+  loadCustomer(): void {
+    this.loading.set(true);
+    this.customerService.getCustomerById(this.customerId).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.customer.set(response.data);
+          this.payAllAmount.set(response.data.totalDebt);
+        }
+        this.loading.set(false);
+      },
+      error: () => {
+        this.loading.set(false);
+        this.snackBar.open('Failed to load customer details', 'Close', { duration: 3000 });
+        this.goBack();
+      }
+    });
   }
 
   viewBillDetails(debt: CustomerDebt): void {
-    // Fetch full bill details
     this.billService.getBillById(debt.billId).subscribe({
       next: (response) => {
         if (response.success) {
-          this.dialog.open(BillDetailDialogComponent, {
-            width: '600px',
-            maxHeight: '90vh',
-            data: response.data,
-            panelClass: 'bill-detail-dialog'
-          });
+          this.selectedBill.set(response.data);
         }
       },
       error: () => {
@@ -454,19 +111,19 @@ export class CustomerDetailDialogComponent implements OnInit {
     });
   }
 
-  loadCustomer(): void {
-    this.loading.set(true);
-    this.customerService.getCustomerById(this.data.customerId).subscribe({
-      next: (response) => {
+  closeBillView(): void {
+    this.selectedBill.set(null);
+  }
+
+  printBill(bill: Bill): void {
+    this.billService.printBill(bill.billId).subscribe({
+      next: (response: any) => {
         if (response.success) {
-          this.customer.set(response.data);
-          // Set default payment amount to total debt
-          this.payAllAmount.set(response.data.totalDebt);
+          this.snackBar.open('Bill sent to printer', 'Close', { duration: 3000 });
         }
-        this.loading.set(false);
       },
       error: () => {
-        this.loading.set(false);
+        this.snackBar.open('Failed to print bill', 'Close', { duration: 3000 });
       }
     });
   }
@@ -501,7 +158,6 @@ export class CustomerDetailDialogComponent implements OnInit {
 
     this.paying.set(true);
 
-    // Process payment by distributing amount across debts
     let remainingPayment = amount;
     const paymentsToMake: { billId: string, amount: number }[] = [];
 
@@ -513,13 +169,12 @@ export class CustomerDetailDialogComponent implements OnInit {
       remainingPayment -= paymentForThisDebt;
     }
 
-    // Execute all payments
     let completed = 0;
     const total = paymentsToMake.length;
     let hasError = false;
 
     paymentsToMake.forEach(payment => {
-      this.customerService.payDebt(this.data.customerId, payment.billId, payment.amount).subscribe({
+      this.customerService.payDebt(this.customerId, payment.billId, payment.amount).subscribe({
         next: () => {
           completed++;
           if (completed === total) {
@@ -550,7 +205,6 @@ export class CustomerDetailDialogComponent implements OnInit {
     this.generatingPDF.set(true);
     this.snackBar.open('Preparing PDF report...', '', { duration: 2000 });
 
-    // Fetch all bills with efficient pagination
     this.fetchAllCustomerBills(customerData).then(allBills => {
       try {
         this.generatePDF(customerData, allBills);
@@ -569,21 +223,20 @@ export class CustomerDetailDialogComponent implements OnInit {
   }
 
   private async fetchAllCustomerBills(customer: CustomerWithDebts): Promise<any[]> {
-    const limit = 100; // Fetch 100 bills at a time
+    const limit = 100;
     let allBills: any[] = [];
     let page = 1;
     let hasMore = true;
 
     while (hasMore) {
       try {
-        const response: any = await this.customerService.getCustomerBills(this.data.customerId, page, limit).toPromise();
+        const response: any = await this.customerService.getCustomerBills(this.customerId, page, limit).toPromise();
         
         if (response.success && response.data.bills.length > 0) {
           allBills = allBills.concat(response.data.bills);
           hasMore = response.data.hasMore;
           page++;
           
-          // Show progress
           if (hasMore) {
             this.snackBar.open(`Fetched ${allBills.length} bills...`, '', { duration: 1000 });
           }
@@ -607,12 +260,11 @@ export class CustomerDetailDialogComponent implements OnInit {
     const margin = 15;
     let yPos = margin;
 
-    // Helper function for PDF currency
     const formatPdfCurrency = (amount: number): string => {
       return `Rs. ${amount.toFixed(2)}`;
     };
 
-    // ===== HEADER =====
+    // HEADER
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
     doc.text(settings.businessName || 'Business Name', margin, yPos);
@@ -635,7 +287,7 @@ export class CustomerDetailDialogComponent implements OnInit {
     doc.line(margin, yPos, pageWidth - margin, yPos);
     yPos += 10;
 
-    // ===== CUSTOMER DETAILS =====
+    // CUSTOMER DETAILS
     doc.setFontSize(12);
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(0, 0, 0);
@@ -654,10 +306,9 @@ export class CustomerDetailDialogComponent implements OnInit {
     doc.text(`Phone: ${customer.phone}`, margin, yPos);
     yPos += 10;
 
-    // Filter only pending and partial bills
     const unpaidBills = bills.filter(b => b.paymentStatus === 'pending' || b.paymentStatus === 'partial');
 
-    // ===== SUMMARY =====
+    // SUMMARY
     const totalPaid = unpaidBills.reduce((sum, b) => sum + (b.amountPaid || 0), 0);
     const totalPending = unpaidBills.reduce((sum, b) => sum + ((b.grandTotal || 0) - (b.amountPaid || 0)), 0);
 
@@ -694,8 +345,7 @@ export class CustomerDetailDialogComponent implements OnInit {
 
     yPos = (doc as any).lastAutoTable.finalY + 10;
 
-    // ===== BILL ITEMS TABLE =====
-    // Check if we need a new page
+    // BILL ITEMS TABLE
     if (yPos > pageHeight - 40) {
       doc.addPage();
       yPos = margin;
@@ -706,11 +356,9 @@ export class CustomerDetailDialogComponent implements OnInit {
     doc.text('Bill Details', margin, yPos);
     yPos += 5;
 
-    // Prepare all rows (bill headers + items)
     const allRows: any[] = [];
     
     unpaidBills.forEach((bill, index) => {
-      // Add bill header row
       const billNumberText = bill.billNumber || bill.billId.substring(0, 12);
       const billHeaderText = `${this.formatDate(bill.createdAt)} | ${bill.paymentMethod || 'N/A'}`;
       
@@ -719,7 +367,6 @@ export class CustomerDetailDialogComponent implements OnInit {
         { content: billHeaderText, colSpan: 2, styles: { fontStyle: 'bold', fillColor: [245, 245, 245], halign: 'right' } }
       ]);
 
-      // Add item rows
       if (bill.items && bill.items.length > 0) {
         bill.items.forEach((item: any) => {
           allRows.push([
@@ -762,7 +409,6 @@ export class CustomerDetailDialogComponent implements OnInit {
       margin: { left: margin, right: margin },
       tableWidth: 'auto',
       didDrawPage: (data: any) => {
-        // Add page numbers
         const pageCount = doc.internal.getNumberOfPages();
         doc.setFontSize(8);
         doc.setTextColor(120);
@@ -775,7 +421,7 @@ export class CustomerDetailDialogComponent implements OnInit {
       }
     });
 
-    // ===== FOOTER =====
+    // FOOTER
     const totalPages = doc.internal.getNumberOfPages();
     for (let i = 1; i <= totalPages; i++) {
       doc.setPage(i);
@@ -787,8 +433,27 @@ export class CustomerDetailDialogComponent implements OnInit {
       }
     }
 
-    // Save the PDF
     const fileName = `customer_${customer.name.replace(/\s+/g, '_')}_bills_${new Date().toISOString().split('T')[0]}.pdf`;
     doc.save(fileName);
+  }
+
+  getStatusClass(): string {
+    const bill = this.selectedBill();
+    if (!bill) return 'status-pending';
+    switch (bill.paymentStatus) {
+      case 'paid': return 'status-paid';
+      case 'partial': return 'status-partial';
+      default: return 'status-pending';
+    }
+  }
+
+  getStatusText(): string {
+    const bill = this.selectedBill();
+    if (!bill) return 'Pending';
+    switch (bill.paymentStatus) {
+      case 'paid': return 'Paid';
+      case 'partial': return 'Partial';
+      default: return 'Pending';
+    }
   }
 }

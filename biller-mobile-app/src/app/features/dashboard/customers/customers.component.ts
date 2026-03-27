@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, ViewChild, AfterViewInit, ElementRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
@@ -14,7 +15,6 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { Customer } from '../../../core/models/customer.model';
 import { CustomerDialogComponent } from './customer-dialog/customer-dialog.component';
-import { CustomerDetailDialogComponent } from './customer-detail-dialog/customer-detail-dialog.component';
 
 @Component({
   selector: 'app-customers',
@@ -52,7 +52,8 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
     private snackBar: MatSnackBar,
     private customerService: CustomerService,
     public settingsService: SettingsService,
-    public translateService: TranslateService
+    public translateService: TranslateService,
+    private router: Router
   ) {}
 
   // Get initials from customer name
@@ -221,17 +222,7 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
   }
 
   viewCustomerDetails(customer: Customer): void {
-    const isMobile = window.innerWidth <= 768;
-    this.dialog.open(CustomerDetailDialogComponent, {
-      width: isMobile ? '100vw' : '90vw',
-      maxWidth: isMobile ? '100vw' : '1200px',
-      height: isMobile ? '100vh' : '85vh',
-      maxHeight: isMobile ? '100vh' : '85vh',
-      panelClass: 'customer-detail-dialog',
-      data: { customerId: customer.customerId }
-    }).afterClosed().subscribe(() => {
-      this.loadCustomers(true);
-    });
+    this.router.navigate(['/dashboard/customers', customer.customerId]);
   }
 
   deleteCustomer(event: Event, customer: Customer): void {

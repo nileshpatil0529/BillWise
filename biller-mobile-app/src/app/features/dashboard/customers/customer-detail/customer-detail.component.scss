@@ -1,0 +1,542 @@
+@use '../../../../../styles/variables' as v;
+@use '../../../../../styles/mixins' as m;
+
+.customer-detail-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--mat-app-background-color);
+}
+
+// ============================================
+// LOADING STATE
+// ============================================
+
+.loading-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+
+// ============================================
+// PAGE HEADER
+// ============================================
+
+.page-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  color: white;
+
+  @include m.dark-theme {
+    background: linear-gradient(135deg, #424242, #303030);
+  }
+
+  .back-btn {
+    color: white;
+    margin: -4px;
+  }
+
+  .avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    font-weight: 600;
+    flex-shrink: 0;
+  }
+
+  .customer-info {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .customer-name {
+      font-size: 16px;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .customer-phone {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 13px;
+      opacity: 0.9;
+      color: white;
+      text-decoration: none;
+
+      mat-icon {
+        font-size: 14px;
+        width: 14px;
+        height: 14px;
+      }
+    }
+  }
+}
+
+// ============================================
+// DEBT CARD
+// ============================================
+
+.debt-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px;
+  padding: 14px 16px;
+  background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%);
+  border-radius: 12px;
+  color: white;
+
+  &.no-debt {
+    background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  }
+
+  .debt-icon {
+    width: 40px;
+    height: 40px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    mat-icon {
+      font-size: 22px;
+      width: 22px;
+      height: 22px;
+    }
+  }
+
+  .debt-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .debt-label {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+
+    .debt-value {
+      font-size: 20px;
+      font-weight: 700;
+    }
+  }
+}
+
+// ============================================
+// BILLS SECTION
+// ============================================
+
+.bills-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 0 12px;
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 48px 16px;
+    color: var(--mdc-theme-text-secondary-on-background);
+
+    mat-icon {
+      font-size: 48px;
+      width: 48px;
+      height: 48px;
+      color: #4caf50;
+      margin-bottom: 8px;
+    }
+
+    span {
+      font-size: 14px;
+    }
+  }
+
+  .bills-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 12px;
+  }
+
+  .bill-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 14px;
+    background: var(--mat-card-background-color);
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background-color 0.2s;
+
+    &:active {
+      background: rgba(0, 0, 0, 0.08);
+
+      @include m.dark-theme {
+        background: rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .bill-info {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 80px;
+
+      .bill-number {
+        font-size: 13px;
+        font-weight: 600;
+        font-family: monospace;
+      }
+
+      .bill-date {
+        font-size: 11px;
+        color: var(--mdc-theme-text-secondary-on-background);
+      }
+    }
+
+    .bill-amounts {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+
+      .amount-row {
+        display: flex;
+        justify-content: space-between;
+        font-size: 12px;
+
+        .amount-label {
+          color: var(--mdc-theme-text-secondary-on-background);
+        }
+
+        .amount-value {
+          font-weight: 500;
+
+          &.paid {
+            color: #4caf50;
+          }
+
+          &.remaining {
+            color: #f44336;
+          }
+        }
+      }
+    }
+
+    .chevron {
+      color: var(--mdc-theme-text-secondary-on-background);
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+  }
+}
+
+// ============================================
+// FOOTER ACTIONS
+// ============================================
+
+.footer-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--mat-divider-color);
+  background: var(--mat-card-background-color);
+
+  .payment-form {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+
+    .payment-input {
+      flex: 1;
+      max-width: 140px;
+
+      ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+        display: none;
+      }
+
+      ::ng-deep .mat-mdc-text-field-wrapper {
+        padding: 0 8px;
+      }
+    }
+
+    .pay-button {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      min-width: auto;
+      padding: 0 12px;
+    }
+  }
+
+  .pdf-button {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    min-width: auto;
+    padding: 0 12px;
+  }
+}
+
+// ============================================
+// BILL VIEW
+// ============================================
+
+.bill-view-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.bill-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, #1976d2, #1565c0);
+  color: white;
+
+  @include m.dark-theme {
+    background: linear-gradient(135deg, #424242, #303030);
+  }
+
+  .back-btn {
+    color: white;
+    margin: -4px;
+  }
+
+  .header-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+
+    .bill-number {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .bill-date {
+      font-size: 12px;
+      opacity: 0.9;
+    }
+  }
+
+  .status-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 12px;
+    text-transform: uppercase;
+
+    &.status-paid {
+      background: rgba(76, 175, 80, 0.9);
+    }
+    &.status-pending {
+      background: rgba(255, 152, 0, 0.9);
+    }
+    &.status-partial {
+      background: rgba(33, 150, 243, 0.9);
+    }
+  }
+}
+
+.bill-info-section {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(0, 0, 0, 0.02);
+
+  @include m.dark-theme {
+    background: rgba(255, 255, 255, 0.03);
+  }
+
+  .info-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+      opacity: 0.6;
+    }
+
+    .label {
+      flex: 1;
+      color: var(--mdc-theme-text-secondary-on-background);
+    }
+
+    .value {
+      font-weight: 500;
+    }
+  }
+}
+
+.items-section {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+
+  .section-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mdc-theme-text-secondary-on-background);
+    margin-bottom: 10px;
+  }
+
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .item-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.03);
+    border-radius: 8px;
+
+    @include m.dark-theme {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .item-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+
+      .item-name {
+        font-size: 14px;
+        font-weight: 500;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .item-qty {
+        font-size: 12px;
+        color: var(--mdc-theme-text-secondary-on-background);
+        flex-shrink: 0;
+      }
+    }
+
+    .item-total {
+      font-size: 14px;
+      font-weight: 500;
+      flex-shrink: 0;
+    }
+  }
+}
+
+.totals-section {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border-top: 1px solid var(--mat-divider-color);
+
+  mat-divider {
+    margin: 6px 0;
+  }
+
+  .total-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 13px;
+
+    &.discount {
+      color: #4caf50;
+    }
+
+    &.grand-total {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    &.paid {
+      color: #4caf50;
+    }
+
+    &.remaining {
+      .remaining-value {
+        color: #f44336;
+        font-weight: 600;
+      }
+    }
+  }
+}
+
+.notes-section {
+  padding: 12px;
+  border-top: 1px solid var(--mat-divider-color);
+
+  .section-title {
+    display: block;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--mdc-theme-text-secondary-on-background);
+    margin-bottom: 6px;
+  }
+
+  .notes-text {
+    margin: 0;
+    font-size: 13px;
+    color: var(--mdc-theme-text-secondary-on-background);
+    font-style: italic;
+  }
+}
+
+.bill-footer {
+  display: flex;
+  gap: 10px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--mat-divider-color);
+
+  button {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}

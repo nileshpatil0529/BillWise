@@ -1,0 +1,242 @@
+<div class="customer-detail-container">
+  <!-- Loading State -->
+  @if (loading()) {
+    <div class="loading-container">
+      <mat-spinner diameter="40"></mat-spinner>
+      <p>Loading customer details...</p>
+    </div>
+  } @else if (selectedBill()) {
+    <!-- Bill Detail View -->
+    <div class="bill-view-container">
+      <!-- Header with Back Button -->
+      <div class="bill-view-header">
+        <button mat-icon-button class="back-btn" (click)="closeBillView()">
+          <mat-icon>arrow_back</mat-icon>
+        </button>
+        <div class="header-info">
+          <h2 class="bill-number">Bill #{{ selectedBill()!.billNumber || selectedBill()!.billId.slice(-8) }}</h2>
+          <span class="bill-date">{{ formatDate(selectedBill()!.createdAt) }}</span>
+        </div>
+        <mat-chip [class]="getStatusClass()">
+          {{ getStatusText() }}
+        </mat-chip>
+      </div>
+
+      <!-- Bill Info Section -->
+      <mat-card class="bill-info-card">
+        @if (selectedBill()!.tableId) {
+          <div class="info-row">
+            <span class="info-label">
+              <mat-icon>table_restaurant</mat-icon>
+              Table
+            </span>
+            <span class="info-value">{{ selectedBill()!.tableId }}</span>
+          </div>
+        }
+        <div class="info-row">
+          <span class="info-label">
+            <mat-icon>payments</mat-icon>
+            Payment
+          </span>
+          <span class="info-value">{{ selectedBill()!.paymentMethod | titlecase }}</span>
+        </div>
+      </mat-card>
+
+      <!-- Items Section -->
+      <mat-card class="items-card">
+        <h3 class="section-title">Items</h3>
+        <div class="items-list">
+          @for (item of selectedBill()!.items; track item.productId) {
+            <div class="item-row">
+              <div class="item-info">
+                <span class="item-name">{{ item.name }}</span>
+                <span class="item-qty">× {{ item.quantity }}</span>
+              </div>
+              <span class="item-total">{{ formatCurrency(item.finalTotal) }}</span>
+            </div>
+          }
+        </div>
+      </mat-card>
+
+      <!-- Totals Section -->
+      <mat-card class="totals-card">
+        <div class="total-row">
+          <span>Subtotal</span>
+          <span>{{ formatCurrency(selectedBill()!.subtotal) }}</span>
+        </div>
+        @if (selectedBill()!.discountTotal > 0) {
+          <div class="total-row discount">
+            <span>Discount</span>
+            <span>-{{ formatCurrency(selectedBill()!.discountTotal) }}</span>
+          </div>
+        }
+        <mat-divider></mat-divider>
+        <div class="total-row grand-total">
+          <span>Grand Total</span>
+          <span>{{ formatCurrency(selectedBill()!.grandTotal) }}</span>
+        </div>
+        <mat-divider></mat-divider>
+        <div class="total-row paid">
+          <span>Amount Paid</span>
+          <span>{{ formatCurrency(selectedBill()!.amountPaid) }}</span>
+        </div>
+        <div class="total-row remaining">
+          <span>Remaining</span>
+          <span class="remaining-amount">{{ formatCurrency(selectedBill()!.grandTotal - selectedBill()!.amountPaid) }}</span>
+        </div>
+      </mat-card>
+
+      @if (selectedBill()!.notes) {
+        <mat-card class="notes-card">
+          <h3 class="section-title">Notes</h3>
+          <p class="notes-text">{{ selectedBill()!.notes }}</p>
+        </mat-card>
+      }
+
+      <!-- Footer Actions -->
+      <div class="bill-footer-actions">
+        <button mat-stroked-button (click)="closeBillView()">
+          <mat-icon>arrow_back</mat-icon>
+          Back to Customer
+        </button>
+        <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
+          <mat-icon>print</mat-icon>
+          Print Bill
+        </button>
+      </div>
+    </div>
+  } @else if (customer()) {
+    <!-- Customer Detail View -->
+    <!-- Page Header -->
+    <div class="page-header">
+      <button mat-icon-button class="back-btn" (click)="goBack()">
+        <mat-icon>arrow_back</mat-icon>
+      </button>
+      <div class="header-content">
+        <div class="customer-info">
+          <h1 class="customer-name">{{ customer()!.name }}</h1>
+          <span class="customer-phone">
+            <mat-icon>phone</mat-icon>
+            {{ customer()!.phone }}
+          </span>
+        </div>
+        <div class="total-debt-container">
+          <span class="debt-label">Total Debt</span>
+          <mat-chip [class]="customer()!.totalDebt > 0 ? 'status-pending' : 'status-paid'">
+            {{ formatCurrency(customer()!.totalDebt) }}
+          </mat-chip>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content Area -->
+    <div class="content-area">
+      <!-- Unpaid Bills Section -->
+      <mat-card class="bills-card">
+        @if (customer()!.debts.length === 0) {
+          <div class="empty-state">
+            <mat-icon>check_circle</mat-icon>
+            <p>No unpaid bills</p>
+          </div>
+        } @else {
+          <div class="table-container">
+            <table mat-table [dataSource]="customer()!.debts" class="debts-table">
+              <!-- Bill Number Column -->
+              <ng-container matColumnDef="billNumber">
+                <th mat-header-cell *matHeaderCellDef>Bill #</th>
+                <td mat-cell *matCellDef="let debt" class="bill-number-cell">
+                  {{ debt.billNumber || debt.billId.slice(-8) }}
+                </td>
+              </ng-container>
+
+              <!-- Total Amount Column -->
+              <ng-container matColumnDef="total">
+                <th mat-header-cell *matHeaderCellDef>Total</th>
+                <td mat-cell *matCellDef="let debt">
+                  {{ formatCurrency(debt.amount) }}
+                </td>
+              </ng-container>
+
+              <!-- Paid Amount Column -->
+              <ng-container matColumnDef="paid">
+                <th mat-header-cell *matHeaderCellDef>Paid</th>
+                <td mat-cell *matCellDef="let debt" class="paid-cell">
+                  {{ formatCurrency(debt.paidAmount) }}
+                </td>
+              </ng-container>
+
+              <!-- Remaining Column -->
+              <ng-container matColumnDef="remaining">
+                <th mat-header-cell *matHeaderCellDef>Remaining</th>
+                <td mat-cell *matCellDef="let debt" class="remaining-cell">
+                  {{ formatCurrency(debt.remainingAmount) }}
+                </td>
+              </ng-container>
+
+              <!-- Date Column -->
+              <ng-container matColumnDef="date">
+                <th mat-header-cell *matHeaderCellDef>Date</th>
+                <td mat-cell *matCellDef="let debt">{{ formatDate(debt.createdAt) }}</td>
+              </ng-container>
+
+              <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+              <tr mat-row *matRowDef="let row; columns: displayedColumns;" 
+                  (click)="viewBillDetails(row)"
+                  class="clickable-row"
+                  matTooltip="Click to view bill details"></tr>
+            </table>
+          </div>
+        }
+      </mat-card>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="footer-actions">
+      @if (customer()!.debts.length > 0) {
+        <div class="payment-form">
+          <mat-form-field appearance="outline" class="payment-input">
+            <mat-label>Payment Amount</mat-label>
+            <input matInput 
+                   type="number" 
+                   [ngModel]="payAllAmount()"
+                   (ngModelChange)="payAllAmount.set($event)"
+                   [max]="customer()!.totalDebt"
+                   min="0"
+                   step="0.01">
+            <span matTextSuffix>{{ settingsService.settings().currency }}</span>
+          </mat-form-field>
+          <button mat-raised-button color="primary" 
+                  (click)="payAllDebts()" 
+                  [disabled]="paying() || payAllAmount() <= 0"
+                  class="pay-button">
+            @if (paying()) {
+              <mat-spinner diameter="20"></mat-spinner>
+            } @else {
+              <mat-icon>payments</mat-icon>
+            }
+            Pay
+          </button>
+        </div>
+      } @else {
+        <div></div>
+      }
+      <button mat-flat-button color="accent" 
+              class="pdf-button"
+              (click)="downloadCustomerBillsPDF()" 
+              [disabled]="generatingPDF() || customer()!.debts.length === 0"
+              matTooltip="Download detailed PDF report of all customer bills">
+        @if (generatingPDF()) {
+          <ng-container>
+            <mat-spinner diameter="20"></mat-spinner>
+            <span>Generating...</span>
+          </ng-container>
+        } @else {
+          <ng-container>
+            <mat-icon>picture_as_pdf</mat-icon>
+            <span>PDF Report</span>
+          </ng-container>
+        }
+      </button>
+    </div>
+  }
+</div>
