@@ -736,10 +736,27 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   clearCart(): void {
+    // Mark table as available if in hotel mode
+    if (this.isHotelMode() && this.selectedTable()) {
+      const currentTable = this.selectedTable();
+      this.hotelService.updateTableStatus(currentTable!.id, 'available', undefined).subscribe({
+        next: () => {
+          // Reload tables to reflect the change
+          this.hotelService.loadTables().subscribe();
+        },
+        error: (err) => {
+          console.error('Error updating table status:', err);
+        }
+      });
+    }
+
+    // Clear cart items from backend and reset UI
     this.billService.clearCart();
     this.billService.billDiscount.set(0);
     this.customerName.set('');
     this.customerPhone.set('');
+    this.selectedTable.set(null);
+    this.currentBillId.set(null);
   }
 
   saveBill(): void {
