@@ -157,9 +157,7 @@ export class CustomerDetailComponent implements OnInit {
   printBill(bill: Bill): void {
     this.billService.printBill(bill.billId).subscribe({
       next: (response: any) => {
-        if (response.success) {
-          this.snackBar.open('Bill sent to printer', 'Close', { duration: 3000 });
-        }
+        // Success - no snackbar needed
       },
       error: () => {
         this.snackBar.open('Failed to print bill', 'Close', { duration: 3000 });
@@ -218,7 +216,7 @@ export class CustomerDetailComponent implements OnInit {
           completed++;
           if (completed === total) {
             if (!hasError) {
-              this.snackBar.open('Payment processed successfully!', 'Close', { duration: 3000 });
+              // Payment successful - no snackbar needed
             }
             this.loadCustomer();
             this.paying.set(false);
@@ -242,13 +240,12 @@ export class CustomerDetailComponent implements OnInit {
     if (!customerData) return;
 
     this.generatingPDF.set(true);
-    this.snackBar.open('Preparing PDF report...', '', { duration: 2000 });
 
     this.fetchAllCustomerBills(customerData).then(allBills => {
       try {
         this.generatePDF(customerData, allBills);
         this.generatingPDF.set(false);
-        this.snackBar.open('PDF generated successfully!', 'Close', { duration: 3000 });
+        // PDF generated successfully - no snackbar needed
       } catch (error) {
         console.error('PDF generation error:', error);
         this.generatingPDF.set(false);

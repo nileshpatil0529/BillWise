@@ -419,7 +419,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.customerService.createCustomer({ name, phone }).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Customer added successfully', 'Close', { duration: 3000 });
           this.showAddCustomerButton.set(false);
           this.customerSuggestions.set([]);
         }
@@ -530,10 +529,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Highlight the added item
     this.highlightedProductId.set(product.productId);
     setTimeout(() => this.highlightedProductId.set(null), 1000);
-
-    this.snackBar.open(`${product.name} added to cart`, 'Close', {
-      duration: 2000
-    });
   }
 
   // Helper to get current quantity in cart for a product
@@ -603,10 +598,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Highlight the added item
     this.highlightedProductId.set(product.productId);
     setTimeout(() => this.highlightedProductId.set(null), 1000);
-
-    this.snackBar.open(`${quantity} ${product.unit || 'pcs'} of ${product.name} added to cart`, 'Close', {
-      duration: 2000
-    });
 
     this.closeLooseItemDialog();
   }
@@ -738,7 +729,6 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   removeItem(productId: string): void {
     this.billService.removeFromCart(productId);
-    this.snackBar.open('Item removed', 'Close', { duration: 2000 });
   }
 
   updateItemNote(item: CartItem, note: string): void {
@@ -750,7 +740,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.billService.billDiscount.set(0);
     this.customerName.set('');
     this.customerPhone.set('');
-    this.snackBar.open('Cart cleared', 'Close', { duration: 2000 });
   }
 
   saveBill(): void {
@@ -792,10 +781,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.billService.createBill(billData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open(`Bill ${response.data.billNumber} saved successfully!`, 'Close', {
-            duration: 3000,
-            panelClass: ['success-snackbar']
-          });
           this.clearCart();
         }
       },
@@ -1013,8 +998,6 @@ export class HomeComponent implements OnInit, OnDestroy {
               }
             });
           }
-          
-          this.snackBar.open(`Loaded order for ${table.tableNumber}`, 'Close', { duration: 2000 });
         }
       },
       error: () => {
@@ -1111,7 +1094,6 @@ export class HomeComponent implements OnInit, OnDestroy {
             });
             
             const tableLabel = newTable.tableType === 'parcel' ? `Parcel ${newTable.tableNumber}` : `Table ${newTable.tableNumber}`;
-            this.snackBar.open(`Changed to ${tableLabel}`, 'Close', { duration: 2000 });
           }
         },
         error: () => {
@@ -1132,9 +1114,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.selectedTable.set(newTable);
       this.saveSelectedTable(newTable.id);
       this.changingTable.set(false);
-      
-      const tableLabel = newTable.tableType === 'parcel' ? `Parcel ${newTable.tableNumber}` : `Table ${newTable.tableNumber}`;
-      this.snackBar.open(`Selected ${tableLabel}`, 'Close', { duration: 2000 });
     }
   }
 
@@ -1416,7 +1395,6 @@ ${items.map(item => {
     kotContent += `\n----------------------------`;
     
     // TODO: Send to actual printer when printing is implemented
-    this.snackBar.open('KOT sent to kitchen!', 'Close', { duration: 3000 });
   }
 
   // Complete bill and pay
@@ -1440,8 +1418,6 @@ ${items.map(item => {
     this.billService.updateBill(this.currentBillId()!, billData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Bill completed successfully!', 'Close', { duration: 3000 });
-          
           // Update table status to available
           if (table) {
             this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe({

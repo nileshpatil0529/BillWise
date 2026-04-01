@@ -271,10 +271,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
         if (product) {
           // Product found - open edit dialog
           this.beepService.playSuccess();
-          this.snackBar.open(`Product found: ${product.name}`, 'Close', {
-            duration: 2000,
-            panelClass: ['success-snackbar']
-          });
           this.openEditDialog(product);
         } else {
           // Product not found - open create dialog with barcode pre-filled
@@ -310,13 +306,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
         this.productService.createProduct(result).subscribe({
           next: (response) => {
             if (response.success) {
-              const message = response.updated 
-                ? response.message 
-                : 'Product created successfully';
-              this.snackBar.open(message, 'Close', { 
-                duration: 3000,
-                panelClass: ['success-snackbar']
-              });
               this.loadProducts(true);
             }
           },
@@ -339,10 +328,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
         this.productService.updateProduct(product.productId, result).subscribe({
           next: (response) => {
             if (response.success) {
-              this.snackBar.open('Product updated successfully', 'Close', { 
-                duration: 3000,
-                panelClass: ['success-snackbar']
-              });
               this.loadProducts(true);
             }
           },
@@ -359,10 +344,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
       this.productService.deleteProduct(product.productId).subscribe({
         next: (response) => {
           if (response.success) {
-            this.snackBar.open('Product deleted successfully', 'Close', { 
-              duration: 3000,
-              panelClass: ['success-snackbar']
-            });
             this.loadProducts(true);
           }
         },
@@ -382,7 +363,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
         a.download = `products_${new Date().toISOString().split('T')[0]}.xlsx`;
         a.click();
         window.URL.revokeObjectURL(url);
-        this.snackBar.open('Products exported successfully', 'Close', { duration: 3000 });
       },
       error: () => {
         this.snackBar.open('Failed to export products', 'Close', { duration: 3000 });
@@ -397,10 +377,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
       this.productService.importProducts(file).subscribe({
         next: (response) => {
           if (response.success) {
-            this.snackBar.open(`Imported ${response.data.imported} products`, 'Close', { 
-              duration: 3000,
-              panelClass: ['success-snackbar']
-            });
             this.loadProducts(true);
           }
         },
@@ -428,13 +404,6 @@ export class ProductsComponent implements OnInit, OnDestroy {
         this.productService.printBarcode(product.barcode, result.quantity).subscribe({
           next: (response: any) => {
             this.loading.set(false);
-            if (response.success) {
-              this.snackBar.open(
-                `Sent ${result.quantity} barcode(s) to printer successfully`,
-                'Close',
-                { duration: 3000, panelClass: ['success-snackbar'] }
-              );
-            }
           },
           error: (error: any) => {
             this.loading.set(false);

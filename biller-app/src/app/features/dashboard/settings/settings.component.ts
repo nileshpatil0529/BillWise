@@ -249,7 +249,7 @@ export class SettingsComponent implements OnInit {
     // Save to backend
     this.settingsService.updateSettings({ language: lang }).subscribe({
       next: () => {
-        this.snackBar.open(lang === 'hi' ? 'भाषा बदल गई' : 'Language changed', 'Close', { duration: 2000 });
+        // Language updated successfully - no snackbar feedback needed
       },
       error: () => {
         this.snackBar.open('Failed to save language preference', 'Close', { duration: 3000 });
@@ -311,7 +311,6 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
-        this.snackBar.open('Business settings saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
       error: () => {
@@ -342,7 +341,6 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
-        this.snackBar.open('Tax settings saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
       error: () => {
@@ -371,7 +369,6 @@ export class SettingsComponent implements OnInit {
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
         this.selectedReceiptLanguage.set(formValue.receiptLanguage || 'en');
-        this.snackBar.open('Receipt settings saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
       error: () => {
@@ -435,7 +432,6 @@ export class SettingsComponent implements OnInit {
 
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
-        this.snackBar.open('Categories saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
       error: () => {
@@ -489,7 +485,6 @@ export class SettingsComponent implements OnInit {
     
     this.authService.updateProfile({ profilePhoto: this.profilePhotoPreview() || '' }).subscribe({
       next: () => {
-        this.snackBar.open('Profile photo saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
         this.profilePhotoChanged.set(false);
       },
@@ -520,7 +515,6 @@ export class SettingsComponent implements OnInit {
       tableType: tableType
     }).subscribe({
       next: (response) => {
-        this.snackBar.open(response.message || 'Tables created successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
       error: () => {
@@ -539,7 +533,7 @@ export class SettingsComponent implements OnInit {
     if (confirm(`Are you sure you want to delete ${table.tableNumber}?`)) {
       this.hotelService.deleteTable(table.id).subscribe({
         next: () => {
-          this.snackBar.open('Table deleted successfully', 'Close', { duration: 3000 });
+          // Table deleted successfully
         },
         error: () => {
           this.snackBar.open('Failed to delete table', 'Close', { duration: 3000 });
@@ -567,7 +561,6 @@ export class SettingsComponent implements OnInit {
     this.saving.set(true);
     this.hotelService.createItemNote({ label }).subscribe({
       next: () => {
-        this.snackBar.open('Note added successfully', 'Close', { duration: 3000 });
         this.newNoteLabel.set('');
         this.saving.set(false);
       },
@@ -583,7 +576,7 @@ export class SettingsComponent implements OnInit {
     if (confirm(`Are you sure you want to delete "${note.label}"?`)) {
       this.hotelService.deleteItemNote(note.id).subscribe({
         next: () => {
-          this.snackBar.open('Note deleted successfully', 'Close', { duration: 3000 });
+          // Note deleted successfully
         },
         error: () => {
           this.snackBar.open('Failed to delete note', 'Close', { duration: 3000 });
@@ -648,7 +641,6 @@ export class SettingsComponent implements OnInit {
     this.saving.set(true);
     this.settingsService.updateSettings({ units: this.units() }).subscribe({
       next: () => {
-        this.snackBar.open('Units saved successfully', 'Close', { duration: 3000 });
         this.saving.set(false);
       },
       error: () => {

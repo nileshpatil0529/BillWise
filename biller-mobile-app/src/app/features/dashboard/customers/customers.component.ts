@@ -187,7 +187,6 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
         this.customerService.createCustomer(result).subscribe({
           next: (response) => {
             if (response.success) {
-              this.snackBar.open('Customer added successfully', 'Close', { duration: 3000 });
               this.loadCustomers(true);
             }
           },
@@ -210,7 +209,6 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
       if (result) {
         this.customerService.updateCustomer(customer.customerId, result).subscribe({
           next: () => {
-            this.snackBar.open('Customer updated successfully', 'Close', { duration: 3000 });
             this.loadCustomers(true);
           },
           error: (error) => {
@@ -230,7 +228,6 @@ export class CustomersComponent implements OnInit, AfterViewInit, OnDestroy {
     if (confirm(`Are you sure you want to delete ${customer.name}?`)) {
       this.customerService.deleteCustomer(customer.customerId).subscribe({
         next: () => {
-          this.snackBar.open('Customer deleted successfully', 'Close', { duration: 3000 });
           this.loadCustomers(true);
         },
         error: (error) => {

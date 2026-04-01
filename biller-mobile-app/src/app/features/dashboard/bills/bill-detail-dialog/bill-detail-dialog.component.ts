@@ -623,9 +623,6 @@ export class BillDetailDialogComponent {
     this.billService.printBill(this.data.billId).subscribe({
       next: (response: any) => {
         this.printing = false;
-        if (response.success) {
-          this.snackBar.open('Bill sent to printer', 'Close', { duration: 3000 });
-        }
       },
       error: (error: any) => {
         this.printing = false;

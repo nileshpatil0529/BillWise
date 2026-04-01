@@ -127,12 +127,8 @@ export class UsersComponent implements OnInit {
     if (confirm(`Reset password for ${user.displayName}? They will be required to change it on next login.`)) {
       this.userService.resetPassword(user.uid).subscribe({
         next: (response) => {
-          if (response.success) {
-            this.snackBar.open(
-              `Password reset successfully. New password: ${response.data?.defaultPassword}`,
-              'Close',
-              { duration: 5000 }
-            );
+          if (!response.success) {
+            // Only show error if reset failed
           }
         },
         error: (error) => {
@@ -149,7 +145,6 @@ export class UsersComponent implements OnInit {
     if (confirm(`Are you sure you want to ${action} ${user.displayName}?`)) {
       this.userService.updateUser(user.uid, { isActive: newStatus }).subscribe({
         next: () => {
-          this.snackBar.open(`User ${action}d successfully`, 'Close', { duration: 3000 });
           this.loadUsers();
         },
         error: (error) => {
@@ -163,7 +158,6 @@ export class UsersComponent implements OnInit {
     if (confirm(`Are you sure you want to delete ${user.displayName}? This action cannot be undone.`)) {
       this.userService.deleteUser(user.uid).subscribe({
         next: () => {
-          this.snackBar.open('User deleted successfully', 'Close', { duration: 3000 });
           this.loadUsers();
         },
         error: (error) => {

@@ -70,11 +70,6 @@ export class LoginComponent {
       next: (response) => {
         this.loading.set(false);
         if (response.success) {
-          this.snackBar.open('Login successful!', 'Close', {
-            duration: 2000,
-            panelClass: ['success-snackbar']
-          });
-          
           // Check if password change is required
           if (response.data?.user?.requirePasswordChange) {
             this.openChangePasswordDialog();

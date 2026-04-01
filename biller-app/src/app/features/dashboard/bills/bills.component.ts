@@ -311,13 +311,6 @@ export class BillsComponent implements OnInit {
     this.billService.printBill(bill.billId).subscribe({
       next: (response: any) => {
         this.loading.set(false);
-        if (response.success) {
-          this.snackBar.open(
-            `Bill ${bill.billNumber} sent to printer successfully`,
-            'Close',
-            { duration: 3000, panelClass: ['success-snackbar'] }
-          );
-        }
       },
       error: (error: any) => {
         this.loading.set(false);
@@ -470,7 +463,6 @@ export class BillsComponent implements OnInit {
       }
       
       doc.save(`sales_report_${new Date().toISOString().split('T')[0]}.pdf`);
-      this.snackBar.open('Report downloaded successfully', 'Close', { duration: 2000 });
     } catch (error) {
       console.error('Report generation error:', error);
       this.snackBar.open('Failed to generate report', 'Close', { duration: 3000 });

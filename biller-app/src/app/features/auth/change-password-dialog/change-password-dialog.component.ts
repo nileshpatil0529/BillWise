@@ -73,8 +73,6 @@ export class ChangePasswordDialogComponent {
     this.userService.changePassword({ currentPassword, newPassword }).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Password changed successfully', 'Close', { duration: 3000 });
-          
           // Password changed successfully - user state will be updated on next API call
           
           this.dialogRef.close(true);

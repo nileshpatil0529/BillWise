@@ -128,11 +128,6 @@ export class UserDialogComponent {
     request$.subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open(
-            this.data?.user ? 'User updated successfully' : 'User created successfully',
-            'Close',
-            { duration: 3000 }
-          );
           this.dialogRef.close(response.data);
         } else {
           this.snackBar.open(response.message || 'Operation failed', 'Close', { duration: 3000 });
