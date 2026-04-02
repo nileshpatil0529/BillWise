@@ -90,6 +90,11 @@ export class ProductsComponent implements OnInit, OnDestroy {
     private barcodeScannerService: BarcodeScannerService
   ) {}
 
+  // Check if hotel mode is enabled
+  isHotelMode(): boolean {
+    return this.settingsService.settings().applicationType === 'hotel';
+  }
+
   // Check if mobile mode is enabled
   isMobileMode(): boolean {
     return this.settingsService.settings().viewMode === 'mobile';

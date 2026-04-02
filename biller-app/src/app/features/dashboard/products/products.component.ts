@@ -93,9 +93,16 @@ export class ProductsComponent implements OnInit, OnDestroy {
     effect(() => {
       const settings = this.settingsService.settings();
       const isElectronics = settings.applicationType === 'electronics';
+      const isHotel = settings.applicationType === 'hotel';
       
-      // Filter out warranty column if not electronics mode
-      this.displayedColumns = this.allColumns.filter(col => col !== 'warranty' || isElectronics);
+      // Filter columns based on business type
+      this.displayedColumns = this.allColumns.filter(col => {
+        // Hide warranty for non-electronics
+        if (col === 'warranty' && !isElectronics) return false;
+        // Hide barcode and stock columns for hotels
+        if (isHotel && (col === 'barcode' || col === 'stockQuantity')) return false;
+        return true;
+      });
     });
   }
 

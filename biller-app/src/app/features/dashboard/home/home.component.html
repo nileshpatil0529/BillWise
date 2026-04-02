@@ -257,7 +257,7 @@
       <div class="search-results">
         @for (product of searchResults(); track product.productId) {
           <div class="search-result-item" 
-               [class.out-of-stock]="product.stockQuantity <= 0"
+               [class.out-of-stock]="!isHotelMode() && product.stockQuantity <= 0"
                [class.in-cart]="getCartQuantity(product.productId) > 0"
                (click)="selectProduct(product)">
             <div class="product-info">
@@ -265,18 +265,20 @@
               <span class="product-code">{{ product.productId }}</span>
             </div>
             <div class="product-price">{{ formatCurrency(product.unitPrice) }}</div>
-            @if (product.stockQuantity <= 0) {
-              <mat-chip class="stock-chip out-of-stock-chip">
-                <mat-icon>block</mat-icon>
-                Out of Stock
-              </mat-chip>
-            } @else if (getCartQuantity(product.productId) > 0) {
-              <mat-chip class="stock-chip in-cart-chip">
-                <mat-icon>shopping_cart</mat-icon>
-                {{ product.stockQuantity }} left
-              </mat-chip>
-            } @else if (product.stockQuantity <= 10) {
-              <mat-chip color="accent" class="stock-chip">Low Stock: {{ product.stockQuantity }}</mat-chip>
+            @if (!isHotelMode()) {
+              @if (product.stockQuantity <= 0) {
+                <mat-chip class="stock-chip out-of-stock-chip">
+                  <mat-icon>block</mat-icon>
+                  Out of Stock
+                </mat-chip>
+              } @else if (getCartQuantity(product.productId) > 0) {
+                <mat-chip class="stock-chip in-cart-chip">
+                  <mat-icon>shopping_cart</mat-icon>
+                  {{ product.stockQuantity }} left
+                </mat-chip>
+              } @else if (product.stockQuantity <= 10) {
+                <mat-chip color="accent" class="stock-chip">Low Stock: {{ product.stockQuantity }}</mat-chip>
+              }
             }
           </div>
         }
@@ -630,14 +632,26 @@
 
         <mat-card-actions>
           @if (isHotelMode()) {
-            <!-- Hotel Mode Actions -->
+            <!-- Hotel Mode Actions - Modern Action Buttons -->
             <button mat-raised-button color="accent" (click)="printKOT()" 
-                    [disabled]="getNewItems().length === 0">
-              <mat-icon>receipt_long</mat-icon>
-              {{ translateService.t('hotel.printKot') }}
+                    [disabled]="getNewItems().length === 0" class="action-btn kot-btn">
+              <mat-icon>restaurant</mat-icon>
+              {{ translateService.t('hotel.printKot') || 'Print KOT' }}
             </button>
+            <button mat-icon-button [matMenuTriggerFor]="kotMenu" 
+                    class="menu-btn" [disabled]="billService.cartItems().length === 0">
+              <mat-icon>more_vert</mat-icon>
+            </button>
+            <mat-menu #kotMenu="matMenu">
+              <button mat-menu-item (click)="saveOrder()" 
+                      [disabled]="billService.cartItems().length === 0 || !hasUnsavedChanges()">
+                <mat-icon>save</mat-icon>
+                <span>{{ translateService.t('common.save') || 'Save Order' }}</span>
+              </button>
+            </mat-menu>
             <button mat-raised-button color="primary" (click)="completeBill()" 
-                    [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0">
+                    [disabled]="isPayButtonDisabled()"
+                    class="action-btn pay-btn">
               <mat-icon>payment</mat-icon>
               {{ translateService.t('home.payNow') }}
             </button>

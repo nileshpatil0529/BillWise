@@ -606,20 +606,6 @@
     align-items: center;
     gap: v.$spacing-sm;
 
-    .new-badge {
-      font-size: 10px;
-      font-weight: 600;
-      color: v.$light-primary;
-      background: rgba(v.$light-primary, 0.15);
-      padding: 4px 8px;
-      border-radius: 4px;
-      
-      @include m.dark-theme {
-        color: v.$dark-primary;
-        background: rgba(v.$dark-primary, 0.2);
-      }
-    }
-
     button { 
       color: v.$light-text-secondary;
       width: 36px;
@@ -827,12 +813,14 @@
 .cart-footer {
   position: relative;
   background: v.$light-surface;
-  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.08);
   z-index: 50;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 
   @include m.dark-theme {
     background: v.$dark-surface;
-    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.4);
+    border-top-color: rgba(255, 255, 255, 0.08);
   }
 
   &.expanded {
@@ -844,63 +832,123 @@
 .footer-collapsed {
   display: flex;
   align-items: center;
-  gap: v.$spacing-md;
-  padding: v.$spacing-md;
-  padding-bottom: calc(v.$spacing-md + env(safe-area-inset-bottom, 0));
+  gap: v.$spacing-xs;
+  padding: v.$spacing-sm v.$spacing-md;
+  padding-bottom: calc(v.$spacing-sm + env(safe-area-inset-bottom, 0));
+  background: rgba(0, 0, 0, 0.02);
+  
+  @include m.dark-theme { 
+    background: rgba(255, 255, 255, 0.03);
+  }
 
   .footer-total {
     flex: 1;
+    min-width: 0;
+    padding-right: v.$spacing-sm;
 
     .total-label {
       display: block;
-      font-size: 11px;
+      font-size: 10px;
       color: v.$light-text-secondary;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 2px;
+      letter-spacing: 0.8px;
+      font-weight: 600;
+      margin-bottom: 4px;
       @include m.dark-theme { color: v.$dark-text-secondary; }
     }
 
     .total-amount {
       font-size: 22px;
-      font-weight: 700;
+      font-weight: 800;
       color: v.$light-primary;
+      white-space: nowrap;
+      line-height: 1;
       @include m.dark-theme { color: v.$dark-primary; }
     }
   }
 
   .expand-btn { 
     color: v.$light-text-secondary;
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
     
     @include m.dark-theme { 
-      color: white;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 50%;
+      color: v.$dark-text-secondary;
     }
     
     mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
+      font-size: 26px;
+      width: 26px;
+      height: 26px;
     }
   }
 
-  .action-btn {
-    height: 44px;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 0 v.$spacing-lg;
-    border-radius: v.$radius-sm;
-    min-width: 100px;
-
-    &.kot-btn { 
+  // Action Buttons Group - Modern Design
+  .action-buttons {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-xs;
+    flex-shrink: 0;
+    
+    .action-btn {
+      height: 48px;
       padding: 0 v.$spacing-md;
-      min-width: 80px;
+      font-size: 14px;
+      font-weight: 700;
+      border-radius: v.$radius-lg;
+      letter-spacing: 0.3px;
+      box-shadow: 0 3px 12px rgba(0, 0, 0, 0.12);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      
+      &:not(:disabled):active {
+        transform: scale(0.96);
+      }
+      
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        margin-right: 6px;
+      }
+      
+      &.kot-btn {
+        flex: 1;
+        max-width: 140px;
+      }
+      
+      &.pay-btn {
+        min-width: 90px;
+      }
+    }
+    
+    .menu-btn {
+      width: 40px;
+      height: 48px;
+      color: v.$light-text-secondary;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+      
+      mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+      
+      &:hover:not(:disabled) {
+        background: rgba(0, 0, 0, 0.04);
+        @include m.dark-theme {
+          background: rgba(255, 255, 255, 0.08);
+        }
+      }
     }
   }
 }
@@ -1098,16 +1146,54 @@
 
 // Footer Actions
 .footer-actions {
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   gap: v.$spacing-sm;
+  margin-top: v.$spacing-md;
 
-  button {
-    flex: 1;
-    height: 44px;
-    font-size: 13px;
-    font-weight: 600;
-    border-radius: v.$radius-sm;
+  .action-btn-expanded {
+    height: 56px;
+    font-size: 14px;
+    font-weight: 700;
+    border-radius: v.$radius-lg;
+    letter-spacing: 0.3px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
 
-    mat-icon { font-size: 18px; width: 18px; height: 18px; margin-right: v.$spacing-xs; }
+    &:not(:disabled):active {
+      transform: scale(0.98);
+    }
+
+    mat-icon { 
+      font-size: 20px; 
+      width: 20px; 
+      height: 20px;
+      margin: 0;
+    }
+    
+    &.kot-btn {
+      grid-column: span 2;
+    }
+    
+    &.save-btn {
+      grid-column: span 2;
+      color: v.$light-text-primary;
+      border: 2px solid v.$light-divider;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+      
+      @include m.dark-theme {
+        color: v.$dark-text-primary;
+        border-color: v.$dark-divider;
+      }
+    }
+    
+    &.pay-btn {
+      grid-column: span 2;
+    }
   }
 }

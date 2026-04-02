@@ -16,6 +16,7 @@ import { MatDialogModule, MatDialog } from '@angular/material/dialog';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
+import { MatMenuModule } from '@angular/material/menu';
 import { debounceTime, Subject, Subscription } from 'rxjs';
 
 import { ProductService } from '../../../core/services/product.service';
@@ -76,7 +77,8 @@ interface AttendedTableState {
     MatDialogModule,
     MatTooltipModule,
     MatChipsModule,
-    MatBadgeModule
+    MatBadgeModule,
+    MatMenuModule
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -98,6 +100,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   billStatus = signal<'new' | 'draft' | 'kot-printed'>('new');
   kotPrintedQuantities = signal<KotPrintedQuantities>({}); // Track quantities that have been KOT printed
   hotelModeInitialized = signal(false); // Flag to track if hotel mode has finished initializing
+  savedCartSnapshot = signal<string>(''); // JSON snapshot of last saved cart state
   
   // Multi-table attendance state
   attendedTables = signal<AttendedTableState[]>([]);
@@ -506,8 +509,9 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   selectProduct(product: Product): void {
     // stockQuantity is already adjusted (original - cart qty) from search/barcode scan
-    // Check if no stock available
-    if (product.stockQuantity <= 0) {
+    // Check if no stock available (skip for hotel mode - hotels don't track inventory)
+    const isHotel = this.isHotelMode();
+    if (!isHotel && product.stockQuantity <= 0) {
       this.beepService.playError();
       this.openOutOfStockDialog(product);
       this.searchQuery.set('');
@@ -622,8 +626,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     // For loose items, use 0.01 as minimum, for regular items use 1
     const minQuantity = item.isLooseItem ? 0.01 : 1;
     
-    // Check stock limit when increasing quantity
-    if (change > 0 && newQuantity > item.stockQuantity) {
+    // Check stock limit when increasing quantity (skip for hotel mode)
+    if (change > 0 && !this.isHotelMode() && newQuantity > item.stockQuantity) {
       this.beepService.playError();
       this.snackBar.open(`Only ${item.stockQuantity} available in stock`, 'Close', {
         duration: 3000,
@@ -976,6 +980,7 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.customerName.set('');
       this.customerPhone.set('');
       this.billService.clearCart();
+      this.savedCartSnapshot.set('[]'); // Initialize empty snapshot for new order
     }
   }
 
@@ -985,6 +990,8 @@ export class HomeComponent implements OnInit, OnDestroy {
       next: (response) => {
         if (response.success && response.data) {
           const bill = response.data;
+          const isAlreadyTrackingThisBill = this.currentBillId() === bill.billId;
+          
           this.selectedTable.set(table);
           this.saveSelectedTable(table.id);
           this.currentBillId.set(bill.billId);
@@ -1007,14 +1014,17 @@ export class HomeComponent implements OnInit, OnDestroy {
               for (let i = 0; i < item.quantity; i++) {
                 this.billService.addToCart(product);
               }
-              // Mark already KOT printed items with their quantities
-              if (item.kotPrinted) {
+              // Only load KOT printed quantities if we're NOT already tracking this bill
+              // (to preserve in-memory tracking which is more accurate)
+              if (!isAlreadyTrackingThisBill && item.kotPrinted) {
                 this.kotPrintedQuantities.update(quantities => {
                   return { ...quantities, [item.productId]: item.quantity };
                 });
               }
             });
           }
+          // Update snapshot after loading bill items
+          this.updateCartSnapshot();
         }
       },
       error: () => {
@@ -1039,6 +1049,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.customerName.set('');
     this.customerPhone.set('');
     this.billService.clearCart();
+    this.savedCartSnapshot.set(''); // Reset snapshot
   }
   
   // State for changing table
@@ -1189,6 +1200,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         this.billService.addToCart(product);
       }
     });
+    // Update snapshot after restoring cart
+    this.updateCartSnapshot();
   }
   
   // Switch to another attended table
@@ -1302,7 +1315,141 @@ export class HomeComponent implements OnInit, OnDestroy {
     return Object.keys(this.kotPrintedQuantities()).length > 0;
   }
 
-  // Print KOT (Kitchen Order Ticket)
+  // Check if Pay button should be disabled
+  isPayButtonDisabled(): boolean {
+    const hasItems = this.billService.cartItems().length > 0;
+    const hasKotPrinted = this.hasKotPrintedItems();
+    const hasChanges = this.hasUnsavedChanges();
+    
+    // Pay is disabled if: no items OR (no KOT printed AND has unsaved changes)
+    // Pay is enabled if: has items AND (KOT printed OR no changes)
+    return !hasItems || (!hasKotPrinted && hasChanges);
+  }
+
+  // Check if cart has unsaved changes
+  hasUnsavedChanges(): boolean {
+    const currentSnapshot = JSON.stringify(this.billService.cartItems());
+    return currentSnapshot !== this.savedCartSnapshot();
+  }
+
+  // Update saved cart snapshot
+  private updateCartSnapshot(): void {
+    this.savedCartSnapshot.set(JSON.stringify(this.billService.cartItems()));
+  }
+
+  // Smart button - determines button state based on context
+  getSmartButtonText(): string {
+    const newItems = this.getNewItems();
+    if (newItems.length > 0) {
+      return 'KOT';
+    }
+    return 'Save';
+  }
+
+  getSmartButtonIcon(): string {
+    const newItems = this.getNewItems();
+    return newItems.length > 0 ? 'receipt_long' : 'save';
+  }
+
+  isSmartButtonDisabled(): boolean {
+    const hasNewItems = this.getNewItems().length > 0;
+    const hasChanges = this.hasUnsavedChanges();
+    const hasItems = this.billService.cartItems().length > 0;
+    
+    // Disabled if: no items OR (no new items AND no unsaved changes)
+    return !hasItems || (!hasNewItems && !hasChanges);
+  }
+
+  // Smart action handler - calls appropriate method based on state
+  handleSmartAction(): void {
+    const newItems = this.getNewItems();
+    if (newItems.length > 0) {
+      // Has new items to print - do KOT (which saves + prints)
+      this.printKOT();
+    } else {
+      // Only cart changes - just save
+      this.saveOrder();
+    }
+  }
+
+  // Save order without printing KOT (for quantity changes or just saving)
+  saveOrder(): void {
+    const table = this.selectedTable();
+    if (!table) return;
+
+    // Check if there are any changes to save
+    if (this.billService.cartItems().length === 0) {
+      this.snackBar.open('No items to save', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const billData = {
+      tableId: table.id,
+      billStatus: 'draft' as const,
+      paymentMethod: this.paymentMethod(),
+      paymentStatus: 'pending' as const,
+      amountPaid: 0,
+      customerName: this.customerName(),
+      customerPhone: this.customerPhone(),
+      businessTypeData: { tableNumber: table.tableNumber, tableType: table.tableType },
+      taxEnabled: this.settingsService.settings().taxEnabled,
+      items: this.billService.cartItems().map(item => ({
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice
+      }))
+    };
+
+    if (this.currentBillId()) {
+      // Update existing bill - include items for saving
+      const updateData = {
+        ...billData,
+        items: this.billService.cartItems().map(item => ({
+          productId: item.productId,
+          name: item.name,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice
+        }))
+      } as any;
+      this.billService.updateBill(this.currentBillId()!, updateData).subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.updateCartSnapshot(); // Update snapshot after successful save
+            this.snackBar.open('Order saved successfully', 'Close', { duration: 2000 });
+            // Reload tables to update grandTotal
+            this.hotelService.loadTables().subscribe();
+          }
+        },
+        error: () => {
+          this.snackBar.open('Failed to save order', 'Close', { duration: 3000 });
+        }
+      });
+    } else {
+      // Create new bill with items
+      this.billService.createBill({ ...billData, items: billData.items } as any).subscribe({
+        next: (response) => {
+          if (response.success) {
+            this.currentBillId.set(response.data.billId);
+            this.updateCartSnapshot(); // Update snapshot after successful save
+            this.snackBar.open('Order saved successfully', 'Close', { duration: 2000 });
+            
+            // Update table status and reload tables
+            this.hotelService.updateTableStatus(table.id, 'occupied', response.data.billId).subscribe({
+              next: () => {
+                this.hotelService.loadTables().subscribe();
+              }
+            });
+          }
+        },
+        error: () => {
+          this.snackBar.open('Failed to save order', 'Close', { duration: 3000 });
+        }
+      });
+    }
+  }
+
+  // Print KOT (Kitchen Order Ticket) - Save and Print
   printKOT(): void {
     const newItems = this.getNewItems();
     if (newItems.length === 0) {
@@ -1324,30 +1471,48 @@ export class HomeComponent implements OnInit, OnDestroy {
       customerPhone: this.customerPhone(),
       businessTypeData: { tableNumber: table.tableNumber, tableType: table.tableType },
       taxEnabled: this.settingsService.settings().taxEnabled,
-      kotItems: newItems.map(item => item.productId) // Mark these items as KOT printed
+      items: this.billService.cartItems().map(item => ({
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.unitPrice
+      }))
     };
 
     if (this.currentBillId()) {
-      // Update existing bill with new items
-      // Include items data so they get added to the database
+      // Update existing bill with ALL items (not just new ones)
       const updateData = {
         ...billData,
-        items: newItems.map(item => ({
+        items: this.billService.cartItems().map(item => ({
           productId: item.productId,
           name: item.name,
           quantity: item.quantity,
           unitPrice: item.unitPrice
         }))
-      } as any; // Backend accepts partial item data for new items
+      } as any;
       this.billService.updateBill(this.currentBillId()!, updateData).subscribe({
         next: (response) => {
           if (response.success) {
-            this.printKOTReceipt(newItems);
-            // Update KOT printed quantities
-            this.updateKotPrintedQuantities(newItems);
-            this.billStatus.set('kot-printed');
-            // Reload tables to update grandTotal
+            // Data saved successfully - update snapshot and reload tables
+            this.updateCartSnapshot();
             this.hotelService.loadTables().subscribe();
+            
+            // Now try to print KOT via thermal printer
+            this.billService.printKOT(this.currentBillId()!).subscribe({
+              next: (printResponse) => {
+                if (printResponse.success) {
+                  this.snackBar.open('Order saved and KOT printed successfully', 'Close', { duration: 2000 });
+                  // Update KOT printed quantities only on successful print
+                  this.updateKotPrintedQuantities(newItems);
+                  this.billStatus.set('kot-printed');
+                }
+              },
+              error: (err) => {
+                const message = err.error?.message || 'Failed to print KOT';
+                this.snackBar.open(`Order saved but ${message}. Please retry printing.`, 'Close', { duration: 5000 });
+                // Bill is saved, just print failed - user can retry
+              }
+            });
           }
         },
         error: () => {
@@ -1355,20 +1520,35 @@ export class HomeComponent implements OnInit, OnDestroy {
         }
       });
     } else {
-      // Create new bill
-      this.billService.createBill(billData).subscribe({
+      // Create new bill with items
+      this.billService.createBill({ ...billData, items: billData.items } as any).subscribe({
         next: (response) => {
           if (response.success) {
             this.currentBillId.set(response.data.billId);
-            this.printKOTReceipt(newItems);
-            // Update KOT printed quantities
-            this.updateKotPrintedQuantities(newItems);
-            this.billStatus.set('kot-printed');
+            // Data saved successfully - update snapshot, table status, and reload tables
+            this.updateCartSnapshot();
             
-            // Update table status and reload tables
+            // Update table status
             this.hotelService.updateTableStatus(table.id, 'occupied', response.data.billId).subscribe({
               next: () => {
                 this.hotelService.loadTables().subscribe();
+              }
+            });
+            
+            // Now try to print KOT via thermal printer
+            this.billService.printKOT(response.data.billId).subscribe({
+              next: (printResponse) => {
+                if (printResponse.success) {
+                  this.snackBar.open('Order saved and KOT printed successfully', 'Close', { duration: 2000 });
+                  // Update KOT printed quantities only on successful print
+                  this.updateKotPrintedQuantities(newItems);
+                  this.billStatus.set('kot-printed');
+                }
+              },
+              error: (err) => {
+                const message = err.error?.message || 'Failed to print KOT';
+                this.snackBar.open(`Order saved but ${message}. Please retry printing.`, 'Close', { duration: 5000 });
+                // Bill is saved, just print failed - user can retry
               }
             });
           }
@@ -1389,29 +1569,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       });
       return updated;
     });
-  }
-
-  // Print KOT receipt (simplified - only items and notes)
-  private printKOTReceipt(items: KotNewItem[]): void {
-    const table = this.selectedTable();
-    const tableLabel = table?.tableType === 'parcel' 
-      ? `Parcel ${table?.tableNumber}` 
-      : `Table ${table?.tableNumber}`;
-    
-    let kotContent = `
-=== KITCHEN ORDER TICKET ===
-${tableLabel}
-Time: ${new Date().toLocaleTimeString()}
-----------------------------
-ITEMS:
-${items.map(item => {
-  const noteText = item.note ? `  (${item.note})` : '';
-  return `${item.quantity}x ${item.name}${noteText}`;
-}).join('\n')}`;
-    
-    kotContent += `\n----------------------------`;
-    
-    // TODO: Send to actual printer when printing is implemented
   }
 
   // Complete bill and pay

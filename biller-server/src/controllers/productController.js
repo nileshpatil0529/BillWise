@@ -456,7 +456,8 @@ export const importProducts = async (req, res) => {
     const data = XLSX.utils.sheet_to_json(worksheet);
 
     // Get enabled categories from settings for validation
-    const settings = db.prepare('SELECT categories FROM settings WHERE id = 1').get();
+    const settings = db.prepare('SELECT categories, applicationType FROM settings WHERE id = 1').get();
+    const isHotelMode = settings && settings.applicationType === 'hotel';
     let validCategories = ['General'];
     if (settings && settings.categories) {
       const allCategories = JSON.parse(settings.categories);
@@ -491,7 +492,8 @@ export const importProducts = async (req, res) => {
           const productName = (row.name || row.Name || row['Product Name'] || '').toString().trim();
           
           // Handle barcode - convert from number/scientific notation if needed
-          let barcodeValue = row.barcode || row.Barcode || row['Barcode'] || '';
+          // For hotel mode, use empty string
+          let barcodeValue = isHotelMode ? '' : (row.barcode || row.Barcode || row['Barcode'] || '');
           if (typeof barcodeValue === 'number') {
             // Convert number to string, handling scientific notation
             barcodeValue = barcodeValue.toFixed(0); // Convert to integer string
@@ -499,7 +501,9 @@ export const importProducts = async (req, res) => {
           const productBarcode = barcodeValue.toString().trim();
           
           const productCategory = (row.category || row.Category || 'General').toString().trim();
-          const stockQuantity = parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
+          
+          // For hotel mode, use default stock value of 9999
+          const stockQuantity = isHotelMode ? 9999 : parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
           const productStatus = (row.status || row.Status || 'active').toString().trim().toLowerCase();
           const now = new Date().toISOString();
 
@@ -564,9 +568,9 @@ export const importProducts = async (req, res) => {
               row.description || row.Description || '',
               productBarcode,
               parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
-              parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
+              isHotelMode ? 0 : parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
               stockQuantity,
-              parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              isHotelMode ? 0 : parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
               isLooseItem,
               unit,
               warrantyMonths,
@@ -591,9 +595,9 @@ export const importProducts = async (req, res) => {
               row.description || row.Description || '',
               productBarcode,
               parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
-              parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
+              isHotelMode ? 0 : parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
               stockQuantity,
-              parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              isHotelMode ? 0 : parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
               isLooseItem,
               unit,
               warrantyMonths,
@@ -672,24 +676,39 @@ export const exportProducts = async (req, res) => {
 
     const isGroceryMode = settings && settings.applicationType === 'grocery';
     const isElectronicsMode = settings && settings.applicationType === 'electronics';
+    const isHotelMode = settings && settings.applicationType === 'hotel';
 
     // Create workbook with ExcelJS
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products');
 
-    // Define columns - include loose item fields for grocery mode
+    // Define columns - exclude stock/cost fields for hotel mode
     const columns = [
       { header: 'Product Name', key: 'name', width: 30 },
-      { header: 'Name (Hindi)', key: 'nameHi', width: 30 },
-      { header: 'Barcode', key: 'barcode', width: 20 },
+      { header: 'Name (Hindi)', key: 'nameHi', width: 30 }
+    ];
+    
+    // Add barcode only for non-hotel modes
+    if (!isHotelMode) {
+      columns.push({ header: 'Barcode', key: 'barcode', width: 20 });
+    }
+    
+    columns.push(
       { header: 'Category', key: 'category', width: 20 },
       { header: 'Description', key: 'description', width: 40 },
-      { header: 'Unit Price', key: 'unitPrice', width: 12 },
-      { header: 'Cost Price', key: 'costPrice', width: 12 },
-      { header: 'Stock Quantity', key: 'stockQuantity', width: 15 },
-      { header: 'Low Stock Alert', key: 'lowStockAlert', width: 15 },
-      { header: 'Status', key: 'status', width: 12 }
-    ];
+      { header: 'Unit Price', key: 'unitPrice', width: 12 }
+    );
+    
+    // Add cost price and stock fields only for non-hotel modes
+    if (!isHotelMode) {
+      columns.push(
+        { header: 'Cost Price', key: 'costPrice', width: 12 },
+        { header: 'Stock Quantity', key: 'stockQuantity', width: 15 },
+        { header: 'Low Stock Alert', key: 'lowStockAlert', width: 15 }
+      );
+    }
+    
+    columns.push({ header: 'Status', key: 'status', width: 12 });
 
     // Add loose item columns for grocery mode
     if (isGroceryMode) {
@@ -709,15 +728,23 @@ export const exportProducts = async (req, res) => {
       const row = {
         name: p.name,
         nameHi: p.nameHi || '',
-        barcode: p.barcode || '',
         category: p.category,
         description: p.description,
         unitPrice: p.unitPrice,
-        costPrice: p.costPrice,
-        stockQuantity: p.stockQuantity,
-        lowStockAlert: p.lowStockAlert,
         status: p.status
       };
+      
+      // Add barcode only for non-hotel modes
+      if (!isHotelMode) {
+        row.barcode = p.barcode || '';
+      }
+      
+      // Add cost price and stock fields only for non-hotel modes
+      if (!isHotelMode) {
+        row.costPrice = p.costPrice;
+        row.stockQuantity = p.stockQuantity;
+        row.lowStockAlert = p.lowStockAlert;
+      }
       
       if (isGroceryMode) {
         row.isLooseItem = p.isLooseItem ? 'Yes' : 'No';

@@ -78,25 +78,31 @@
                 @if (product.category) {
                   <span class="category-tag">{{ product.category }}</span>
                 }
-                @if (product.barcode) {
+                @if (product.barcode && !isHotelMode()) {
                   <span class="barcode">{{ product.barcode }}</span>
                 }
               </div>
             </div>
             <div class="product-right">
               <span class="product-price">{{ formatCurrency(product.unitPrice) }}</span>
-              <div class="stock-row">
-                <div class="stock-info" [class.low-stock]="product.stockQuantity <= (product.lowStockAlert || 10)" [class.out-of-stock]="product.stockQuantity <= 0">
-                  @if (product.stockQuantity <= 0) {
-                    <span>Out</span>
-                  } @else {
-                    <span>{{ product.stockQuantity }}</span>
-                  }
+              @if (!isHotelMode()) {
+                <div class="stock-row">
+                  <div class="stock-info" [class.low-stock]="product.stockQuantity <= (product.lowStockAlert || 10)" [class.out-of-stock]="product.stockQuantity <= 0">
+                    @if (product.stockQuantity <= 0) {
+                      <span>Out</span>
+                    } @else {
+                      <span>{{ product.stockQuantity }}</span>
+                    }
+                  </div>
+                  <button mat-icon-button class="action-btn delete" (click)="$event.stopPropagation(); deleteProduct(product)" matTooltip="Delete">
+                    <mat-icon>delete_outline</mat-icon>
+                  </button>
                 </div>
+              } @else {
                 <button mat-icon-button class="action-btn delete" (click)="$event.stopPropagation(); deleteProduct(product)" matTooltip="Delete">
                   <mat-icon>delete_outline</mat-icon>
                 </button>
-              </div>
+              }
             </div>
           </div>
           

@@ -254,21 +254,23 @@
     <div class="search-results">
         @for (product of searchResults(); track product.productId) {
           <div class="search-result-item" 
-               [class.out-of-stock]="product.stockQuantity <= 0"
+               [class.out-of-stock]="!isHotelMode() && product.stockQuantity <= 0"
                [class.in-cart]="getCartQuantity(product.productId) > 0"
                (click)="selectProduct(product)">
             <div class="product-info">
               <span class="product-name">{{ getDisplayName(product) }}</span>
             </div>
             <div class="product-price">{{ formatCurrency(product.unitPrice) }}</div>
-            @if (product.stockQuantity <= 0) {
-              <span class="stock-label out-of-stock-label">Out</span>
-            } @else if (getCartQuantity(product.productId) > 0) {
-              <span class="stock-label in-stock-label">{{ product.stockQuantity }}</span>
-            } @else if (product.stockQuantity <= 10) {
-              <span class="stock-label low-stock-label">{{ product.stockQuantity }}</span>
-            } @else {
-              <span class="stock-label in-stock-label">{{ product.stockQuantity }}</span>
+            @if (!isHotelMode()) {
+              @if (product.stockQuantity <= 0) {
+                <span class="stock-label out-of-stock-label">Out</span>
+              } @else if (getCartQuantity(product.productId) > 0) {
+                <span class="stock-label in-stock-label">{{ product.stockQuantity }}</span>
+              } @else if (product.stockQuantity <= 10) {
+                <span class="stock-label low-stock-label">{{ product.stockQuantity }}</span>
+              } @else {
+                <span class="stock-label in-stock-label">{{ product.stockQuantity }}</span>
+              }
             }
           </div>
         }
@@ -351,9 +353,6 @@
         }
       </div>
       <div class="cart-actions">
-        @if (isHotelMode() && getNewItems().length > 0) {
-          <span class="new-badge">{{ getNewItems().length }} new</span>
-        }
         <button mat-icon-button color="warn" (click)="clearCart()" 
                 [disabled]="billService.cartItems().length === 0">
           <mat-icon>delete</mat-icon>
@@ -432,14 +431,30 @@
         </button>
         @if (!showBillSummary()) {
           @if (isHotelMode()) {
-            <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                    [disabled]="getNewItems().length === 0" class="action-btn kot-btn">
-              KOT
-            </button>
-            <button mat-flat-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
-                    [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0" class="action-btn">
-              Pay
-            </button>
+            <div class="action-buttons">
+              <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
+                      [disabled]="getNewItems().length === 0" class="action-btn kot-btn">
+                <mat-icon>restaurant</mat-icon>
+                <span>KOT</span>
+              </button>
+              <button mat-icon-button [matMenuTriggerFor]="actionMenu" 
+                      class="menu-btn" [disabled]="billService.cartItems().length === 0"
+                      (click)="$event.stopPropagation()">
+                <mat-icon>more_vert</mat-icon>
+              </button>
+              <button mat-flat-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
+                      [disabled]="isPayButtonDisabled()" class="action-btn pay-btn">
+                <mat-icon>payment</mat-icon>
+                <span>Pay</span>
+              </button>
+            </div>
+            <mat-menu #actionMenu="matMenu">
+              <button mat-menu-item (click)="saveOrder()" 
+                      [disabled]="billService.cartItems().length === 0 || !hasUnsavedChanges()">
+                <mat-icon>save</mat-icon>
+                <span>Save Order</span>
+              </button>
+            </mat-menu>
           } @else {
             <button mat-flat-button color="primary" (click)="saveBill(); $event.stopPropagation()" 
                     [disabled]="isSaveBillDisabled()" class="action-btn">
@@ -558,14 +573,21 @@
           <div class="footer-actions">
             @if (isHotelMode()) {
               <button mat-raised-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                      [disabled]="getNewItems().length === 0">
-                <mat-icon>receipt_long</mat-icon>
+                      [disabled]="getNewItems().length === 0" class="action-btn-expanded kot-btn">
+                <mat-icon>restaurant</mat-icon>
                 Print KOT
               </button>
+              <button mat-stroked-button (click)="saveOrder(); $event.stopPropagation()" 
+                      [disabled]="billService.cartItems().length === 0 || !hasUnsavedChanges()" 
+                      class="action-btn-expanded save-btn">
+                <mat-icon>save</mat-icon>
+                Save Order
+              </button>
               <button mat-raised-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
-                      [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0">
+                      [disabled]="isPayButtonDisabled()"
+                      class="action-btn-expanded pay-btn">
                 <mat-icon>payment</mat-icon>
-                Complete & Pay
+                Complete Payment
               </button>
             } @else {
               <button mat-raised-button color="primary" (click)="saveBill(); $event.stopPropagation()" 

@@ -72,7 +72,7 @@ interface DialogData {
           <textarea matInput formControlName="description" rows="2"></textarea>
         </mat-form-field>
 
-        @if (settingsService.settings().scannerType === 'usb') {
+        @if (!isHotelMode() && settingsService.settings().scannerType === 'usb') {
           <mat-form-field appearance="outline" class="full-width">
             <mat-label>Barcode</mat-label>
             <input matInput formControlName="barcode" placeholder="Scan or enter barcode (EAN, UPC, etc.)">
@@ -92,29 +92,33 @@ interface DialogData {
             }
           </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Cost Price</mat-label>
-            <input matInput type="number" formControlName="costPrice" min="0">
-          </mat-form-field>
+          @if (!isHotelMode()) {
+            <mat-form-field appearance="outline">
+              <mat-label>Cost Price</mat-label>
+              <input matInput type="number" formControlName="costPrice" min="0">
+            </mat-form-field>
+          }
         </div>
 
-        <div class="form-row">
-          <mat-form-field appearance="outline">
-            <mat-label>Stock Quantity</mat-label>
-            <input matInput type="number" formControlName="stockQuantity" min="1">
-            @if (productForm.get('stockQuantity')?.hasError('required')) {
-              <mat-error>Stock is required</mat-error>
-            }
-            @if (productForm.get('stockQuantity')?.hasError('min')) {
-              <mat-error>Stock must be greater than 0</mat-error>
-            }
-          </mat-form-field>
+        @if (!isHotelMode()) {
+          <div class="form-row">
+            <mat-form-field appearance="outline">
+              <mat-label>Stock Quantity</mat-label>
+              <input matInput type="number" formControlName="stockQuantity" min="1">
+              @if (productForm.get('stockQuantity')?.hasError('required')) {
+                <mat-error>Stock is required</mat-error>
+              }
+              @if (productForm.get('stockQuantity')?.hasError('min')) {
+                <mat-error>Stock must be greater than 0</mat-error>
+              }
+            </mat-form-field>
 
-          <mat-form-field appearance="outline">
-            <mat-label>Low Stock Alert</mat-label>
-            <input matInput type="number" formControlName="lowStockAlert" min="0">
-          </mat-form-field>
-        </div>
+            <mat-form-field appearance="outline">
+              <mat-label>Low Stock Alert</mat-label>
+              <input matInput type="number" formControlName="lowStockAlert" min="0">
+            </mat-form-field>
+          </div>
+        }
 
         <div class="form-row">
           <div class="toggle-field">
@@ -274,6 +278,7 @@ export class ProductDialogComponent {
     }
     
     const product = data.product;
+    const isHotel = settings.applicationType === 'hotel';
     
     this.productForm = this.fb.group({
       name: [product?.name || '', Validators.required],
@@ -284,7 +289,7 @@ export class ProductDialogComponent {
       confirmBarcode: [product?.barcode || ''],
       unitPrice: [product?.unitPrice || '', [Validators.required, Validators.min(1)]],
       costPrice: [product?.costPrice || 0, Validators.min(0)],
-      stockQuantity: [product?.stockQuantity || '', [Validators.required, Validators.min(1)]],
+      stockQuantity: [product?.stockQuantity || (isHotel ? 9999 : ''), isHotel ? [] : [Validators.required, Validators.min(1)]],
       lowStockAlert: [product?.lowStockAlert || 10, Validators.min(0)],
       status: [product?.status !== 'inactive'], // Default to active for new products
       isLooseItem: [product?.isLooseItem || false],
@@ -308,6 +313,10 @@ export class ProductDialogComponent {
 
   isGroceryMode(): boolean {
     return this.settingsService.settings().applicationType === 'grocery';
+  }
+
+  isHotelMode(): boolean {
+    return this.settingsService.settings().applicationType === 'hotel';
   }
 
   isElectronicsMode(): boolean {

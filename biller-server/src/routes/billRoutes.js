@@ -5,7 +5,8 @@ import {
   createBill,
   updateBill,
   getReport,
-  printBill
+  printBill,
+  printKOT
 } from '../controllers/billController.js';
 import { authenticate } from '../middleware/auth.js';
 
@@ -21,5 +22,6 @@ router.get('/:id', getBillById);
 router.post('/', createBill);
 router.put('/:id', updateBill);
 router.post('/print', printBill);
+router.post('/print-kot', printKOT);
 
 export default router;

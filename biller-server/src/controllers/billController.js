@@ -132,6 +132,14 @@ export const createBill = async (req, res) => {
     const billNumber = generateBillNumber();
     const now = new Date().toISOString();
 
+    // Validate items
+    if (!billData.items || billData.items.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No items provided in bill'
+      });
+    }
+
     // Calculate totals
     let subtotal = 0;
     let taxTotal = 0;
@@ -200,16 +208,18 @@ export const createBill = async (req, res) => {
         tipAmount
       );
 
+      // Get settings to check if stock tracking is enabled
+      const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+      const isHotelMode = settings?.applicationType === 'hotel';
+
       // Insert items
       const insertItem = db.prepare(`
         INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      const kotItemIds = billData.kotItems || [];
-
+      // Always insert with kotPrinted=0, printKOT will mark them after printing
       for (const item of items) {
-        const isKotPrinted = kotItemIds.includes(item.productId) ? 1 : 0;
         insertItem.run(
           billId,
           item.productId || '',
@@ -218,11 +228,11 @@ export const createBill = async (req, res) => {
           item.unitPrice,
           item.itemTotal,
           item.finalTotal,
-          isKotPrinted
+          0  // Always 0, will be marked by printKOT endpoint
         );
 
-        // Update product stock if productId exists
-        if (item.productId) {
+        // Update product stock if productId exists (skip for hotel mode)
+        if (item.productId && !isHotelMode) {
           db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
             .run(item.quantity, item.productId);
         }
@@ -277,26 +287,67 @@ export const updateBill = async (req, res) => {
           .run(updates.billStatus, now, id);
       }
 
-      // Add new items FIRST (before marking as KOT printed)
-      if (updates.items && updates.items.length > 0) {
-        // Add new items to bill
-        const insertItem = db.prepare(`
-          INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted)
-          VALUES (?, ?, ?, ?, ?, ?, ?, 0)
-        `);
+      // Handle items update - Replace all items with new cart state
+      if (updates.items !== undefined) {
+        // Get settings to check if stock tracking is enabled
+        const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+        const isHotelMode = settings?.applicationType === 'hotel';
+        
+        // Get existing items before deletion
+        const existingItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+        
+        // Build a map of existing items with their quantities and kotPrinted status
+        const existingItemsMap = {};
+        existingItems.forEach(item => {
+          existingItemsMap[item.productId] = {
+            quantity: item.quantity,
+            kotPrinted: item.kotPrinted || 0
+          };
+        });
+        
+        // Restore stock for all existing items (skip for hotel mode)
+        if (!isHotelMode) {
+          for (const existingItem of existingItems) {
+            if (existingItem.productId) {
+              db.prepare('UPDATE products SET stockQuantity = stockQuantity + ? WHERE productId = ?')
+                .run(existingItem.quantity, existingItem.productId);
+            }
+          }
+        }
+        
+        // Delete all existing items for this bill (will be replaced with current cart state)
+        db.prepare('DELETE FROM bill_items WHERE billId = ?').run(id);
 
-        for (const item of updates.items) {
-          const itemTotal = item.unitPrice * item.quantity;
-          insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal);
-          
-          // Update stock
-          if (item.productId) {
-            db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
-              .run(item.quantity, item.productId);
+        // Insert all items from current cart with correct quantities
+        if (updates.items.length > 0) {
+          const insertItem = db.prepare(`
+            INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          `);
+
+          for (const item of updates.items) {
+            const itemTotal = item.unitPrice * item.quantity;
+            const existingItem = existingItemsMap[item.productId];
+            
+            // Only preserve kotPrinted=1 if quantity is exactly the same
+            // Any quantity change (increase or decrease) resets kotPrinted to 0
+            // This ensures accurate tracking: new quantities need new KOT
+            let kotPrintedStatus = 0;
+            if (existingItem && existingItem.kotPrinted === 1 && item.quantity === existingItem.quantity) {
+              kotPrintedStatus = 1;
+            }
+            
+            insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus);
+            
+            // Deduct stock for new quantities (skip for hotel mode)
+            if (item.productId && !isHotelMode) {
+              db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+                .run(item.quantity, item.productId);
+            }
           }
         }
 
-        // Recalculate totals
+        // Recalculate totals based on new items
         const allItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
         let subtotal = 0;
         for (const item of allItems) {
@@ -307,18 +358,8 @@ export const updateBill = async (req, res) => {
         db.prepare('UPDATE bills SET subtotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
           .run(subtotal, grandTotal, now, id);
       }
-
-      // Mark items as KOT printed AFTER they've been added
-      if (updates.kotItems && updates.kotItems.length > 0) {
-        // Mark items as KOT printed
-        const updateKot = db.prepare('UPDATE bill_items SET kotPrinted = 1 WHERE billId = ? AND productId = ?');
-        for (const productId of updates.kotItems) {
-          updateKot.run(id, productId);
-        }
-        // Set KOT printed timestamp
-        db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
-          .run(now, now, id);
-      }
+      
+      // Note: kotItems marking is handled by printKOT endpoint after successful printing
     }
 
     // Update other allowed fields
@@ -689,11 +730,190 @@ export const printBill = async (req, res) => {
   }
 };
 
+// Print KOT (Kitchen Order Ticket) to thermal printer
+export const printKOT = async (req, res) => {
+  try {
+    const { billId } = req.body;
+
+    if (!billId) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bill ID is required'
+      });
+    }
+
+    // Get bill details
+    const bill = db.prepare(`
+      SELECT * FROM bills WHERE billId = ?
+    `).get(billId);
+
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found'
+      });
+    }
+
+    // Get NEW items (not KOT printed yet) from bill_items table
+    const newItems = db.prepare(`
+      SELECT bi.*, p.nameHi FROM bill_items bi
+      LEFT JOIN products p ON bi.productId = p.productId
+      WHERE bi.billId = ? AND bi.kotPrinted = 0
+    `).all(billId);
+
+    if (!newItems || newItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'No new items to print on KOT'
+      });
+    }
+
+    // Get business settings
+    const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+
+    // Get printer path from environment
+    const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
+
+    // ESC/POS commands for receipt printing
+    const ESC = '\x1B';
+    const GS = '\x1D';
+    
+    let receiptText = '';
+    
+    // Initialize printer
+    receiptText += ESC + '@'; // Initialize
+    
+    // Header - KOT Title (Center, Double Height)
+    receiptText += ESC + 'a' + '\x01'; // Center align
+    receiptText += GS + '!' + '\x22'; // Double height & width - larger than bill
+    receiptText += 'KITCHEN ORDER\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
+    
+    // Business Name (Center)
+    receiptText += GS + '!' + '\x11'; // Double height & width
+    receiptText += (settings?.businessName || 'BILLWISE') + '\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
+    
+    // Divider line
+    receiptText += '================================\n';
+    
+    // Table/Order details (Left align, Bold)
+    receiptText += ESC + 'a' + '\x00'; // Left align
+    receiptText += ESC + 'E' + '\x01'; // Bold on
+    
+    // Parse business type data for table info
+    let businessTypeData = {};
+    try {
+      businessTypeData = bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {};
+    } catch (e) {
+      // Ignore parse errors
+    }
+    
+    const tableNumber = businessTypeData.tableNumber || 'N/A';
+    const tableType = businessTypeData.tableType || 'dine-in';
+    const tableLabel = tableType === 'parcel' ? `Parcel #${tableNumber}` : `Table #${tableNumber}`;
+    
+    receiptText += GS + '!' + '\x11'; // Double size for table
+    receiptText += tableLabel + '\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
+    
+    receiptText += ESC + 'E' + '\x00'; // Bold off
+    
+    receiptText += 'Bill #: ' + bill.billNumber + '\n';
+    receiptText += 'Time: ' + new Date().toLocaleString() + '\n';
+    
+    if (bill.customerName) {
+      receiptText += 'Customer: ' + bill.customerName + '\n';
+    }
+    
+    receiptText += '================================\n';
+    
+    // Check if Hindi language is selected
+    const isHindi = settings?.receiptLanguage === 'hi';
+    
+    // Items header (Bold, Large)
+    receiptText += ESC + 'E' + '\x01'; // Bold on
+    receiptText += 'NEW ITEMS:\n';
+    receiptText += ESC + 'E' + '\x00'; // Bold off
+    receiptText += '--------------------------------\n';
+    
+    // Items list - Simplified for kitchen (Qty and Item name only)
+    newItems.forEach(item => {
+      // Use Hindi name if available and Hindi is selected
+      const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
+      
+      // Make quantity bold and large
+      receiptText += ESC + 'E' + '\x01'; // Bold on
+      receiptText += GS + '!' + '\x11'; // Double size
+      receiptText += item.quantity + 'x ';
+      receiptText += GS + '!' + '\x00'; // Normal size
+      receiptText += displayName + '\n';
+      receiptText += ESC + 'E' + '\x00'; // Bold off
+      
+      // Add note if present
+      if (item.note) {
+        receiptText += '  Note: ' + item.note + '\n';
+      }
+      receiptText += '\n'; // Extra spacing between items
+    });
+    
+    receiptText += '================================\n';
+    
+    // Footer (Center)
+    receiptText += ESC + 'a' + '\x01'; // Center align
+    receiptText += '\n--- END OF KOT ---\n\n';
+    
+    // Cut paper
+    receiptText += GS + 'V' + '\x41' + '\x03'; // Cut
+    
+    const buffer = Buffer.from(receiptText, 'ascii');
+
+    // Write to printer
+    fs.appendFile(printerPath, buffer, (err) => {
+      if (err) {
+        console.error('KOT Print error:', err);
+        return res.status(500).json({
+          success: false,
+          message: `Failed to print KOT: ${err.message}. Check PRINTER_INTERFACE in .env file.`
+        });
+      }
+      
+      // Mark items as KOT printed AFTER successful printing
+      const now = new Date().toISOString();
+      const updateKot = db.prepare('UPDATE bill_items SET kotPrinted = 1 WHERE billId = ? AND kotPrinted = 0');
+      updateKot.run(billId);
+      
+      // Set KOT printed timestamp on bill
+      db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
+        .run(now, now, billId);
+      
+      res.json({
+        success: true,
+        message: `KOT for Bill ${bill.billNumber} sent to printer successfully`,
+        data: {
+          billId: bill.billId,
+          billNumber: bill.billNumber,
+          itemCount: newItems.length
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('Print KOT error:', error);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to print KOT',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
+  }
+};
+
 export default {
   getAllBills,
   getBillById,
   createBill,
   updateBill,
   getReport,
-  printBill
+  printBill,
+  printKOT
 };

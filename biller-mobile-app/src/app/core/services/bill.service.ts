@@ -173,11 +173,13 @@ export class BillService {
     customerPhone?: string;
     businessTypeData?: any;
     notes?: string;
+    items?: any[];
   }): Observable<any> {
     const settings = this.settingsService.settings();
     const taxRate = settings.taxRates?.[0]?.rate || 0;
     
-    const items = this.cartItems().map(item => ({
+    // Use provided items if available, otherwise build from cart
+    const items = billData.items || this.cartItems().map(item => ({
       productId: item.productId,
       name: item.name,
       quantity: item.quantity,
@@ -212,5 +214,9 @@ export class BillService {
 
   printBill(billId: string): Observable<any> {
     return this.http.post(`${this.API_URL}/print`, { billId });
+  }
+
+  printKOT(billId: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/print-kot`, { billId });
   }
 }

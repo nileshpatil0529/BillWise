@@ -1200,11 +1200,12 @@
 
   mat-card-actions {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    justify-content: flex-end;
+    gap: v.$spacing-sm;
     padding: v.$spacing-md;
     border-top: 1px solid v.$light-divider;
     margin: 0;
-    gap: v.$spacing-sm;
     position: relative;
     z-index: 1;
 
@@ -1212,14 +1213,39 @@
       border-color: v.$dark-divider;
     }
 
-    button {
+    .action-btn {
       display: flex;
       align-items: center;
-      gap: v.$spacing-xs;
-      font-weight: 500;
+      gap: 8px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+      padding: v.$spacing-sm v.$spacing-lg;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
 
-      &[color="primary"] {
-        padding: v.$spacing-sm v.$spacing-lg;
+      &:not(:disabled):active {
+        transform: scale(0.98);
+      }
+      
+      mat-icon {
+        margin: 0;
+      }
+    }
+    
+    .menu-btn {
+      color: v.$light-text-secondary;
+      transition: all 0.2s ease;
+      
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+      
+      &:hover:not(:disabled) {
+        background: rgba(0, 0, 0, 0.04);
+        @include m.dark-theme {
+          background: rgba(255, 255, 255, 0.08);
+        }
       }
     }
     
@@ -1227,7 +1253,7 @@
       flex-direction: row;
       padding: v.$spacing-sm;
       
-      button {
+      .action-btn {
         flex: 1;
         justify-content: center;
         padding: v.$spacing-sm !important;
