@@ -434,7 +434,7 @@
           @if (isHotelMode()) {
             <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
                     [disabled]="getNewItems().length === 0" class="action-btn kot-btn">
-              KOT @if (getNewItems().length > 0) {({{ getNewItems().length }})}
+              KOT
             </button>
             <button mat-flat-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
                     [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0" class="action-btn">
@@ -560,7 +560,7 @@
               <button mat-raised-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
                       [disabled]="getNewItems().length === 0">
                 <mat-icon>receipt_long</mat-icon>
-                Print KOT @if (getNewItems().length > 0) {({{ getNewItems().length }})}
+                Print KOT
               </button>
               <button mat-raised-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
                       [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0">

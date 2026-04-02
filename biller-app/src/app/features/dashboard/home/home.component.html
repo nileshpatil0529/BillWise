@@ -635,9 +635,6 @@
                     [disabled]="getNewItems().length === 0">
               <mat-icon>receipt_long</mat-icon>
               {{ translateService.t('hotel.printKot') }}
-              @if (getNewItems().length > 0) {
-                <span class="kot-count">({{ getNewItems().length }})</span>
-              }
             </button>
             <button mat-raised-button color="primary" (click)="completeBill()" 
                     [disabled]="!hasKotPrintedItems() || billService.cartItems().length === 0">
