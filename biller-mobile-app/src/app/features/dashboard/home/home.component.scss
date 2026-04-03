@@ -11,6 +11,20 @@
   height: 100%;
   overflow: hidden;
   background: v.$dark-background;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  
+  // Allow text selection in input fields
+  input,
+  textarea,
+  [contenteditable] {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+  }
 }
 
 .hidden {
@@ -623,6 +637,39 @@
         font-size: 11px;
       }
     }
+  }
+}
+
+// ============================================
+// CART HEADER BAR (Non-Hotel Mode)
+// ============================================
+
+.cart-header-bar {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  padding: v.$spacing-xs v.$spacing-sm;
+  background: v.$light-surface;
+  border-bottom: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+
+  .cart-icon {
+    font-size: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    color: v.$light-primary;
+    
+    @include m.dark-theme {
+      color: v.$dark-primary;
+    }
+  }
+  
+  .spacer {
+    flex: 1;
   }
 }
 

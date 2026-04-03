@@ -374,6 +374,27 @@
         </div>
       </div>
     }
+    
+    <!-- Non-Hotel Mode: Cart Header -->
+    @if (!isHotelMode()) {
+      <div class="cart-header-bar">
+        <!-- Cart Icon -->
+        <mat-icon [matBadge]="billService.cartItemCount() > 0 ? billService.cartItemCount() : null" 
+                  matBadgeColor="accent" 
+                  matBadgeSize="medium"
+                  class="cart-icon">
+          shopping_cart
+        </mat-icon>
+        
+        <span class="spacer"></span>
+        
+        <!-- Clear Cart Button -->
+        <button mat-icon-button color="warn" (click)="clearCart()" 
+                [disabled]="billService.cartItems().length === 0">
+          <mat-icon>delete</mat-icon>
+        </button>
+      </div>
+    }
 
     <!-- Cart Items List -->
     <div class="cart-items-list">
