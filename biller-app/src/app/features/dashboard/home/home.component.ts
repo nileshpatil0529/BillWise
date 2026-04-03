@@ -32,27 +32,12 @@ import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
 import { Unit } from '../../../core/models/settings.model';
 
-// Interface for tracking KOT printed quantities per product
-interface KotPrintedQuantities {
-  [productId: string]: number;
-}
-
-// Interface for new items to print in KOT
-interface KotNewItem {
-  productId: string;
-  name: string;
-  quantity: number; // Only the new quantity to print
-  unitPrice: number;
-  note?: string; // Optional note (e.g., Spicy, No salt)
-}
-
 // Interface for tracking attended table state
 interface AttendedTableState {
   table: RestaurantTable;
   billId: string | null;
   billStatus: 'new' | 'draft' | 'kot-printed';
   cartItems: CartItem[];
-  kotPrintedQuantities: KotPrintedQuantities;
   customerName: string;
   customerPhone: string;
 }
@@ -98,13 +83,11 @@ export class HomeComponent implements OnInit, OnDestroy {
   selectedTable = signal<RestaurantTable | null>(null);
   currentBillId = signal<string | null>(null);
   billStatus = signal<'new' | 'draft' | 'kot-printed'>('new');
-  kotPrintedQuantities = signal<KotPrintedQuantities>({}); // Track quantities that have been KOT printed
   hotelModeInitialized = signal(false); // Flag to track if hotel mode has finished initializing
   savedCartSnapshot = signal<string>(''); // JSON snapshot of last saved cart state
   
   // Multi-table attendance state
   attendedTables = signal<AttendedTableState[]>([]);
-  showAttendedTablesMenu = signal(false);
 
   paymentMethod = signal<'cash' | 'card' | 'online' | 'debt'>('online');
   customerName = signal('');
@@ -254,11 +237,6 @@ export class HomeComponent implements OnInit, OnDestroy {
                 };
                 for (let i = 0; i < item.quantity; i++) {
                   this.billService.addToCart(product);
-                }
-                if (item.kotPrinted) {
-                  this.kotPrintedQuantities.update(quantities => {
-                    return { ...quantities, [item.productId]: item.quantity };
-                  });
                 }
               });
             }
@@ -866,7 +844,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.saveSelectedTable(table.id);
       this.billStatus.set('new');
       this.currentBillId.set(null);
-      this.kotPrintedQuantities.set({});
       this.customerName.set('');
       this.customerPhone.set('');
       this.billService.clearCart();
@@ -904,13 +881,6 @@ export class HomeComponent implements OnInit, OnDestroy {
               for (let i = 0; i < item.quantity; i++) {
                 this.billService.addToCart(product);
               }
-              // Only load KOT printed quantities if we're NOT already tracking this bill
-              // (to preserve in-memory tracking which is more accurate)
-              if (!isAlreadyTrackingThisBill && item.kotPrinted) {
-                this.kotPrintedQuantities.update(quantities => {
-                  return { ...quantities, [item.productId]: item.quantity };
-                });
-              }
             });
           }
           // Update snapshot after loading bill items
@@ -934,7 +904,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.saveSelectedTable(null);
     this.currentBillId.set(null);
     this.billStatus.set('new');
-    this.kotPrintedQuantities.set({});
     this.changingTable.set(false);
     this.customerName.set('');
     this.customerPhone.set('');
@@ -944,18 +913,119 @@ export class HomeComponent implements OnInit, OnDestroy {
   
   // State for changing table
   changingTable = signal(false);
+  tableMode = signal<'change-table' | 'attend-new' | 'switch-table'>('change-table');
   
   // Start change table process
   startChangeTable(): void {
     this.changingTable.set(true);
+    this.tableMode.set('change-table'); // Default to Change Table mode
+  }
+  
+  // Set table mode
+  setTableMode(mode: 'change-table' | 'attend-new' | 'switch-table'): void {
+    this.tableMode.set(mode);
+  }
+  
+  // Handle table click based on mode
+  handleTableClick(table: RestaurantTable): void {
+    const mode = this.tableMode();
+    
+    if (mode === 'change-table') {
+      // Change Table mode - switch to work on another occupied table
+      this.changeToTable(table);
+    } else if (mode === 'attend-new') {
+      // Attend New Table mode - start fresh order on available table
+      this.selectTable(table);
+      this.cancelChangeTable();
+    } else if (mode === 'switch-table') {
+      // Switch Table mode - move current order to another available table
+      this.switchToTable(table);
+    }
   }
   
   // Cancel change table
   cancelChangeTable(): void {
     this.changingTable.set(false);
+    this.tableMode.set('change-table');
   }
   
-  // Change to a new table (keeps cart items)
+  // Switch current table to another available table (keeps cart items and updates backend)
+  switchToTable(newTable: RestaurantTable): void {
+    const oldTable = this.selectedTable();
+    if (!oldTable) {
+      return;
+    }
+    
+    if (newTable.id === oldTable.id) {
+      return; // Same table
+    }
+    
+    // Save current table state
+    this.saveCurrentTableState();
+    
+    // If we have an active bill, update it in the backend
+    if (this.currentBillId()) {
+      const updateData = {
+        tableId: newTable.id,
+        businessTypeData: { tableNumber: newTable.tableNumber, tableType: newTable.tableType }
+      };
+      
+      this.billService.updateBill(this.currentBillId()!, updateData).subscribe({
+        next: (response) => {
+          if (response.success) {
+            // Update old table status to available
+            this.hotelService.updateTableStatus(oldTable.id, 'available', undefined).subscribe();
+            
+            // Update new table status to occupied with current bill
+            this.hotelService.updateTableStatus(newTable.id, 'occupied', this.currentBillId()!).subscribe();
+            
+            // Update attended tables state
+            this.attendedTables.update(tables => {
+              return tables.map(state => {
+                if (state.table.id === oldTable.id) {
+                  return { ...state, table: newTable };
+                }
+                return state;
+              });
+            });
+            
+            // Update local state
+            this.selectedTable.set(newTable);
+            this.saveSelectedTable(newTable.id);
+            
+            // Close the overlay
+            this.cancelChangeTable();
+            
+            // Reload tables to get fresh status
+            this.hotelService.loadTables().subscribe({
+              next: () => {
+                const refreshedTable = this.hotelService.tables().find(t => t.id === newTable.id);
+                if (refreshedTable) {
+                  this.selectedTable.set(refreshedTable);
+                }
+              }
+            });
+            
+            this.snackBar.open(`Switched to ${newTable.tableNumber}`, 'Close', { duration: 2000 });
+          }
+        },
+        error: () => {
+          this.snackBar.open('Failed to switch table', 'Close', { duration: 3000 });
+        }
+      });
+    } else {
+      // No bill yet, just update local state
+      this.selectedTable.set(newTable);
+      this.saveSelectedTable(newTable.id);
+      
+      // Close the overlay
+      this.cancelChangeTable();
+      
+      this.snackBar.open(`Switched to ${newTable.tableNumber}`, 'Close', { duration: 2000 });
+    }
+  }
+
+  // Change to a new table (switch to work on occupied table's order)
   changeToTable(newTable: RestaurantTable): void {
     const oldTable = this.selectedTable();
     if (!oldTable || newTable.id === oldTable.id) {
@@ -963,13 +1033,22 @@ export class HomeComponent implements OnInit, OnDestroy {
       return;
     }
     
-    // If new table is occupied (and not current table), we can't change to it
+    // If new table is occupied, switch to work on that table's order
     if (newTable.status === 'occupied') {
-      this.snackBar.open('Cannot change to an occupied table. Please select an available table.', 'Close', { duration: 3000 });
+      // Save current table state first if we have a selected table
+      if (this.selectedTable()) {
+        this.saveCurrentTableState();
+      }
+      
+      // Select the occupied table (will load its existing bill)
+      this.selectTable(newTable);
+      
+      // Close the overlay
+      this.cancelChangeTable();
       return;
     }
     
-    // Update the table on the bill if we have one
+    // If new table is available, move current order to that table
     if (this.currentBillId()) {
       const updateData = {
         tableId: newTable.id,
@@ -1049,7 +1128,6 @@ export class HomeComponent implements OnInit, OnDestroy {
       billId: this.currentBillId(),
       billStatus: this.billStatus(),
       cartItems: [...this.billService.cartItems()],
-      kotPrintedQuantities: { ...this.kotPrintedQuantities() },
       customerName: this.customerName(),
       customerPhone: this.customerPhone()
     };
@@ -1073,7 +1151,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.saveSelectedTable(state.table.id);
     this.currentBillId.set(state.billId);
     this.billStatus.set(state.billStatus);
-    this.kotPrintedQuantities.set({ ...state.kotPrintedQuantities });
     this.customerName.set(state.customerName);
     this.customerPhone.set(state.customerPhone);
     
@@ -1106,31 +1183,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     if (tableState) {
       this.restoreTableState(tableState);
     }
-    
-    this.showAttendedTablesMenu.set(false);
-  }
-
-  // Select an occupied table from the occupied tables menu
-  selectOccupiedTable(table: RestaurantTable): void {
-    // Save current state first if we have a selected table
-    if (this.selectedTable()) {
-      this.saveCurrentTableState();
-    }
-    
-    // Select the table (will load existing bill)
-    this.selectTable(table);
-    
-    this.showAttendedTablesMenu.set(false);
-  }
-  
-  // Toggle attended tables menu
-  toggleAttendedTablesMenu(): void {
-    this.showAttendedTablesMenu.update(v => !v);
-  }
-  
-  // Close attended tables menu
-  closeAttendedTablesMenu(): void {
-    this.showAttendedTablesMenu.set(false);
   }
   
   // Attend a new table (from selection)
@@ -1144,7 +1196,6 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.billService.clearCart();
     this.currentBillId.set(null);
     this.billStatus.set('new');
-    this.kotPrintedQuantities.set({});
     this.customerName.set('');
     this.customerPhone.set('');
     
@@ -1164,53 +1215,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     return currentTable ? attendedCount + 1 : attendedCount;
   }
 
-  // Get new items (items with quantities not yet KOT printed)
-  getNewItems(): KotNewItem[] {
-    const kotPrinted = this.kotPrintedQuantities();
-    const newItems: KotNewItem[] = [];
-    
-    this.billService.cartItems().forEach(item => {
-      const printedQty = kotPrinted[item.productId] || 0;
-      const newQty = item.quantity - printedQty;
-      
-      if (newQty > 0) {
-        newItems.push({
-          productId: item.productId,
-          name: item.name,
-          quantity: newQty,
-          unitPrice: item.unitPrice,
-          note: item.note
-        });
-      }
-    });
-    
-    return newItems;
-  }
-  
-  // Check if item has been fully KOT printed
-  isItemKotPrinted(productId: string): boolean {
-    const kotPrinted = this.kotPrintedQuantities();
-    const cartItem = this.billService.cartItems().find(i => i.productId === productId);
-    if (!cartItem) return false;
-    
-    const printedQty = kotPrinted[productId] || 0;
-    return printedQty >= cartItem.quantity;
-  }
-  
-  // Check if any items have been KOT printed
-  hasKotPrintedItems(): boolean {
-    return Object.keys(this.kotPrintedQuantities()).length > 0;
-  }
-
   // Check if Pay button should be disabled
   isPayButtonDisabled(): boolean {
-    const hasItems = this.billService.cartItems().length > 0;
-    const hasKotPrinted = this.hasKotPrintedItems();
-    const hasChanges = this.hasUnsavedChanges();
-    
-    // Pay is disabled if: no items OR (no KOT printed AND has unsaved changes)
-    // Pay is enabled if: has items AND (KOT printed OR no changes)
-    return !hasItems || (!hasKotPrinted && hasChanges);
+    // Pay is disabled if cart is empty
+    // Pay is enabled if cart has items
+    return this.billService.cartItems().length === 0;
   }
 
   // Check if cart has unsaved changes
@@ -1222,41 +1231,6 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Update saved cart snapshot
   private updateCartSnapshot(): void {
     this.savedCartSnapshot.set(JSON.stringify(this.billService.cartItems()));
-  }
-
-  // Smart button - determines button state based on context
-  getSmartButtonText(): string {
-    const newItems = this.getNewItems();
-    if (newItems.length > 0) {
-      return this.translateService.t('hotel.printKot') || 'Print KOT';
-    }
-    return this.translateService.t('common.save') || 'Save Order';
-  }
-
-  getSmartButtonIcon(): string {
-    const newItems = this.getNewItems();
-    return newItems.length > 0 ? 'receipt_long' : 'save';
-  }
-
-  isSmartButtonDisabled(): boolean {
-    const hasNewItems = this.getNewItems().length > 0;
-    const hasChanges = this.hasUnsavedChanges();
-    const hasItems = this.billService.cartItems().length > 0;
-    
-    // Disabled if: no items OR (no new items AND no unsaved changes)
-    return !hasItems || (!hasNewItems && !hasChanges);
-  }
-
-  // Smart action handler - calls appropriate method based on state
-  handleSmartAction(): void {
-    const newItems = this.getNewItems();
-    if (newItems.length > 0) {
-      // Has new items to print - do KOT (which saves + prints)
-      this.printKOT();
-    } else {
-      // Only cart changes - just save
-      this.saveOrder();
-    }
   }
 
   // Save order without printing KOT (for quantity changes or just saving)
@@ -1338,9 +1312,8 @@ export class HomeComponent implements OnInit, OnDestroy {
 
   // Print KOT (Kitchen Order Ticket) - Save and Print
   printKOT(): void {
-    const newItems = this.getNewItems();
-    if (newItems.length === 0) {
-      this.snackBar.open('No new items to print', 'Close', { duration: 3000 });
+    if (this.billService.cartItems().length === 0) {
+      this.snackBar.open('No items to print', 'Close', { duration: 3000 });
       return;
     }
 
@@ -1367,7 +1340,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     };
 
     if (this.currentBillId()) {
-      // Update existing bill with ALL items (not just new ones)
+      // Update existing bill with ALL items
       const updateData = {
         ...billData,
         items: this.billService.cartItems().map(item => ({
@@ -1389,8 +1362,6 @@ export class HomeComponent implements OnInit, OnDestroy {
               next: (printResponse) => {
                 if (printResponse.success) {
                   this.snackBar.open('Order saved and KOT printed successfully', 'Close', { duration: 2000 });
-                  // Update KOT printed quantities only on successful print
-                  this.updateKotPrintedQuantities(newItems);
                   this.billStatus.set('kot-printed');
                 }
               },
@@ -1427,8 +1398,6 @@ export class HomeComponent implements OnInit, OnDestroy {
               next: (printResponse) => {
                 if (printResponse.success) {
                   this.snackBar.open('Order saved and KOT printed successfully', 'Close', { duration: 2000 });
-                  // Update KOT printed quantities only on successful print
-                  this.updateKotPrintedQuantities(newItems);
                   this.billStatus.set('kot-printed');
                 }
               },
@@ -1445,17 +1414,6 @@ export class HomeComponent implements OnInit, OnDestroy {
         }
       });
     }
-  }
-  
-  // Update KOT printed quantities after printing
-  private updateKotPrintedQuantities(printedItems: KotNewItem[]): void {
-    this.kotPrintedQuantities.update(quantities => {
-      const updated = { ...quantities };
-      printedItems.forEach(item => {
-        updated[item.productId] = (updated[item.productId] || 0) + item.quantity;
-      });
-      return updated;
-    });
   }
 
   // Complete bill and pay

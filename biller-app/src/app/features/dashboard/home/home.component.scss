@@ -259,6 +259,7 @@
     display: flex;
     align-items: center;
     flex-wrap: nowrap;
+    gap: v.$spacing-md;
 
     @include m.dark-theme {
       border-color: v.$dark-divider;
@@ -266,7 +267,7 @@
     
     @include m.mobile {
       padding: 6px 10px;
-      gap: 4px;
+      gap: v.$spacing-sm;
     }
 
     .spacer {
@@ -307,8 +308,7 @@
         gap: 6px;
       }
 
-      mat-icon {
-        color: v.$light-primary;
+      mat-icon {        color: v.$light-primary;
         font-size: 24px;
         width: 24px;
         height: 24px;
@@ -321,6 +321,18 @@
           font-size: 20px;
           width: 20px;
           height: 20px;
+        }
+        
+        &.cart-icon {
+          font-size: 28px;
+          width: 28px;
+          height: 28px;
+          
+          @include m.mobile {
+            font-size: 24px;
+            width: 24px;
+            height: 24px;
+          }
         }
       }
 
@@ -502,13 +514,16 @@
       text-transform: uppercase;
       letter-spacing: 0.5px;
       color: v.$light-text-secondary;
-      background-color: rgba(v.$light-primary, 0.05);
+      background-color: v.$light-surface;
       padding: v.$spacing-sm v.$spacing-md;
       white-space: nowrap;
+      z-index: 100;
+      border-bottom: 2px solid v.$light-divider;
 
       @include m.dark-theme {
         color: white;
-        background-color: rgba(v.$dark-primary, 0.15);
+        background-color: v.$dark-surface;
+        border-bottom-color: v.$dark-divider;
       }
     }
 
@@ -1803,6 +1818,21 @@
   strong {
     color: var(--mat-primary);
   }
+  
+  mat-icon[inline] {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    vertical-align: middle;
+    margin: 0 2px;
+  }
+  
+  .hint-toggle {
+    display: block;
+    margin-top: 4px;
+    font-size: 0.85rem;
+    opacity: 0.8;
+  }
 }
 
 .change-table-overlay {
@@ -1812,6 +1842,30 @@
     
     .spacer {
       flex: 1;
+    }
+    
+    .mode-buttons {
+      display: flex;
+      gap: v.$spacing-xs;
+      align-items: center;
+      padding: 0 v.$spacing-sm;
+      border-left: 1px solid v.$light-divider;
+      border-right: 1px solid v.$light-divider;
+      margin: 0 v.$spacing-sm;
+      
+      @include m.dark-theme {
+        border-color: v.$dark-divider;
+      }
+      
+      button {
+        &.active {
+          background-color: rgba(v.$light-primary, 0.12);
+          
+          @include m.dark-theme {
+            background-color: rgba(v.$dark-primary, 0.15);
+          }
+        }
+      }
     }
   }
 }
@@ -1851,7 +1905,6 @@
   display: flex;
   align-items: center;
   gap: v.$spacing-xs;
-  margin-left: v.$spacing-xl;
   
   mat-chip {
     font-weight: 500;
@@ -1923,6 +1976,7 @@
 // Attended Tables Container
 .attended-tables-container {
   position: relative;
+  margin-left: auto;
   
   .attended-tables-btn {
     mat-icon {

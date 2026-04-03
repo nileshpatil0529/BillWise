@@ -14,6 +14,8 @@ export const getAllProducts = async (req, res) => {
   try {
     const { category, status, search, page = 1, limit = 50 } = req.query;
     
+    console.log('[getAllProducts] Query params:', { category, status, search, page, limit });
+    
     let products = [];
     let total = 0;
     const offset = (page - 1) * parseInt(limit);
@@ -108,6 +110,13 @@ export const getAllProducts = async (req, res) => {
       warrantyMonths: p.warrantyMonths || 0,
       nameHi: p.nameHi || null
     }));
+
+    // Debug: Check total products in database
+    const dbTotal = db.prepare('SELECT COUNT(*) as count FROM products').get();
+    const activeCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE status = ?').get('active');
+    const inactiveCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE status = ?').get('inactive');
+    console.log('[getAllProducts] DB stats - Total:', dbTotal.count, 'Active:', activeCount.count, 'Inactive:', inactiveCount.count);
+    console.log('[getAllProducts] Returning', products.length, 'products, total count:', total);
 
     res.json({
       success: true,
@@ -455,6 +464,8 @@ export const importProducts = async (req, res) => {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
 
+    console.log(`Excel import: Found ${data.length} rows in file`);
+
     // Get enabled categories from settings for validation
     const settings = db.prepare('SELECT categories, applicationType FROM settings WHERE id = 1').get();
     const isHotelMode = settings && settings.applicationType === 'hotel';
@@ -489,6 +500,11 @@ export const importProducts = async (req, res) => {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         try {
+          // Log first few rows to debug column mapping
+          if (i < 3) {
+            console.log(`Row ${i + 2} raw data:`, JSON.stringify(row, null, 2));
+          }
+          
           const productName = (row.name || row.Name || row['Product Name'] || '').toString().trim();
           
           // Handle barcode - convert from number/scientific notation if needed
@@ -500,15 +516,25 @@ export const importProducts = async (req, res) => {
           }
           const productBarcode = barcodeValue.toString().trim();
           
-          const productCategory = (row.category || row.Category || 'General').toString().trim();
+          let productCategory = (row.category || row.Category || 'General').toString().trim();
           
           // For hotel mode, use default stock value of 9999
           const stockQuantity = isHotelMode ? 9999 : parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
-          const productStatus = (row.status || row.Status || 'active').toString().trim().toLowerCase();
+          
+          // Handle status more carefully - check if column exists and has value
+          let productStatus = 'active'; // Default
+          const statusValue = row.status || row.Status;
+          if (statusValue !== undefined && statusValue !== null && statusValue !== '') {
+            productStatus = statusValue.toString().trim().toLowerCase();
+          }
+          
+          console.log(`Row ${i + 2}: ${productName} - Status from Excel: '${statusValue}' -> Processed: '${productStatus}'`);
+          
           const now = new Date().toISOString();
 
           // Validation: Check required fields
           if (!productName || productName === '') {
+            console.log(`Row ${i + 2}: Skipping - Product Name is required and cannot be blank`);
             errors.push({ 
               row: i + 2, // Excel row number (1-indexed + header)
               productName: productName || 'N/A',
@@ -517,26 +543,39 @@ export const importProducts = async (req, res) => {
             continue;
           }
 
+          console.log(`Row ${i + 2}: Processing ${productName}, Category: ${productCategory}, Status: ${productStatus}`);
+
           // Validation: Check if category is valid
           if (!validCategories.includes(productCategory)) {
-            errors.push({ 
-              row: i + 2,
-              productName,
-              category: productCategory,
-              error: `Invalid category '${productCategory}'. Valid categories are: ${validCategories.join(', ')}` 
-            });
-            continue;
+            // For hotel mode, be more lenient - just log a warning but allow the import
+            if (isHotelMode) {
+              console.log(`Row ${i + 2}: Category '${productCategory}' not enabled. Using 'General' instead for product: ${productName}`);
+              // Use General category as fallback
+              errors.push({ 
+                row: i + 2,
+                productName,
+                category: productCategory,
+                warning: `Category '${productCategory}' not enabled. Using 'General' instead.`
+              });
+              // Override category
+              productCategory = 'General';
+            } else {
+              console.log(`Row ${i + 2}: Invalid category '${productCategory}' for ${productName}. Valid: ${validCategories.join(', ')}. Defaulting to 'General'.`);
+              errors.push({ 
+                row: i + 2,
+                productName,
+                category: productCategory,
+                warning: `Invalid category '${productCategory}'. Using 'General'. Valid categories are: ${validCategories.join(', ')}` 
+              });
+              // Use General as fallback instead of rejecting
+              productCategory = 'General';
+            }
           }
 
           // Validation: Check if status is valid
           if (productStatus !== 'active' && productStatus !== 'inactive') {
-            errors.push({ 
-              row: i + 2,
-              productName,
-              status: productStatus,
-              error: `Invalid status '${productStatus}'. Must be either 'active' or 'inactive'` 
-            });
-            continue;
+            console.log(`Row ${i + 2}: Invalid status '${productStatus}' for ${productName}, defaulting to 'active'`);
+            productStatus = 'active'; // Force to active instead of rejecting
           }
 
           // Check if product exists by name or barcode
@@ -577,10 +616,9 @@ export const importProducts = async (req, res) => {
               now,
               existingProduct.productId
             );
-            // Also update status if needed
-            if (existingProduct.status !== productStatus) {
-              db.prepare('UPDATE products SET status = ?, updatedAt = ? WHERE productId = ?').run(productStatus, now, existingProduct.productId);
-            }
+            // Always update status to ensure consistency
+            db.prepare('UPDATE products SET status = ?, updatedAt = ? WHERE productId = ?').run(productStatus, now, existingProduct.productId);
+            console.log(`Updated product ${productName} (${existingProduct.productId}) - Status: ${existingProduct.status} -> ${productStatus}`);
             updated++;
             imported++;
           } else {
@@ -604,14 +642,14 @@ export const importProducts = async (req, res) => {
               now,
               now
             );
-            // Update status if not active
-            if (productStatus !== 'active') {
-              db.prepare('UPDATE products SET status = ? WHERE productId = ?').run(productStatus, newProductId);
-            }
+            // Always set status for new products
+            db.prepare('UPDATE products SET status = ? WHERE productId = ?').run(productStatus, newProductId);
+            console.log(`Inserted new product ${productName} (${newProductId}) - Status: ${productStatus}`);
             inserted++;
             imported++;
           }
         } catch (err) {
+          console.error(`Error importing row ${i + 2}:`, err);
           errors.push({ 
             row: i + 2,
             productName: row.name || row.Name || row['Product Name'] || 'N/A',
@@ -623,22 +661,44 @@ export const importProducts = async (req, res) => {
 
     transaction(data);
 
+    // Verify final counts after transaction
+    const finalStats = {
+      total: db.prepare('SELECT COUNT(*) as count FROM products').get().count,
+      active: db.prepare('SELECT COUNT(*) as count FROM products WHERE status = ?').get('active').count,
+      inactive: db.prepare('SELECT COUNT(*) as count FROM products WHERE status = ?').get('inactive').count
+    };
+
+    console.log(`Import completed: ${imported} imported, ${updated} updated, ${inserted} inserted, ${errors.length} errors`);
+    console.log('Final DB stats:', finalStats);
+    if (errors.length > 0) {
+      console.log('Import errors:', errors);
+    }
+
     // Build response message
     let message = `Successfully imported ${imported} products (${updated} updated, ${inserted} new)`;
     if (errors.length > 0) {
-      message += `. ${errors.length} rows had errors`;
+      const actualErrors = errors.filter(e => e.error);
+      const warnings = errors.filter(e => e.warning);
+      if (actualErrors.length > 0) {
+        message += `. ${actualErrors.length} rows had errors`;
+      }
+      if (warnings.length > 0) {
+        message += `. ${warnings.length} warnings`;
+      }
     }
 
     res.json({
-      success: errors.length === 0 || imported > 0,
+      success: errors.filter(e => e.error).length === 0 || imported > 0,
       message: message,
       data: { 
         imported, 
         updated,
         inserted,
         totalRows: data.length,
-        errors: errors.length, 
-        errorDetails: errors 
+        errors: errors.filter(e => e.error).length, 
+        warnings: errors.filter(e => e.warning).length,
+        errorDetails: errors,
+        finalStats: finalStats
       }
     });
   } catch (error) {
@@ -758,14 +818,16 @@ export const exportProducts = async (req, res) => {
       worksheet.addRow(row);
     });
 
-    // Format Barcode column as TEXT to prevent scientific notation
-    worksheet.getColumn('barcode').numFmt = '@'; // @ means text format
-    worksheet.getColumn('barcode').eachCell({ includeEmpty: true }, (cell, rowNumber) => {
-      if (rowNumber > 1) { // Skip header
-        cell.numFmt = '@';
-        cell.alignment = { horizontal: 'left' };
-      }
-    });
+    // Format Barcode column as TEXT to prevent scientific notation (only if not hotel mode)
+    if (!isHotelMode) {
+      worksheet.getColumn('barcode').numFmt = '@'; // @ means text format
+      worksheet.getColumn('barcode').eachCell({ includeEmpty: true }, (cell, rowNumber) => {
+        if (rowNumber > 1) { // Skip header
+          cell.numFmt = '@';
+          cell.alignment = { horizontal: 'left' };
+        }
+      });
+    }
 
     // Add data validation for Category column (column C now, since Product ID removed)
     worksheet.getColumn('category').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
@@ -832,14 +894,17 @@ export const exportProducts = async (req, res) => {
 
     // Apply validation to empty cells too (100 extra rows for new entries)
     for (let i = products.length + 2; i <= products.length + 102; i++) {
-      // Format Barcode cell as text (column B now)
-      const barcodeCell = worksheet.getCell(`B${i}`);
-      barcodeCell.numFmt = '@';
-      barcodeCell.alignment = { horizontal: 'left' };
+      // Format Barcode cell as text (only for non-hotel modes)
+      if (!isHotelMode) {
+        const barcodeCell = worksheet.getColumn('barcode').letter + i;
+        const cell = worksheet.getCell(barcodeCell);
+        cell.numFmt = '@';
+        cell.alignment = { horizontal: 'left' };
+      }
       
-      // Category dropdown validation (column C now)
-      const categoryCell = worksheet.getCell(`C${i}`);
-      categoryCell.dataValidation = {
+      // Category dropdown validation - use dynamic column reference
+      const categoryCell = worksheet.getColumn('category').letter + i;
+      worksheet.getCell(categoryCell).dataValidation = {
         type: 'list',
         allowBlank: true,
         formulae: [`"${categories.join(',')}"`],
@@ -849,9 +914,9 @@ export const exportProducts = async (req, res) => {
         error: `Please select a category from the list: ${categories.join(', ')}`
       };
       
-      // Status dropdown validation (column I)
-      const statusCell = worksheet.getCell(`I${i}`);
-      statusCell.dataValidation = {
+      // Status dropdown validation - use dynamic column reference
+      const statusCell = worksheet.getColumn('status').letter + i;
+      worksheet.getCell(statusCell).dataValidation = {
         type: 'list',
         allowBlank: false,
         formulae: ['"active,inactive"'],
@@ -863,9 +928,9 @@ export const exportProducts = async (req, res) => {
       
       // Add grocery-specific validations for empty rows
       if (isGroceryMode) {
-        // Is Loose Item validation (column J)
-        const looseItemCell = worksheet.getCell(`J${i}`);
-        looseItemCell.dataValidation = {
+        // Is Loose Item validation - use dynamic column reference
+        const looseItemCell = worksheet.getColumn('isLooseItem').letter + i;
+        worksheet.getCell(looseItemCell).dataValidation = {
           type: 'list',
           allowBlank: false,
           formulae: ['"Yes,No"'],
@@ -874,11 +939,11 @@ export const exportProducts = async (req, res) => {
           errorTitle: 'Invalid Value',
           error: 'Please select either "Yes" or "No"'
         };
-        looseItemCell.value = 'No'; // Default value
+        worksheet.getCell(looseItemCell).value = 'No'; // Default value
 
-        // Unit validation (column K)
-        const unitCell = worksheet.getCell(`K${i}`);
-        unitCell.dataValidation = {
+        // Unit validation - use dynamic column reference
+        const unitCell = worksheet.getColumn('unit').letter + i;
+        worksheet.getCell(unitCell).dataValidation = {
           type: 'list',
           allowBlank: true,
           formulae: [`"${units.join(',')}"`],
@@ -887,7 +952,7 @@ export const exportProducts = async (req, res) => {
           errorTitle: 'Invalid Unit',
           error: `Please select a unit from the list: ${units.join(', ')}`
         };
-        unitCell.value = 'pcs'; // Default value
+        worksheet.getCell(unitCell).value = 'pcs'; // Default value
       }
     }
 

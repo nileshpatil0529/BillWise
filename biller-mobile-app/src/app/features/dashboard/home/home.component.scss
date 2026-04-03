@@ -56,6 +56,30 @@
       }
 
       .spacer { flex: 1; }
+      
+      .mode-buttons {
+        display: flex;
+        gap: 2px;
+        align-items: center;
+        padding: 0 v.$spacing-xs;
+        border-left: 1px solid rgba(255, 255, 255, 0.2);
+        border-right: 1px solid rgba(255, 255, 255, 0.2);
+        margin: 0 v.$spacing-xs;
+        
+        button {
+          color: white;
+          
+          &.active {
+            background-color: rgba(255, 255, 255, 0.2);
+          }
+          
+          mat-icon {
+            font-size: 20px;
+            width: 20px;
+            height: 20px;
+          }
+        }
+      }
     }
 
     mat-card-content {
@@ -154,6 +178,34 @@
     margin-bottom: v.$spacing-md;
     
     strong { color: v.$light-primary; }
+    
+    mat-icon[inline] {
+      font-size: 14px;
+      width: 14px;
+      height: 14px;
+      vertical-align: middle;
+      margin: 0 2px;
+    }
+  }
+  
+  .add-table-row {
+    padding: v.$spacing-sm v.$spacing-md;
+    border-top: 1px solid v.$light-divider;
+    margin-top: v.$spacing-sm;
+    
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+    
+    button {
+      width: 100%;
+      
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
   }
 }
 
@@ -456,7 +508,7 @@
 .table-info-bar {
   display: flex;
   align-items: center;
-  gap: v.$spacing-sm;
+  gap: v.$spacing-md;
   padding: v.$spacing-xs v.$spacing-sm;
   background: v.$light-surface;
   border-bottom: 1px solid v.$light-divider;
@@ -464,6 +516,17 @@
   @include m.dark-theme {
     background: v.$dark-surface;
     border-color: v.$dark-divider;
+  }
+
+  .cart-icon {
+    font-size: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
+    color: v.$light-primary;
+    
+    @include m.dark-theme {
+      color: v.$dark-primary;
+    }
   }
 
   .table-chip {
@@ -488,6 +551,9 @@
   .attended-tables-container {
     margin-left: auto;
     position: relative;
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-md;
 
     .attended-tables-menu {
       position: absolute;
@@ -571,6 +637,9 @@
   padding: v.$spacing-sm v.$spacing-md;
   background: v.$light-surface;
   border-bottom: 1px solid v.$light-divider;
+  position: sticky;
+  top: 0;
+  z-index: 10;
 
   @include m.dark-theme {
     background: v.$dark-surface;
@@ -599,6 +668,12 @@
       min-width: 22px;
       text-align: center;
     }
+  }
+
+  .cart-icon {
+    font-size: 28px !important;
+    width: 28px !important;
+    height: 28px !important;
   }
 
   .cart-actions {

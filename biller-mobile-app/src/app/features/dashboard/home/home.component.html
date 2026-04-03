@@ -75,18 +75,61 @@
       <mat-card class="table-selection-card">
         <mat-card-header>
           <mat-card-title>
-            <mat-icon>swap_horiz</mat-icon>
-            Change Table
+            @if (tableMode() === 'change-table') {
+              <mat-icon>swap_horiz</mat-icon>
+              <span>Change Table</span>
+            } @else if (tableMode() === 'attend-new') {
+              <mat-icon>add_circle</mat-icon>
+              <span>Attend New</span>
+            } @else {
+              <mat-icon>compare_arrows</mat-icon>
+              <span>Switch Table</span>
+            }
           </mat-card-title>
           <span class="spacer"></span>
+          
+          <!-- Mode Selection Buttons -->
+          <div class="mode-buttons">
+            <button mat-icon-button 
+                    [color]="tableMode() === 'change-table' ? 'primary' : ''"
+                    [class.active]="tableMode() === 'change-table'"
+                    (click)="setTableMode('change-table')">
+              <mat-icon>swap_horiz</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    [color]="tableMode() === 'attend-new' ? 'primary' : ''"
+                    [class.active]="tableMode() === 'attend-new'"
+                    (click)="setTableMode('attend-new')">
+              <mat-icon>add_circle</mat-icon>
+            </button>
+            <button mat-icon-button 
+                    [color]="tableMode() === 'switch-table' ? 'primary' : ''"
+                    [class.active]="tableMode() === 'switch-table'"
+                    (click)="setTableMode('switch-table')">
+              <mat-icon>compare_arrows</mat-icon>
+            </button>
+          </div>
+          
           <button mat-icon-button (click)="cancelChangeTable()">
             <mat-icon>close</mat-icon>
           </button>
         </mat-card-header>
         <mat-card-content>
-          <p class="change-table-hint">Select a new table. Currently on: 
-            <strong>{{ selectedTable()?.tableNumber }}</strong>
-          </p>
+          @if (tableMode() === 'change-table') {
+            <p class="change-table-hint">
+              <strong>{{ getOccupiedTables().length }}</strong> occupied. 
+              Tap to work on another table's order.
+            </p>
+          } @else if (tableMode() === 'attend-new') {
+            <p class="change-table-hint">
+              Select available table to start new order.
+            </p>
+          } @else {
+            <p class="change-table-hint">
+              Current: <strong>{{ selectedTable()?.tableNumber }}</strong>. 
+              Select available table to transfer.
+            </p>
+          }
           
           <!-- Available Dine-in Tables -->
           @if (getDineInTables().length > 0) {
@@ -94,23 +137,33 @@
               <h3>Dine-in Tables</h3>
               <div class="table-grid">
                 @for (table of getDineInTables(); track table.id) {
-                  <button mat-raised-button 
-                          class="table-btn"
-                          [class.available]="table.status === 'available'"
-                          [class.current]="table.id === selectedTable()?.id"
-                          [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
-                          [disabled]="table.status === 'occupied' && table.id !== selectedTable()?.id"
-                          (click)="changeToTable(table)">
-                    <div class="table-content">
-                      <mat-icon>table_restaurant</mat-icon>
-                      <span class="table-number">{{ table.tableNumber }}</span>
-                      @if (table.id === selectedTable()?.id) {
-                        <span class="table-status">Current</span>
-                      } @else if (table.status === 'occupied') {
-                        <span class="table-status">Occupied</span>
-                      }
-                    </div>
-                  </button>
+                  @if (
+                    (tableMode() === 'change-table' && table.status === 'occupied') ||
+                    (tableMode() === 'attend-new') ||
+                    (tableMode() === 'switch-table' && (table.status === 'available' || table.id === selectedTable()?.id))
+                  ) {
+                    <button mat-raised-button 
+                            class="table-btn"
+                            [class.available]="table.status === 'available'"
+                            [class.current]="table.id === selectedTable()?.id"
+                            [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                            [disabled]="
+                              (tableMode() === 'change-table' && table.id === selectedTable()?.id) ||
+                              (tableMode() === 'attend-new' && table.status === 'occupied') ||
+                              (tableMode() === 'switch-table' && table.id === selectedTable()?.id)
+                            "
+                            (click)="handleTableClick(table)">
+                      <div class="table-content">
+                        <mat-icon>table_restaurant</mat-icon>
+                        <span class="table-number">{{ table.tableNumber }}</span>
+                        @if (table.id === selectedTable()?.id) {
+                          <span class="table-status">Current</span>
+                        } @else if (table.status === 'occupied') {
+                          <span class="table-status">Open Order</span>
+                        }
+                      </div>
+                    </button>
+                  }
                 }
               </div>
             </div>
@@ -122,23 +175,33 @@
               <h3>Takeaway / Parcel</h3>
               <div class="table-grid">
                 @for (table of getParcelTables(); track table.id) {
-                  <button mat-raised-button 
-                          class="table-btn parcel"
-                          [class.available]="table.status === 'available'"
-                          [class.current]="table.id === selectedTable()?.id"
-                          [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
-                          [disabled]="table.status === 'occupied' && table.id !== selectedTable()?.id"
-                          (click)="changeToTable(table)">
-                    <div class="table-content">
-                      <mat-icon>takeout_dining</mat-icon>
-                      <span class="table-number">{{ table.tableNumber }}</span>
-                      @if (table.id === selectedTable()?.id) {
-                        <span class="table-status">Current</span>
-                      } @else if (table.status === 'occupied') {
-                        <span class="table-status">Occupied</span>
-                      }
-                    </div>
-                  </button>
+                  @if (
+                    (tableMode() === 'change-table' && table.status === 'occupied') ||
+                    (tableMode() === 'attend-new') ||
+                    (tableMode() === 'switch-table' && (table.status === 'available' || table.id === selectedTable()?.id))
+                  ) {
+                    <button mat-raised-button 
+                            class="table-btn parcel"
+                            [class.available]="table.status === 'available'"
+                            [class.current]="table.id === selectedTable()?.id"
+                            [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                            [disabled]="
+                              (tableMode() === 'change-table' && table.id === selectedTable()?.id) ||
+                              (tableMode() === 'attend-new' && table.status === 'occupied') ||
+                              (tableMode() === 'switch-table' && table.id === selectedTable()?.id)
+                            "
+                            (click)="handleTableClick(table)">
+                      <div class="table-content">
+                        <mat-icon>takeout_dining</mat-icon>
+                        <span class="table-number">{{ table.tableNumber }}</span>
+                        @if (table.id === selectedTable()?.id) {
+                          <span class="table-status">Current</span>
+                        } @else if (table.status === 'occupied') {
+                          <span class="table-status">Open Order</span>
+                        }
+                      </div>
+                    </button>
+                  }
                 }
               </div>
             </div>
@@ -282,83 +345,35 @@
     <!-- Hotel Mode: Table Info Bar -->
     @if (isHotelMode() && selectedTable()) {
       <div class="table-info-bar">
+        <!-- Cart Icon -->
+        <mat-icon [matBadge]="billService.cartItemCount() > 0 ? billService.cartItemCount() : null" 
+                  matBadgeColor="accent" 
+                  matBadgeSize="medium"
+                  class="cart-icon">
+          shopping_cart
+        </mat-icon>
+        
         <mat-chip [highlighted]="true" class="table-chip">
           <span>{{ selectedTable()?.tableNumber }}</span>
         </mat-chip>
-        <button mat-stroked-button (click)="startChangeTable()" class="change-table-btn">
-          <mat-icon>swap_horiz</mat-icon>
-          Change
-        </button>
         
         <!-- Occupied Tables Button -->
         <div class="attended-tables-container">
           <button mat-icon-button 
-                  (click)="toggleAttendedTablesMenu()"
+                  (click)="startChangeTable()"
                   class="attended-tables-btn">
-            <mat-icon [matBadge]="getOccupiedTables().length" matBadgeColor="warn" matBadgeSize="small" aria-hidden="false">
+            <mat-icon [matBadge]="getOccupiedTables().length > 0 ? getOccupiedTables().length : null" matBadgeColor="warn" matBadgeSize="small" aria-hidden="false">
               grid_view
             </mat-icon>
           </button>
           
-          @if (showAttendedTablesMenu()) {
-            <div class="attended-tables-menu" (click)="$event.stopPropagation()">
-              <div class="menu-header">
-                <span>Occupied Tables</span>
-                <button mat-icon-button (click)="closeAttendedTablesMenu()">
-                  <mat-icon>close</mat-icon>
-                </button>
-              </div>
-              <div class="menu-content">
-                @if (getOccupiedTables().length === 0) {
-                  <div class="no-tables">No occupied tables</div>
-                } @else {
-                  @for (table of getOccupiedTables(); track table.id) {
-                    <div class="attended-table-item" 
-                         [class.current]="table.id === selectedTable()?.id"
-                         (click)="table.id !== selectedTable()?.id && selectOccupiedTable(table)">
-                      <div class="table-info">
-                        @if (table.tableType === 'parcel') {
-                          <mat-icon>takeout_dining</mat-icon>
-                        } @else {
-                          <mat-icon>table_restaurant</mat-icon>
-                        }
-                        <span>{{ table.tableNumber }}</span>
-                      </div>
-                      @if (table.id === selectedTable()?.id) {
-                        <span class="current-label">Current</span>
-                      } @else if (table.grandTotal) {
-                        <span class="table-amount">{{ formatCurrency(table.grandTotal) }}</span>
-                      }
-                    </div>
-                  }
-                }
-                <button mat-stroked-button class="add-new-table-btn" (click)="cancelTableSelection(); closeAttendedTablesMenu()">
-                  <mat-icon>add</mat-icon>
-                  Attend New Table
-                </button>
-              </div>
-            </div>
-          }
+          <button mat-icon-button color="warn" (click)="clearCart()" 
+                  [disabled]="billService.cartItems().length === 0">
+            <mat-icon>delete</mat-icon>
+          </button>
         </div>
       </div>
     }
-
-    <!-- Cart Header -->
-    <div class="cart-header">
-      <div class="cart-title">
-        <mat-icon>shopping_cart</mat-icon>
-        <span>{{ translateService.t('home.cart') }}</span>
-        @if (billService.cartItemCount() > 0) {
-          <span class="cart-count">{{ billService.cartItemCount() }}</span>
-        }
-      </div>
-      <div class="cart-actions">
-        <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="billService.cartItems().length === 0">
-          <mat-icon>delete</mat-icon>
-        </button>
-      </div>
-    </div>
 
     <!-- Cart Items List -->
     <div class="cart-items-list">
@@ -383,9 +398,6 @@
               <div class="item-details">
                 <div class="item-name-row">
                   <span class="item-name">{{ getDisplayName(item) }}</span>
-                  @if (isHotelMode() && isItemKotPrinted(item.productId)) {
-                    <mat-icon class="kot-icon">check_circle</mat-icon>
-                  }
                 </div>
                 <span class="item-price">{{ formatCurrency(item.unitPrice) }}@if (item.isLooseItem && item.unit) {/{{ item.unit }}}</span>
               </div>
@@ -433,7 +445,7 @@
           @if (isHotelMode()) {
             <div class="action-buttons">
               <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                      [disabled]="getNewItems().length === 0" class="action-btn kot-btn">
+                      [disabled]="billService.cartItems().length === 0" class="action-btn kot-btn">
                 <mat-icon>restaurant</mat-icon>
                 <span>KOT</span>
               </button>
@@ -573,7 +585,7 @@
           <div class="footer-actions">
             @if (isHotelMode()) {
               <button mat-raised-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                      [disabled]="getNewItems().length === 0" class="action-btn-expanded kot-btn">
+                      [disabled]="billService.cartItems().length === 0" class="action-btn-expanded kot-btn">
                 <mat-icon>restaurant</mat-icon>
                 Print KOT
               </button>
