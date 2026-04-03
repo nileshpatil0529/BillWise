@@ -79,15 +79,10 @@
 // SETTINGS CARD
 // ============================================
 .settings-card {
-  background: v.$light-surface;
-  border-radius: v.$radius-md;
+  background: transparent;
+  border-radius: 0;
   overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-
-  @include m.dark-theme {
-    background: v.$dark-surface;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  }
+  box-shadow: none;
 }
 
 // ============================================
@@ -340,7 +335,7 @@
 // BUSINESS FORM
 // ============================================
 .business-form {
-  padding: v.$spacing-md;
+  padding: 0 v.$spacing-md;
   display: flex;
   flex-direction: column;
   gap: v.$spacing-sm;
@@ -348,6 +343,14 @@
 
   @include m.dark-theme {
     border-color: v.$dark-divider;
+  }
+
+  mat-form-field:first-child {
+    margin-top: v.$spacing-md;
+  }
+
+  mat-form-field:last-child {
+    margin-bottom: v.$spacing-md;
   }
 
   mat-form-field {
@@ -365,7 +368,7 @@
 // APPLICATION TYPE
 // ============================================
 .app-type-section {
-  padding: v.$spacing-md;
+  padding: v.$spacing-md v.$spacing-md v.$spacing-sm v.$spacing-md;
   border-top: 1px solid v.$light-divider;
 
   @include m.dark-theme {
@@ -453,7 +456,7 @@
   justify-content: center;
   gap: v.$spacing-sm;
   width: calc(100% - #{v.$spacing-md * 2});
-  margin: v.$spacing-md;
+  margin: v.$spacing-sm v.$spacing-md v.$spacing-md v.$spacing-md;
   height: 48px;
   font-size: 15px;
   font-weight: 500;
@@ -476,8 +479,7 @@
 .units-add-row {
   display: flex;
   gap: v.$spacing-sm;
-  padding: v.$spacing-md;
-  padding-bottom: 0;
+  padding: v.$spacing-md v.$spacing-md 0 v.$spacing-md;
 
   .unit-field {
     flex: 2;
@@ -513,7 +515,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: v.$spacing-sm;
-  padding: v.$spacing-md;
+  padding: v.$spacing-sm v.$spacing-md v.$spacing-md v.$spacing-md;
 }
 
 .unit-chip {
@@ -591,8 +593,7 @@
 .tables-add-row {
   display: flex;
   gap: v.$spacing-sm;
-  padding: v.$spacing-md;
-  padding-bottom: v.$spacing-xs;
+  padding: v.$spacing-md v.$spacing-md v.$spacing-xs v.$spacing-md;
 
   .type-field {
     flex: 2;
@@ -619,7 +620,7 @@
 }
 
 .tables-group {
-  padding: v.$spacing-md;
+  padding: v.$spacing-sm v.$spacing-md v.$spacing-md v.$spacing-md;
   border-top: 1px solid v.$light-divider;
 
   @include m.dark-theme {
@@ -707,7 +708,7 @@
 .notes-add-row {
   display: flex;
   gap: v.$spacing-sm;
-  padding: v.$spacing-md;
+  padding: v.$spacing-md v.$spacing-md v.$spacing-sm v.$spacing-md;
   align-items: flex-start;
 
   .note-field {
@@ -730,7 +731,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: v.$spacing-sm;
-  padding: 0 v.$spacing-md v.$spacing-md;
+  padding: 0 v.$spacing-md v.$spacing-md v.$spacing-md;
 }
 
 .note-chip {
@@ -768,7 +769,7 @@
   display: flex;
   flex-direction: column;
   gap: v.$spacing-sm;
-  padding: v.$spacing-md;
+  padding: v.$spacing-sm v.$spacing-md;
   border-top: 1px solid v.$light-divider;
   border-bottom: 1px solid v.$light-divider;
 
@@ -794,7 +795,7 @@
   display: flex;
   flex-direction: column;
   gap: v.$spacing-sm;
-  padding: v.$spacing-md;
+  padding: v.$spacing-sm v.$spacing-md v.$spacing-md v.$spacing-md;
   border-top: 1px solid v.$light-divider;
 
   mat-form-field {
@@ -828,7 +829,7 @@
 .category-add-row {
   display: flex;
   gap: v.$spacing-sm;
-  padding: v.$spacing-md;
+  padding: v.$spacing-md v.$spacing-md v.$spacing-sm v.$spacing-md;
   align-items: flex-start;
 
   .category-field {
@@ -947,4 +948,78 @@
 // ============================================
 mat-slide-toggle {
   flex-shrink: 0;
+}
+
+// ============================================
+// EXPANSION PANEL STYLING
+// ============================================
+mat-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-md;
+
+  mat-expansion-panel {
+    background: v.$light-surface;
+    border-radius: v.$radius-md !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+    overflow: hidden;
+
+    @include m.dark-theme {
+      background: v.$dark-surface;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3) !important;
+    }
+
+    &:not(.mat-expanded):not([aria-disabled='true']) {
+      .mat-expansion-panel-header:hover {
+        background: rgba(0, 0, 0, 0.02) !important;
+
+        @include m.dark-theme {
+          background: rgba(255, 255, 255, 0.02) !important;
+        }
+      }
+    }
+  }
+
+  .mat-expansion-panel-header {
+    padding: v.$spacing-md;
+    height: auto !important;
+    min-height: 60px;
+
+    &.mat-expanded {
+      border-bottom: 1px solid v.$light-divider;
+
+      @include m.dark-theme {
+        border-color: v.$dark-divider;
+      }
+    }
+
+    mat-panel-title {
+      display: flex;
+      align-items: center;
+      gap: v.$spacing-md;
+      flex-grow: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: v.$light-text-primary;
+
+      @include m.dark-theme {
+        color: white;
+      }
+
+      mat-icon {
+        font-size: 20px;
+        width: 20px;
+        height: 20px;
+        color: v.$light-primary;
+
+        @include m.dark-theme {
+          color: v.$dark-primary;
+        }
+      }
+    }
+  }
+
+  .mat-expansion-panel-body {
+    padding: 0 !important;
+  }
 }

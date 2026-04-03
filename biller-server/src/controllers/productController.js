@@ -744,7 +744,7 @@ export const exportProducts = async (req, res) => {
 
     // Define columns - exclude stock/cost fields for hotel mode
     const columns = [
-      { header: 'Product Name', key: 'name', width: 30 },
+      { header: isHotelMode ? 'Product Name' : 'Product Name *', key: 'name', width: 30 },
       { header: 'Name (Hindi)', key: 'nameHi', width: 30 }
     ];
     
@@ -754,16 +754,16 @@ export const exportProducts = async (req, res) => {
     }
     
     columns.push(
-      { header: 'Category', key: 'category', width: 20 },
+      { header: 'Category *', key: 'category', width: 20 },
       { header: 'Description', key: 'description', width: 40 },
-      { header: 'Unit Price', key: 'unitPrice', width: 12 }
+      { header: isHotelMode ? 'Unit Price' : 'Unit Price *', key: 'unitPrice', width: 12 }
     );
     
     // Add cost price and stock fields only for non-hotel modes
     if (!isHotelMode) {
       columns.push(
         { header: 'Cost Price', key: 'costPrice', width: 12 },
-        { header: 'Stock Quantity', key: 'stockQuantity', width: 15 },
+        { header: 'Stock Quantity *', key: 'stockQuantity', width: 15 },
         { header: 'Low Stock Alert', key: 'lowStockAlert', width: 15 }
       );
     }
@@ -782,6 +782,19 @@ export const exportProducts = async (req, res) => {
     }
 
     worksheet.columns = columns;
+
+    // Add instruction row at the top (only for non-hotel modes)
+    if (!isHotelMode) {
+      worksheet.insertRow(1, ['Fields marked with * are required. Stock Quantity must be provided for all products.']);
+      worksheet.mergeCells('A1:' + worksheet.getColumn(columns.length).letter + '1');
+      worksheet.getRow(1).font = { bold: true, color: { argb: 'FF0000FF' } };
+      worksheet.getRow(1).alignment = { horizontal: 'center' };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFFFE0' }
+      };
+    }
 
     // Add product rows
     products.forEach(p => {
@@ -818,11 +831,14 @@ export const exportProducts = async (req, res) => {
       worksheet.addRow(row);
     });
 
+    // Determine header row number (instruction row is added for non-hotel modes)
+    const headerRowNum = isHotelMode ? 1 : 2;
+
     // Format Barcode column as TEXT to prevent scientific notation (only if not hotel mode)
     if (!isHotelMode) {
       worksheet.getColumn('barcode').numFmt = '@'; // @ means text format
       worksheet.getColumn('barcode').eachCell({ includeEmpty: true }, (cell, rowNumber) => {
-        if (rowNumber > 1) { // Skip header
+        if (rowNumber > headerRowNum) { // Skip instruction and header rows
           cell.numFmt = '@';
           cell.alignment = { horizontal: 'left' };
         }
@@ -831,7 +847,7 @@ export const exportProducts = async (req, res) => {
 
     // Add data validation for Category column (column C now, since Product ID removed)
     worksheet.getColumn('category').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-      if (rowNumber > 1) { // Skip header row
+      if (rowNumber > headerRowNum) { // Skip instruction and header rows
         cell.dataValidation = {
           type: 'list',
           allowBlank: true,
@@ -846,7 +862,7 @@ export const exportProducts = async (req, res) => {
 
     // Add data validation for Status column (column I - last column)
     worksheet.getColumn('status').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-      if (rowNumber > 1) { // Skip header row
+      if (rowNumber > headerRowNum) { // Skip instruction and header rows
         cell.dataValidation = {
           type: 'list',
           allowBlank: false,
@@ -863,7 +879,7 @@ export const exportProducts = async (req, res) => {
     if (isGroceryMode) {
       // Is Loose Item column validation
       worksheet.getColumn('isLooseItem').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-        if (rowNumber > 1) {
+        if (rowNumber > headerRowNum) {
           cell.dataValidation = {
             type: 'list',
             allowBlank: false,
@@ -878,7 +894,7 @@ export const exportProducts = async (req, res) => {
 
       // Unit column validation
       worksheet.getColumn('unit').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-        if (rowNumber > 1) {
+        if (rowNumber > headerRowNum) {
           cell.dataValidation = {
             type: 'list',
             allowBlank: true,
@@ -893,7 +909,8 @@ export const exportProducts = async (req, res) => {
     }
 
     // Apply validation to empty cells too (100 extra rows for new entries)
-    for (let i = products.length + 2; i <= products.length + 102; i++) {
+    const startRow = (isHotelMode ? products.length + 2 : products.length + 3);
+    for (let i = startRow; i <= startRow + 100; i++) {
       // Format Barcode cell as text (only for non-hotel modes)
       if (!isHotelMode) {
         const barcodeCell = worksheet.getColumn('barcode').letter + i;
@@ -925,6 +942,26 @@ export const exportProducts = async (req, res) => {
         errorTitle: 'Invalid Status',
         error: 'Please select either "active" or "inactive"'
       };
+      worksheet.getCell(statusCell).value = 'active'; // Default value
+      
+      // Add default values for non-hotel modes
+      if (!isHotelMode) {
+        // Default category
+        const categoryCell = worksheet.getColumn('category').letter + i;
+        worksheet.getCell(categoryCell).value = 'General';
+        
+        // Default stock quantity (0 for now, user must fill)
+        const stockCell = worksheet.getColumn('stockQuantity').letter + i;
+        worksheet.getCell(stockCell).value = 0;
+        
+        // Default cost price
+        const costCell = worksheet.getColumn('costPrice').letter + i;
+        worksheet.getCell(costCell).value = 0;
+        
+        // Default low stock alert
+        const lowStockCell = worksheet.getColumn('lowStockAlert').letter + i;
+        worksheet.getCell(lowStockCell).value = 10;
+      }
       
       // Add grocery-specific validations for empty rows
       if (isGroceryMode) {
@@ -957,8 +994,8 @@ export const exportProducts = async (req, res) => {
     }
 
     // Style the header row
-    worksheet.getRow(1).font = { bold: true };
-    worksheet.getRow(1).fill = {
+    worksheet.getRow(headerRowNum).font = { bold: true };
+    worksheet.getRow(headerRowNum).fill = {
       type: 'pattern',
       pattern: 'solid',
       fgColor: { argb: 'FFE0E0E0' }

@@ -12,6 +12,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDialog, MatDialogModule } from '@angular/material/dialog';
+import { MatExpansionModule } from '@angular/material/expansion';
 
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -37,7 +38,8 @@ import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog
     MatProgressSpinnerModule,
     MatCheckboxModule,
     MatTooltipModule,
-    MatDialogModule
+    MatDialogModule,
+    MatExpansionModule
   ],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss']

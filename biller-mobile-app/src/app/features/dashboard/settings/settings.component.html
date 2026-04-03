@@ -4,95 +4,100 @@
     <h1>{{ translateService.t('settings.title') }}</h1>
   </div>
 
-  <!-- Account Section (All Users) -->
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>account_circle</mat-icon>
-      <span>{{ translateService.t('settings.account') }}</span>
-    </div>
+  <mat-accordion>
+    <!-- Account Section (All Users) -->
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon>account_circle</mat-icon>
+          <span>{{ translateService.t('settings.account') }}</span>
+        </mat-panel-title>
+      </mat-expansion-panel-header>
 
-    <div class="settings-card">
-      <!-- Profile Photo -->
-      <div class="setting-item profile-item" (click)="profilePhotoInput.click()">
-        <div class="setting-left">
-          @if (profilePhotoPreview()) {
-            <img [src]="profilePhotoPreview()" alt="Profile" class="profile-avatar">
-          } @else {
-            <div class="profile-avatar-placeholder">
-              <mat-icon>person</mat-icon>
+      <div class="settings-card">
+        <!-- Profile Photo -->
+        <div class="setting-item profile-item" (click)="profilePhotoInput.click()">
+          <div class="setting-left">
+            @if (profilePhotoPreview()) {
+              <img [src]="profilePhotoPreview()" alt="Profile" class="profile-avatar">
+            } @else {
+              <div class="profile-avatar-placeholder">
+                <mat-icon>person</mat-icon>
+              </div>
+            }
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.profilePhoto') }}</span>
+              <span class="setting-value">{{ profilePhotoPreview() ? translateService.t('settings.changePhoto') : translateService.t('settings.uploadPhoto') }}</span>
             </div>
-          }
-          <div class="setting-info">
-            <span class="setting-label">{{ translateService.t('settings.profilePhoto') }}</span>
-            <span class="setting-value">{{ profilePhotoPreview() ? translateService.t('settings.changePhoto') : translateService.t('settings.uploadPhoto') }}</span>
+          </div>
+          <mat-icon class="chevron">chevron_right</mat-icon>
+        </div>
+        <input type="file" #profilePhotoInput hidden accept="image/*" (change)="onProfilePhotoSelected($event)">
+
+        <!-- Theme Toggle -->
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon theme">
+              <mat-icon>{{ businessForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.themeMode') }}</span>
+              <span class="setting-value">{{ businessForm.get('theme')?.value === 'dark' ? translateService.t('settings.darkMode') : translateService.t('settings.lightMode') }}</span>
+            </div>
+          </div>
+          <mat-slide-toggle
+            [checked]="businessForm.get('theme')?.value === 'dark'"
+            (change)="onThemeChange($event.checked)">
+          </mat-slide-toggle>
+        </div>
+
+        <!-- Language -->
+        <div class="setting-item language-item">
+          <div class="setting-left">
+            <div class="setting-icon language">
+              <mat-icon>translate</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">Language / भाषा</span>
+            </div>
+          </div>
+          <div class="language-buttons">
+            <button mat-stroked-button 
+                    [class.active]="selectedLanguage() === 'en'"
+                    (click)="setLanguage('en')">EN</button>
+            <button mat-stroked-button 
+                    [class.active]="selectedLanguage() === 'hi'"
+                    (click)="setLanguage('hi')">हि</button>
           </div>
         </div>
-        <mat-icon class="chevron">chevron_right</mat-icon>
+
+        <!-- Change Password -->
+        <div class="setting-item" (click)="openChangePasswordDialog()">
+          <div class="setting-left">
+            <div class="setting-icon security">
+              <mat-icon>lock</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.changePassword') }}</span>
+              <span class="setting-value">{{ translateService.t('settings.passwordHint') }}</span>
+            </div>
+          </div>
+          <mat-icon class="chevron">chevron_right</mat-icon>
+        </div>
       </div>
-      <input type="file" #profilePhotoInput hidden accept="image/*" (change)="onProfilePhotoSelected($event)">
+    </mat-expansion-panel>
 
-      <!-- Theme Toggle -->
-      <div class="setting-item">
-        <div class="setting-left">
-          <div class="setting-icon theme">
-            <mat-icon>{{ businessForm.get('theme')?.value === 'dark' ? 'dark_mode' : 'light_mode' }}</mat-icon>
-          </div>
-          <div class="setting-info">
-            <span class="setting-label">{{ translateService.t('settings.themeMode') }}</span>
-            <span class="setting-value">{{ businessForm.get('theme')?.value === 'dark' ? translateService.t('settings.darkMode') : translateService.t('settings.lightMode') }}</span>
-          </div>
-        </div>
-        <mat-slide-toggle
-          [checked]="businessForm.get('theme')?.value === 'dark'"
-          (change)="onThemeChange($event.checked)">
-        </mat-slide-toggle>
-      </div>
+    <!-- Business Settings Section (Admin Only) -->
+    @if (authService.isAdmin()) {
+    <mat-expansion-panel>
+      <mat-expansion-panel-header>
+        <mat-panel-title>
+          <mat-icon>business</mat-icon>
+          <span>{{ translateService.t('settings.business') }}</span>
+        </mat-panel-title>
+      </mat-expansion-panel-header>
 
-      <!-- Language -->
-      <div class="setting-item language-item">
-        <div class="setting-left">
-          <div class="setting-icon language">
-            <mat-icon>translate</mat-icon>
-          </div>
-          <div class="setting-info">
-            <span class="setting-label">Language / भाषा</span>
-          </div>
-        </div>
-        <div class="language-buttons">
-          <button mat-stroked-button 
-                  [class.active]="selectedLanguage() === 'en'"
-                  (click)="setLanguage('en')">EN</button>
-          <button mat-stroked-button 
-                  [class.active]="selectedLanguage() === 'hi'"
-                  (click)="setLanguage('hi')">हि</button>
-        </div>
-      </div>
-
-      <!-- Change Password -->
-      <div class="setting-item" (click)="openChangePasswordDialog()">
-        <div class="setting-left">
-          <div class="setting-icon security">
-            <mat-icon>lock</mat-icon>
-          </div>
-          <div class="setting-info">
-            <span class="setting-label">{{ translateService.t('settings.changePassword') }}</span>
-            <span class="setting-value">{{ translateService.t('settings.passwordHint') }}</span>
-          </div>
-        </div>
-        <mat-icon class="chevron">chevron_right</mat-icon>
-      </div>
-    </div>
-  </section>
-
-  <!-- Business Settings Section (Admin Only) -->
-  @if (authService.isAdmin()) {
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>business</mat-icon>
-      <span>{{ translateService.t('settings.business') }}</span>
-    </div>
-
-    <div class="settings-card">
+      <div class="settings-card">
       <!-- Logo Upload -->
       <div class="setting-item logo-item">
         <div class="setting-left">
@@ -194,15 +199,18 @@
         }
       </button>
     </div>
-  </section>
+  </mat-expansion-panel>
+  }
 
   <!-- Barcode Scanner Section (Non-Hotel Only) -->
   @if (!isHotelMode()) {
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>qr_code_scanner</mat-icon>
-      <span>{{ translateService.t('settings.barcodeScanner') }}</span>
-    </div>
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>qr_code_scanner</mat-icon>
+        <span>{{ translateService.t('settings.barcodeScanner') }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card">
       <div class="setting-item">
@@ -221,16 +229,18 @@
         </mat-slide-toggle>
       </div>
     </div>
-  </section>
+  </mat-expansion-panel>
   }
 
   <!-- Units Management (Grocery Only) -->
   @if (isGroceryMode()) {
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>scale</mat-icon>
-      <span>{{ translateService.t('settings.unitsManagement') }}</span>
-    </div>
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>scale</mat-icon>
+        <span>{{ translateService.t('settings.unitsManagement') }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card">
       <div class="units-add-row">
@@ -275,16 +285,18 @@
       </div>
       }
     </div>
-  </section>
+  </mat-expansion-panel>
   }
 
   <!-- Hotel Management (Hotel Only) -->
   @if (isHotelMode()) {
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>table_restaurant</mat-icon>
-      <span>{{ translateService.t('settings.tableParcelMgmt') }}</span>
-    </div>
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>table_restaurant</mat-icon>
+        <span>{{ translateService.t('settings.tableParcelMgmt') }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card">
       <div class="tables-add-row">
@@ -349,14 +361,16 @@
       </div>
       }
     </div>
-  </section>
+  </mat-expansion-panel>
 
   <!-- Item Notes Section (Hotel Only) -->
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>note_add</mat-icon>
-      <span>{{ translateService.t('settings.itemNotes') }}</span>
-    </div>
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>note_add</mat-icon>
+        <span>{{ translateService.t('settings.itemNotes') }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card">
       <div class="notes-add-row">
@@ -385,15 +399,17 @@
       </div>
       }
     </div>
-  </section>
+  </mat-expansion-panel>
   }
 
   <!-- Tax Settings Section (Admin Only) -->
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>receipt_long</mat-icon>
-      <span>{{ translateService.t('settings.tax') }}</span>
-    </div>
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>receipt_long</mat-icon>
+        <span>{{ translateService.t('settings.tax') }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card">
       <form [formGroup]="taxForm">
@@ -473,14 +489,15 @@
         }
       </button>
     </div>
-  </section>
+  </mat-expansion-panel>
 
-  <!-- Receipt Settings Section (Admin Only) -->
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>print</mat-icon>
-      <span>{{ translateService.t('settings.receipt') }}</span>
-    </div>
+  <!-- Receipt Settings Section (Admin Only) -->  @if (authService.isAdmin()) {  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>print</mat-icon>
+        <span>{{ translateService.t('settings.receipt') }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card">
       <form [formGroup]="receiptForm">
@@ -550,14 +567,16 @@
         }
       </button>
     </div>
-  </section>
+  </mat-expansion-panel>
 
   <!-- Categories Section (Admin Only) -->
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>category</mat-icon>
-      <span>{{ translateService.t('settings.categories') }}</span>
-    </div>
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>category</mat-icon>
+        <span>{{ translateService.t('settings.categories') }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card">
       <div class="category-add-row">
@@ -609,15 +628,17 @@
         }
       </button>
     </div>
-  </section>
+  </mat-expansion-panel>
   }
 
   <!-- App Info Section -->
-  <section class="settings-section">
-    <div class="section-header">
-      <mat-icon>info</mat-icon>
-      <span>{{ translateService.t('settings.about') || 'About' }}</span>
-    </div>
+  <mat-expansion-panel>
+    <mat-expansion-panel-header>
+      <mat-panel-title>
+        <mat-icon>info</mat-icon>
+        <span>{{ translateService.t('settings.about') || 'About' }}</span>
+      </mat-panel-title>
+    </mat-expansion-panel-header>
 
     <div class="settings-card app-info">
       <div class="app-version">
@@ -625,5 +646,6 @@
         <span class="version-number">1.0.0</span>
       </div>
     </div>
-  </section>
+  </mat-expansion-panel>
+  </mat-accordion>
 </div>
