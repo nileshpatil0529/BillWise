@@ -11,6 +11,7 @@ export interface BillItem {
   taxAmount: number;
   finalTotal: number;
   kotPrinted?: boolean; // Hotel mode: item sent to kitchen
+  note?: string; // Optional note for item (e.g., No sugar, Extra spicy)
 }
 
 export interface Bill {

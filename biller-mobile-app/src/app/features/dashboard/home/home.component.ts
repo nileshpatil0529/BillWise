@@ -1039,21 +1039,20 @@ export class HomeComponent implements OnInit, OnDestroy {
           // Load cart items from bill
           this.billService.clearCart();
           if (bill.items) {
-            bill.items.forEach((item: any) => {
-              // Cast to Product with minimal required fields
-              const product = {
-                productId: item.productId,
-                name: item.name,
-                unitPrice: item.unitPrice,
-                category: item.category || 'General',
-                stockQuantity: 9999,
-                status: 'active' as const
-              };
-              // Add to cart with quantity
-              for (let i = 0; i < item.quantity; i++) {
-                this.billService.addToCart(product);
-              }
-            });
+            const cartItems = bill.items.map((item: any) => ({
+              productId: item.productId,
+              name: item.name,
+              unitPrice: item.unitPrice,
+              category: item.category || 'General',
+              stockQuantity: 9999,
+              status: 'active' as const,
+              quantity: item.quantity,
+              discount: 0,
+              discountType: 'fixed' as const,
+              lineTotal: item.unitPrice * item.quantity,
+              note: item.note // Preserve note when loading existing bill
+            }));
+            this.billService.cartItems.set(cartItems);
           }
           // Update snapshot after loading bill items
           this.updateCartSnapshot();
@@ -1433,7 +1432,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         productId: item.productId,
         name: item.name,
         quantity: item.quantity,
-        unitPrice: item.unitPrice
+        unitPrice: item.unitPrice,
+        note: item.note
       }))
     };
 
@@ -1445,7 +1445,8 @@ export class HomeComponent implements OnInit, OnDestroy {
           productId: item.productId,
           name: item.name,
           quantity: item.quantity,
-          unitPrice: item.unitPrice
+          unitPrice: item.unitPrice,
+          note: item.note
         }))
       } as any;
       this.billService.updateBill(this.currentBillId()!, updateData).subscribe({
@@ -1510,7 +1511,8 @@ export class HomeComponent implements OnInit, OnDestroy {
         productId: item.productId,
         name: item.name,
         quantity: item.quantity,
-        unitPrice: item.unitPrice
+        unitPrice: item.unitPrice,
+        note: item.note
       }))
     };
 
@@ -1522,7 +1524,8 @@ export class HomeComponent implements OnInit, OnDestroy {
           productId: item.productId,
           name: item.name,
           quantity: item.quantity,
-          unitPrice: item.unitPrice
+          unitPrice: item.unitPrice,
+          note: item.note
         }))
       } as any;
       this.billService.updateBill(this.currentBillId()!, updateData).subscribe({

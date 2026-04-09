@@ -185,7 +185,8 @@ export class BillService {
       quantity: item.quantity,
       unitPrice: item.unitPrice,
       discount: item.discount,
-      discountType: item.discountType
+      discountType: item.discountType,
+      note: item.note
     }));
 
     const bill = {
