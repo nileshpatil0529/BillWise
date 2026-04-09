@@ -856,13 +856,13 @@ export const printKOT = async (req, res) => {
       month: '2-digit', 
       year: 'numeric',
       hour: '2-digit',
-    // Bill Number (last 5 digits only)
-    const billNumShort = bill.billNumber.toString().slice(-5);
-    receiptText += 'Bill: ' + billNumShort + '\n';
-    
       minute: '2-digit',
       hour12: true
     }) + '\n';
+    
+    // Bill Number (last 5 digits only)
+    const billNumShort = bill.billNumber.toString().slice(-5);
+    receiptText += 'Bill: ' + billNumShort + '\n';
     
     if (businessTypeData.tableNumber) {
       const tableType = businessTypeData.tableType || 'dine-in';
