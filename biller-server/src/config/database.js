@@ -322,6 +322,11 @@ const initializeDatabase = () => {
       db.exec("ALTER TABLE settings ADD COLUMN language TEXT DEFAULT 'en'");
       console.log('✅ Migration: Added language column');
     }
+    const hasUpiId = columns.some(col => col.name === 'upiId');
+    if (!hasUpiId) {
+      db.exec('ALTER TABLE settings ADD COLUMN upiId TEXT');
+      console.log('✅ Migration: Added upiId column');
+    }
   } catch (e) {
     // Column might already exist
   }
