@@ -564,8 +564,8 @@ export const printBill = async (req, res) => {
     // Get business settings
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
     
-    // Get currency symbol from settings
-    const currencySymbol = settings?.currency || '₹';
+    // Currency symbol
+    const currencySymbol = 'Rs.';
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
@@ -579,13 +579,24 @@ export const printBill = async (req, res) => {
     // Initialize printer
     receiptText += ESC + '@'; // Initialize
     
-    // Header - Kitchen Order Title (Center, Bold, Double Size)
+    // Header - Business Name (Center, Bold, Double Size)
     receiptText += ESC + 'a' + '\x01'; // Center align
     receiptText += ESC + 'E' + '\x01'; // Bold on
     receiptText += GS + '!' + '\x11'; // Double height & width
-    receiptText += 'Kitchen Order' + '\n';
+    receiptText += (settings?.businessName || 'My Business') + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
+    
+    // Business Details (Center, normal font)
+    if (settings?.address) {
+      receiptText += 'Address: ' + settings.address + '\n';
+    }
+    if (settings?.taxNumber) {
+      receiptText += 'GST No: ' + settings.taxNumber + '\n';
+    }
+    if (settings?.phone) {
+      receiptText += 'Phone: ' + settings.phone + '\n';
+    }
     let businessTypeData = {};
     try {
       businessTypeData = bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {};
@@ -651,25 +662,27 @@ export const printBill = async (req, res) => {
     // Dotted divider line
     receiptText += '................................\n';
     
-    // Totals section (normal font)
+    // Totals section (normal font, right aligned)
     receiptText += '\n';
     const subtotal = Math.round(bill.subtotal).toFixed(2);
-    receiptText += 'Total:' + (currencySymbol + subtotal).padStart(25) + '\n';
+    const totalLine = 'Total:' + (currencySymbol + ' ' + subtotal).padStart(24);
+    receiptText += totalLine + '\n';
     
     if (bill.taxTotal > 0) {
       const tax = Math.round(bill.taxTotal).toFixed(2);
       const taxRate = settings?.taxRates?.[0]?.rate || 5;
       const taxLabel = `Tax (${taxRate}%):`;
-      const taxValue = currencySymbol + tax;
-      receiptText += taxLabel + taxValue.padStart(32 - taxLabel.length) + '\n';
+      const taxAmount = currencySymbol + ' ' + tax;
+      const taxLine = taxLabel + taxAmount.padStart(32 - taxLabel.length);
+      receiptText += taxLine + '\n';
     }
     
-    // Grand Total (Bold, Slightly Larger font - not double size)
+    // Grand Total (Bold, same font size as other text)
     receiptText += '\n';
     receiptText += ESC + 'E' + '\x01'; // Bold on
-    receiptText += GS + '!' + '\x10'; // Single height, double width
-    receiptText += 'Grand Total ' + currencySymbol + Math.round(bill.grandTotal).toFixed(2) + '\n';
-    receiptText += GS + '!' + '\x00'; // Normal size
+    const grandTotalAmount = Math.round(bill.grandTotal).toFixed(2);
+    const grandTotalLine = 'Grand Total:' + (currencySymbol + ' ' + grandTotalAmount).padStart(20);
+    receiptText += grandTotalLine + '\n';
     receiptText += ESC + 'E' + '\x00'; // Bold off
     
     // Dotted divider line
@@ -789,25 +802,8 @@ export const printKOT = async (req, res) => {
     // Get business settings
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
     
-    // Get currency symbol from settings - map to correct symbol
-    let currencySymbol = '₹'; // Default to Rupee
-    if (settings?.currency) {
-      // Map currency names to symbols
-      const currencyMap = {
-        'rupee': '₹',
-        'rupees': '₹',
-        'inr': '₹',
-        '₹': '₹',
-        'rs': '₹',
-        'dollar': '$',
-        'usd': '$',
-        'euro': '€',
-        'eur': '€',
-        'pound': '£',
-        'gbp': '£'
-      };
-      currencySymbol = currencyMap[settings.currency.toLowerCase()] || settings.currency;
-    }
+    // Currency symbol
+    const currencySymbol = 'Rs.';
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
@@ -821,24 +817,13 @@ export const printKOT = async (req, res) => {
     // Initialize printer
     receiptText += ESC + '@'; // Initialize
     
-    // Header - Business Name (Center, Bold, Double Size)
+    // Header - Kitchen Order Title (Center, Bold, Double Size)
     receiptText += ESC + 'a' + '\x01'; // Center align
     receiptText += ESC + 'E' + '\x01'; // Bold on
     receiptText += GS + '!' + '\x11'; // Double height & width
-    receiptText += (settings?.businessName || 'My Business') + '\n';
+    receiptText += 'Kitchen Order' + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
-    
-    // Business Details (Center, normal font)
-    if (settings?.address) {
-      receiptText += 'Address: ' + settings.address + '\n';
-    }
-    if (settings?.taxNumber) {
-      receiptText += 'GST No: ' + settings.taxNumber + '\n';
-    }
-    if (settings?.phone) {
-      receiptText += 'Phone: ' + settings.phone + '\n';
-    }
     
     // Parse business type data for table info
     let businessTypeData = {};
@@ -876,29 +861,27 @@ export const printKOT = async (req, res) => {
     // Check if Hindi language is selected
     const isHindi = settings?.receiptLanguage === 'hi';
     
-    // Items header - 3 columns: Name, Qty, Price
+    // Items header - 2 columns: Name, Qty (right aligned)
     receiptText += ESC + 'a' + '\x00'; // Left align
-    const headerName = 'Name'.padEnd(18);
-    const headerQty = 'Qty'.padStart(4);
-    const headerPrice = 'Price'.padStart(8);
-    receiptText += headerName + headerQty + headerPrice + '\n';
+    const headerName = 'Name'.padEnd(26);
+    const headerQty = 'Qty';
+    receiptText += headerName + headerQty + '\n';
     
     // Items list
     newItems.forEach(item => {
       // Use Hindi name if available and Hindi is selected
       const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
       const qty = (item.quantity || 0).toString();
-      const price = Math.round(item.unitPrice || 0).toFixed(2);
       
-      // If name is longer than 18 chars, wrap to next line
-      if (displayName.length > 18) {
-        receiptText += displayName.substring(0, 18) + '\n';
-        receiptText += displayName.substring(18, 36).padEnd(18);
+      // If name is longer than 26 chars, wrap to next line
+      if (displayName.length > 26) {
+        receiptText += displayName.substring(0, 26) + '\n';
+        receiptText += displayName.substring(26, 52).padEnd(26);
       } else {
-        receiptText += displayName.padEnd(18);
+        receiptText += displayName.padEnd(26);
       }
       
-      receiptText += qty.padStart(4) + price.padStart(8) + '\n';
+      receiptText += qty.padStart(6) + '\n';
       
       // Add note if present
       if (item.note) {
