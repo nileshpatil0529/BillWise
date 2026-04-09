@@ -1078,9 +1078,19 @@ export const printBarcode = async (req, res) => {
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
 
-    // ESC/POS commands for QR code label printing
+    // ESC/POS commands for EAN13 barcode label printing
     const ESC = '\x1B';
     const GS = '\x1D';
+    
+    // Prepare barcode for EAN13 (must be 12-13 digits)
+    let ean13Code = barcode.replace(/[^0-9]/g, ''); // Remove non-numeric characters
+    
+    // Pad with leading zeros if less than 12 digits, or use first 12 if longer
+    if (ean13Code.length < 12) {
+      ean13Code = ean13Code.padStart(12, '0');
+    } else if (ean13Code.length > 12) {
+      ean13Code = ean13Code.substring(0, 12);
+    }
     
     let labelText = '';
     
@@ -1092,43 +1102,44 @@ export const printBarcode = async (req, res) => {
       // Center alignment
       labelText += ESC + 'a' + '\x01'; // Center align
       
-      // QR Code printing
-      // Store QR code data
-      const qrData = barcode;
-      const qrDataLength = qrData.length;
+      // Add some top margin
+      labelText += '\n';
       
-      // QR Code: Model (GS ( k pL pH cn fn n)
-      labelText += GS + '(' + 'k' + '\x04' + '\x00' + '\x31' + '\x41' + '\x32' + '\x00'; // Model 2
+      // Set barcode height (GS h n) - Height in dots (default 162)
+      labelText += GS + 'h' + '\x64'; // 100 dots height for better scanning
       
-      // QR Code: Size (GS ( k pL pH cn fn n)
-      labelText += GS + '(' + 'k' + '\x03' + '\x00' + '\x31' + '\x43' + '\x08'; // Size 8
+      // Set barcode width (GS w n) - Width multiplier (2-6)
+      labelText += GS + 'w' + '\x03'; // Width 3 for better scanning
       
-      // QR Code: Error correction (GS ( k pL pH cn fn n)
-      labelText += GS + '(' + 'k' + '\x03' + '\x00' + '\x31' + '\x45' + '\x30'; // Level L
+      // Set HRI (Human Readable Interpretation) position (GS H n)
+      // 0 = Not printed, 1 = Above, 2 = Below, 3 = Both
+      labelText += GS + 'H' + '\x02'; // Print barcode number below
       
-      // QR Code: Store data
-      const pL = (qrDataLength + 3) % 256;
-      const pH = Math.floor((qrDataLength + 3) / 256);
-      labelText += GS + '(' + 'k' + String.fromCharCode(pL) + String.fromCharCode(pH) + '\x31' + '\x50' + '\x30' + qrData;
+      // Set HRI font (GS f n) - 0 = Font A, 1 = Font B
+      labelText += GS + 'f' + '\x00'; // Font A
       
-      // QR Code: Print
-      labelText += GS + '(' + 'k' + '\x03' + '\x00' + '\x31' + '\x51' + '\x30';
+      // Print EAN13 barcode (GS k m d1...d12)
+      // m = 67 (0x43) for EAN13
+      labelText += GS + 'k' + '\x43' + ean13Code;
       
       labelText += '\n\n';
       
-      // Product name (centered, truncate if too long)
+      // Product name (centered, regular font)
+      labelText += ESC + 'a' + '\x01'; // Center align
       const productName = product.name.substring(0, 32);
       labelText += productName + '\n';
       
-      // Price (centered)
-      labelText += 'Price: Rs ' + Math.round(product.unitPrice) + '\n';
+      // Price (centered, bold)
+      labelText += ESC + 'a' + '\x01'; // Center align
+      labelText += ESC + 'E' + '\x01'; // Bold ON
+      labelText += 'Rs. ' + Math.round(product.unitPrice) + '\n';
+      labelText += ESC + 'E' + '\x00'; // Bold OFF
       
-      // Divider
-      labelText += '--------------------------------\n\n';
+      labelText += '\n';
       
-      // Add some space before next label
+      // Add space before next label
       if (i < quantity - 1) {
-        labelText += '\n';
+        labelText += '\n\n';
       }
     }
     
@@ -1149,9 +1160,9 @@ export const printBarcode = async (req, res) => {
       
       res.json({
         success: true,
-        message: `Successfully printed ${quantity} QR label(s)`,
+        message: `Successfully printed ${quantity} barcode label(s)`,
         data: {
-          barcode,
+          barcode: ean13Code,
           quantity,
           productName: product.name
         }
