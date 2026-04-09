@@ -579,26 +579,13 @@ export const printBill = async (req, res) => {
     // Initialize printer
     receiptText += ESC + '@'; // Initialize
     
-    // Header - Business Name (Center, Bold, Double Size)
+    // Header - Kitchen Order Title (Center, Bold, Double Size)
     receiptText += ESC + 'a' + '\x01'; // Center align
     receiptText += ESC + 'E' + '\x01'; // Bold on
     receiptText += GS + '!' + '\x11'; // Double height & width
-    receiptText += (settings?.businessName || 'My Business') + '\n';
+    receiptText += 'Kitchen Order' + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
-    
-    // Business Details (Center, normal font)
-    if (settings?.address) {
-      receiptText += 'Address: ' + settings.address + '\n';
-    }
-    if (settings?.taxNumber) {
-      receiptText += 'GST No: ' + settings.taxNumber + '\n';
-    }
-    if (settings?.phone) {
-      receiptText += 'Phone: ' + settings.phone + '\n';
-    }
-    
-    // Parse business type data for table info
     let businessTypeData = {};
     try {
       businessTypeData = bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {};
@@ -617,6 +604,10 @@ export const printBill = async (req, res) => {
       minute: '2-digit',
       hour12: true
     }) + '\n';
+    
+    // Bill Number (last 5 digits only)
+    const billNumShort = bill.billNumber.toString().slice(-5);
+    receiptText += 'Bill: ' + billNumShort + '\n';
     
     if (businessTypeData.tableNumber) {
       receiptText += 'Table: ' + businessTypeData.tableNumber + '\n';
@@ -641,7 +632,7 @@ export const printBill = async (req, res) => {
         // Use Hindi name if available and Hindi is selected, otherwise use English name
         const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
         const qty = (item.quantity || 0).toString();
-        const price = currencySymbol + Math.round(item.unitPrice || 0).toFixed(2);
+        const price = Math.round(item.unitPrice || 0).toFixed(2);
         
         // If name is longer than 18 chars, wrap to next line
         if (displayName.length > 18) {
@@ -663,19 +654,24 @@ export const printBill = async (req, res) => {
     // Totals section (normal font)
     receiptText += '\n';
     const subtotal = Math.round(bill.subtotal).toFixed(2);
+    // Totals section (normal font)
+    receiptText += '\n';
+    const subtotal = Math.round(bill.subtotal).toFixed(2);
     receiptText += 'Total:' + (currencySymbol + subtotal).padStart(25) + '\n';
     
     if (bill.taxTotal > 0) {
       const tax = Math.round(bill.taxTotal).toFixed(2);
       const taxRate = settings?.taxRates?.[0]?.rate || 5;
-      receiptText += `Tax (${taxRate}%):` + (currencySymbol + tax).padStart(23 - `Tax (${taxRate}%):`.length) + '\n';
+      const taxLabel = `Tax (${taxRate}%):`;
+      const taxValue = currencySymbol + tax;
+      receiptText += taxLabel + taxValue.padStart(32 - taxLabel.length) + '\n';
     }
     
-    // Grand Total (Bold, Larger font)
+    // Grand Total (Bold, Slightly Larger font - not double size)
     receiptText += '\n';
     receiptText += ESC + 'E' + '\x01'; // Bold on
-    receiptText += GS + '!' + '\x11'; // Double size
-    receiptText += 'Grand Total'.padEnd(14) + currencySymbol + Math.round(bill.grandTotal).toFixed(2) + '\n';
+    receiptText += GS + '!' + '\x10'; // Single height, double width
+    receiptText += 'Grand Total ' + currencySymbol + Math.round(bill.grandTotal).toFixed(2) + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
     
@@ -685,7 +681,7 @@ export const printBill = async (req, res) => {
     
     // Footer (Center)
     receiptText += ESC + 'a' + '\x01'; // Center align
-    receiptText += '\nTHANK YOU!\n';
+    receiptText += '\n';
     
     // QR Code for online/UPI payments
     if ((bill.paymentMethod === 'upi' || bill.paymentMethod === 'online') && settings?.upiId) {
@@ -696,8 +692,8 @@ export const printBill = async (req, res) => {
       // Set QR code model
       receiptText += GS + '(k' + String.fromCharCode(4, 0, 49, 65, 50, 0);
       
-      // Set QR code size (module size 6)
-      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 67, 6);
+      // Set QR code size (module size 4 - smaller than before)
+      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 67, 4);
       
       // Set QR code error correction level (M=49)
       receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 69, 49);
@@ -708,13 +704,17 @@ export const printBill = async (req, res) => {
       const qrLengthH = Math.floor(qrLength / 256);
       receiptText += GS + '(k' + String.fromCharCode(qrLengthL, qrLengthH, 49, 80, 48) + upiString;
       
-      // Print QR code
+      // Print QR code (already centered by alignment above)
       receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 81, 48);
       
       receiptText += '\n';
     }
     
-    receiptText += 'Visit Again !\n\n';
+    // Footer message from settings
+    if (settings?.footerText) {
+      receiptText += settings.footerText + '\n';
+    }
+    receiptText += '\n';
     
     // Cut paper
     receiptText += GS + 'V' + '\x41' + '\x03'; // Cut
@@ -792,8 +792,25 @@ export const printKOT = async (req, res) => {
     // Get business settings
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
     
-    // Get currency symbol from settings
-    const currencySymbol = settings?.currency || '₹';
+    // Get currency symbol from settings - map to correct symbol
+    let currencySymbol = '₹'; // Default to Rupee
+    if (settings?.currency) {
+      // Map currency names to symbols
+      const currencyMap = {
+        'rupee': '₹',
+        'rupees': '₹',
+        'inr': '₹',
+        '₹': '₹',
+        'rs': '₹',
+        'dollar': '$',
+        'usd': '$',
+        'euro': '€',
+        'eur': '€',
+        'pound': '£',
+        'gbp': '£'
+      };
+      currencySymbol = currencyMap[settings.currency.toLowerCase()] || settings.currency;
+    }
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
@@ -842,6 +859,10 @@ export const printKOT = async (req, res) => {
       month: '2-digit', 
       year: 'numeric',
       hour: '2-digit',
+    // Bill Number (last 5 digits only)
+    const billNumShort = bill.billNumber.toString().slice(-5);
+    receiptText += 'Bill: ' + billNumShort + '\n';
+    
       minute: '2-digit',
       hour12: true
     }) + '\n';
@@ -870,7 +891,7 @@ export const printKOT = async (req, res) => {
       // Use Hindi name if available and Hindi is selected
       const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
       const qty = (item.quantity || 0).toString();
-      const price = currencySymbol + Math.round(item.unitPrice || 0).toFixed(2);
+      const price = Math.round(item.unitPrice || 0).toFixed(2);
       
       // If name is longer than 18 chars, wrap to next line
       if (displayName.length > 18) {
@@ -889,12 +910,7 @@ export const printKOT = async (req, res) => {
     });
     
     // Dotted divider line
-    receiptText += '................................\n';
-    
-    // Footer (Center)
-    receiptText += ESC + 'a' + '\x01'; // Center align
-    receiptText += '\nTHANK YOU!\n';
-    receiptText += 'Visit Again !\n\n';
+    receiptText += '................................\n\n';
     
     // Cut paper
     receiptText += GS + 'V' + '\x41' + '\x03'; // Cut
