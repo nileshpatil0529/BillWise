@@ -563,6 +563,9 @@ export const printBill = async (req, res) => {
 
     // Get business settings
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+    
+    // Get currency symbol from settings
+    const currencySymbol = settings?.currency || '₹';
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
@@ -576,7 +579,7 @@ export const printBill = async (req, res) => {
     // Initialize printer
     receiptText += ESC + '@'; // Initialize
     
-    // Header - Business Name (Center, Bold)
+    // Header - Business Name (Center, Bold, Double Size)
     receiptText += ESC + 'a' + '\x01'; // Center align
     receiptText += ESC + 'E' + '\x01'; // Bold on
     receiptText += GS + '!' + '\x11'; // Double height & width
@@ -584,7 +587,7 @@ export const printBill = async (req, res) => {
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
     
-    // Business Details (Center, smaller font)
+    // Business Details (Center, normal font)
     if (settings?.address) {
       receiptText += 'Address: ' + settings.address + '\n';
     }
@@ -609,7 +612,10 @@ export const printBill = async (req, res) => {
     receiptText += 'Date: ' + new Date(bill.createdAt).toLocaleString('en-IN', { 
       day: '2-digit', 
       month: '2-digit', 
-      year: 'numeric' 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     }) + '\n';
     
     if (businessTypeData.tableNumber) {
@@ -635,7 +641,7 @@ export const printBill = async (req, res) => {
         // Use Hindi name if available and Hindi is selected, otherwise use English name
         const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
         const qty = (item.quantity || 0).toString();
-        const price = '₹' + Math.round(item.unitPrice || 0).toFixed(2);
+        const price = currencySymbol + Math.round(item.unitPrice || 0).toFixed(2);
         
         // If name is longer than 18 chars, wrap to next line
         if (displayName.length > 18) {
@@ -654,34 +660,46 @@ export const printBill = async (req, res) => {
     // Dotted divider line
     receiptText += '................................\n';
     
-    // Price (Bold)
+    // Totals section (normal font)
+    receiptText += '\n';
+    const subtotal = Math.round(bill.subtotal).toFixed(2);
+    receiptText += 'Total:' + (currencySymbol + subtotal).padStart(25) + '\n';
+    
+    if (bill.taxTotal > 0) {
+      const tax = Math.round(bill.taxTotal).toFixed(2);
+      const taxRate = settings?.taxRates?.[0]?.rate || 5;
+      receiptText += `Tax (${taxRate}%):` + (currencySymbol + tax).padStart(23 - `Tax (${taxRate}%):`.length) + '\n';
+    }
+    
+    // Grand Total (Bold, Larger font)
     receiptText += '\n';
     receiptText += ESC + 'E' + '\x01'; // Bold on
     receiptText += GS + '!' + '\x11'; // Double size
-    receiptText += 'Price'.padEnd(20) + '₹' + Math.round(bill.grandTotal).toFixed(2) + '\n';
+    receiptText += 'Grand Total'.padEnd(14) + currencySymbol + Math.round(bill.grandTotal).toFixed(2) + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
     
     // Dotted divider line
+    receiptText += '\n';
     receiptText += '................................\n';
     
     // Footer (Center)
     receiptText += ESC + 'a' + '\x01'; // Center align
     receiptText += '\nTHANK YOU!\n';
     
-    // QR Code for online payments (UPI/Online)
-    if (bill.paymentMethod === 'upi' || bill.paymentMethod === 'online') {
+    // QR Code for online/UPI payments
+    if ((bill.paymentMethod === 'upi' || bill.paymentMethod === 'online') && settings?.upiId) {
       // QR code with payment amount - using UPI payment string format
-      const upiString = `upi://pay?pa=business@upi&pn=${encodeURIComponent(settings?.businessName || 'My Business')}&am=${Math.round(bill.grandTotal)}&cu=INR`;
+      const upiString = `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings?.businessName || 'My Business')}&am=${Math.round(bill.grandTotal)}&cu=INR`;
       
       // ESC/POS QR Code commands
       // Set QR code model
       receiptText += GS + '(k' + String.fromCharCode(4, 0, 49, 65, 50, 0);
       
-      // Set QR code size (module size)
-      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 67, 8);
+      // Set QR code size (module size 6)
+      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 67, 6);
       
-      // Set QR code error correction level (L=48, M=49, Q=50, H=51)
+      // Set QR code error correction level (M=49)
       receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 69, 49);
       
       // Store QR code data
@@ -773,6 +791,9 @@ export const printKOT = async (req, res) => {
 
     // Get business settings
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+    
+    // Get currency symbol from settings
+    const currencySymbol = settings?.currency || '₹';
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
@@ -786,7 +807,7 @@ export const printKOT = async (req, res) => {
     // Initialize printer
     receiptText += ESC + '@'; // Initialize
     
-    // Header - Business Name (Center, Bold)
+    // Header - Business Name (Center, Bold, Double Size)
     receiptText += ESC + 'a' + '\x01'; // Center align
     receiptText += ESC + 'E' + '\x01'; // Bold on
     receiptText += GS + '!' + '\x11'; // Double height & width
@@ -794,7 +815,7 @@ export const printKOT = async (req, res) => {
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
     
-    // Business Details (Center, smaller font)
+    // Business Details (Center, normal font)
     if (settings?.address) {
       receiptText += 'Address: ' + settings.address + '\n';
     }
@@ -805,14 +826,6 @@ export const printKOT = async (req, res) => {
       receiptText += 'Phone: ' + settings.phone + '\n';
     }
     
-    // KOT Title
-    receiptText += '\n';
-    receiptText += ESC + 'E' + '\x01'; // Bold on
-    receiptText += GS + '!' + '\x22'; // Extra large
-    receiptText += '** KITCHEN ORDER **\n';
-    receiptText += GS + '!' + '\x00'; // Normal size
-    receiptText += ESC + 'E' + '\x00'; // Bold off
-    
     // Parse business type data for table info
     let businessTypeData = {};
     try {
@@ -821,13 +834,16 @@ export const printKOT = async (req, res) => {
       // Ignore parse errors
     }
     
-    // Order details (Left align)
+    // KOT details (Left align)
     receiptText += ESC + 'a' + '\x00'; // Left align
     receiptText += '\n';
     receiptText += 'Date: ' + new Date().toLocaleString('en-IN', { 
       day: '2-digit', 
       month: '2-digit', 
-      year: 'numeric' 
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
     }) + '\n';
     
     if (businessTypeData.tableNumber) {
@@ -854,7 +870,7 @@ export const printKOT = async (req, res) => {
       // Use Hindi name if available and Hindi is selected
       const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
       const qty = (item.quantity || 0).toString();
-      const price = '₹' + Math.round(item.unitPrice || 0).toFixed(2);
+      const price = currencySymbol + Math.round(item.unitPrice || 0).toFixed(2);
       
       // If name is longer than 18 chars, wrap to next line
       if (displayName.length > 18) {
@@ -877,7 +893,8 @@ export const printKOT = async (req, res) => {
     
     // Footer (Center)
     receiptText += ESC + 'a' + '\x01'; // Center align
-    receiptText += '\n** END OF KOT **\n\n';
+    receiptText += '\nTHANK YOU!\n';
+    receiptText += 'Visit Again !\n\n';
     
     // Cut paper
     receiptText += GS + 'V' + '\x41' + '\x03'; // Cut

@@ -36,6 +36,7 @@ export interface Settings {
   taxNumber: string;
   currency: string;
   currencyCode: string;
+  upiId?: string; // UPI ID for QR code generation
   applicationType: ApplicationType;
   theme: ThemeType;
   scannerType: ScannerType;
