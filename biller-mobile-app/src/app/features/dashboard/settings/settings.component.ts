@@ -174,6 +174,7 @@ export class SettingsComponent implements OnInit {
       address: ['', [Validators.maxLength(200)]],
       phone: ['', [Validators.pattern(/^[+]?[\d\s-]{10,15}$/)]],
       email: ['', [Validators.email]],
+      upiId: [''],
       applicationType: ['general', Validators.required],
       currencyCode: ['INR', Validators.required],
       theme: ['dark'],

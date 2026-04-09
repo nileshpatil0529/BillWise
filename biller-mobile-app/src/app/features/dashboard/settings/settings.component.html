@@ -161,6 +161,13 @@
         </mat-form-field>
 
         <mat-form-field appearance="outline">
+          <mat-label>UPI ID</mat-label>
+          <input matInput formControlName="upiId" placeholder="yourname@upi">
+          <mat-icon matSuffix>qr_code</mat-icon>
+          <mat-hint>For QR code generation on receipts</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
           <mat-label>{{ translateService.t('settings.currency') }}</mat-label>
           <mat-select formControlName="currencyCode">
             @for (curr of currencies; track curr.value) {

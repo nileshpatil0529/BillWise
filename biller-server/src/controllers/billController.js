@@ -586,6 +586,7 @@ export const printBill = async (req, res) => {
     receiptText += (settings?.businessName || 'My Business') + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
+    receiptText += '\n'; // Space after business name
     
     // Business Details (Center, normal font)
     if (settings?.address) {
@@ -630,12 +631,15 @@ export const printBill = async (req, res) => {
     // Check if Hindi language is selected for receipts
     const isHindi = settings?.receiptLanguage === 'hi';
     
-    // Items header - 3 columns: Name, Qty, Price
+    // Items header - 3 columns: Name, Qty, Price (Bold)
     receiptText += ESC + 'a' + '\x00'; // Left align
+    receiptText += ESC + 'E' + '\x01'; // Bold on
     const headerName = 'Name'.padEnd(18);
     const headerQty = 'Qty'.padStart(4);
     const headerPrice = 'Price'.padStart(8);
     receiptText += headerName + headerQty + headerPrice + '\n';
+    receiptText += ESC + 'E' + '\x00'; // Bold off
+    receiptText += '\n'; // Space after header
     
     // Items list
     if (billItems && billItems.length > 0) {
@@ -654,6 +658,7 @@ export const printBill = async (req, res) => {
         }
         
         receiptText += qty.padStart(4) + price.padStart(8) + '\n';
+        receiptText += '\n'; // Line spacing between items
       });
     } else {
       receiptText += '    No items found\n';
@@ -663,9 +668,10 @@ export const printBill = async (req, res) => {
     receiptText += '................................\n';
     
     // Totals section (normal font, right aligned)
-    receiptText += '\n';
     const subtotal = Math.round(bill.subtotal).toFixed(2);
-    const totalLine = 'Total:' + (currencySymbol + ' ' + subtotal).padStart(24);
+    const totalLabel = 'Total:';
+    const totalAmount = currencySymbol + ' ' + subtotal;
+    const totalLine = totalLabel + totalAmount.padStart(32 - totalLabel.length);
     receiptText += totalLine + '\n';
     
     if (bill.taxTotal > 0) {
@@ -861,27 +867,16 @@ export const printKOT = async (req, res) => {
     // Check if Hindi language is selected
     const isHindi = settings?.receiptLanguage === 'hi';
     
-    // Items header - 2 columns: Name, Qty (right aligned)
+    // Items list (No header, format: Item * qty)
     receiptText += ESC + 'a' + '\x00'; // Left align
-    const headerName = 'Name'.padEnd(26);
-    const headerQty = 'Qty';
-    receiptText += headerName + headerQty + '\n';
     
-    // Items list
     newItems.forEach(item => {
       // Use Hindi name if available and Hindi is selected
       const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
       const qty = (item.quantity || 0).toString();
       
-      // If name is longer than 26 chars, wrap to next line
-      if (displayName.length > 26) {
-        receiptText += displayName.substring(0, 26) + '\n';
-        receiptText += displayName.substring(26, 52).padEnd(26);
-      } else {
-        receiptText += displayName.padEnd(26);
-      }
-      
-      receiptText += qty.padStart(6) + '\n';
+      // Format: Item * qty
+      receiptText += displayName + ' * ' + qty + '\n';
       
       // Add note if present
       if (item.note) {
