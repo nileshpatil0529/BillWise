@@ -214,8 +214,8 @@ export const createBill = async (req, res) => {
 
       // Insert items
       const insertItem = db.prepare(`
-        INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       // Always insert with kotPrinted=0, printKOT will mark them after printing
@@ -228,7 +228,8 @@ export const createBill = async (req, res) => {
           item.unitPrice,
           item.itemTotal,
           item.finalTotal,
-          0  // Always 0, will be marked by printKOT endpoint
+          0,  // Always 0, will be marked by printKOT endpoint
+          item.note || null
         );
 
         // Update product stock if productId exists (skip for hotel mode)
@@ -321,8 +322,8 @@ export const updateBill = async (req, res) => {
         // Insert all items from current cart with correct quantities
         if (updates.items.length > 0) {
           const insertItem = db.prepare(`
-            INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
 
           for (const item of updates.items) {
@@ -337,7 +338,7 @@ export const updateBill = async (req, res) => {
               kotPrintedStatus = 1;
             }
             
-            insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus);
+            insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus, item.note || null);
             
             // Deduct stock for new quantities (skip for hotel mode)
             if (item.productId && !isHotelMode) {

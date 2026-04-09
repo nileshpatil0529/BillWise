@@ -402,6 +402,11 @@ const initializeDatabase = () => {
       db.exec('ALTER TABLE bill_items ADD COLUMN kotPrinted INTEGER DEFAULT 0');
       console.log('✅ Migration: Added kotPrinted column to bill_items');
     }
+    const hasNote = itemColumns.some(col => col.name === 'note');
+    if (!hasNote) {
+      db.exec('ALTER TABLE bill_items ADD COLUMN note TEXT');
+      console.log('✅ Migration: Added note column to bill_items');
+    }
   } catch (e) {
     // Column might already exist
   }
