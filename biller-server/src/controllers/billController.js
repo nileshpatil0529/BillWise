@@ -631,15 +631,12 @@ export const printBill = async (req, res) => {
     // Check if Hindi language is selected for receipts
     const isHindi = settings?.receiptLanguage === 'hi';
     
-    // Items header - 3 columns: Name, Qty, Price (Bold)
+    // Items header - 3 columns: Name, Qty, Price
     receiptText += ESC + 'a' + '\x00'; // Left align
-    receiptText += ESC + 'E' + '\x01'; // Bold on
     const headerName = 'Name'.padEnd(18);
     const headerQty = 'Qty'.padStart(4);
     const headerPrice = 'Price'.padStart(8);
     receiptText += headerName + headerQty + headerPrice + '\n';
-    receiptText += ESC + 'E' + '\x00'; // Bold off
-    receiptText += '\n'; // Space after header
     
     // Items list
     if (billItems && billItems.length > 0) {
@@ -647,7 +644,7 @@ export const printBill = async (req, res) => {
         // Use Hindi name if available and Hindi is selected, otherwise use English name
         const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
         const qty = (item.quantity || 0).toString();
-        const price = Math.round(item.unitPrice || 0).toFixed(2);
+        const price = (item.unitPrice || 0).toFixed(2);
         
         // If name is longer than 18 chars, wrap to next line
         if (displayName.length > 18) {
@@ -658,7 +655,6 @@ export const printBill = async (req, res) => {
         }
         
         receiptText += qty.padStart(4) + price.padStart(8) + '\n';
-        receiptText += '\n'; // Line spacing between items
       });
     } else {
       receiptText += '    No items found\n';
@@ -668,14 +664,14 @@ export const printBill = async (req, res) => {
     receiptText += '................................\n';
     
     // Totals section (normal font, right aligned)
-    const subtotal = Math.round(bill.subtotal).toFixed(2);
+    const subtotal = bill.subtotal.toFixed(2);
     const totalLabel = 'Total:';
     const totalAmount = currencySymbol + ' ' + subtotal;
     const totalLine = totalLabel + totalAmount.padStart(32 - totalLabel.length);
     receiptText += totalLine + '\n';
     
     if (bill.taxTotal > 0) {
-      const tax = Math.round(bill.taxTotal).toFixed(2);
+      const tax = bill.taxTotal.toFixed(2);
       const taxRate = settings?.taxRates?.[0]?.rate || 5;
       const taxLabel = `Tax (${taxRate}%):`;
       const taxAmount = currencySymbol + ' ' + tax;
@@ -686,7 +682,7 @@ export const printBill = async (req, res) => {
     // Grand Total (Bold, same font size as other text)
     receiptText += '\n';
     receiptText += ESC + 'E' + '\x01'; // Bold on
-    const grandTotalAmount = Math.round(bill.grandTotal).toFixed(2);
+    const grandTotalAmount = bill.grandTotal.toFixed(2);
     const grandTotalLine = 'Grand Total:' + (currencySymbol + ' ' + grandTotalAmount).padStart(20);
     receiptText += grandTotalLine + '\n';
     receiptText += ESC + 'E' + '\x00'; // Bold off
@@ -702,7 +698,7 @@ export const printBill = async (req, res) => {
     // QR Code for online/UPI payments
     if ((bill.paymentMethod === 'upi' || bill.paymentMethod === 'online') && settings?.upiId) {
       // QR code with payment amount - using UPI payment string format
-      const upiString = `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings?.businessName || 'My Business')}&am=${Math.round(bill.grandTotal)}&cu=INR`;
+      const upiString = `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings?.businessName || 'My Business')}&am=${bill.grandTotal.toFixed(2)}&cu=INR`;
       
       // ESC/POS QR Code commands
       // Set QR code model

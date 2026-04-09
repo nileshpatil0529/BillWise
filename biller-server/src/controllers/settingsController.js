@@ -84,7 +84,7 @@ export const updateSettings = async (req, res) => {
 
     // Build dynamic update query
     const allowedFields = [
-      'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber',
+      'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber', 'upiId',
       'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
       'taxEnabled', 'taxRates', 'categories', 'tableColumns', 'units', 'viewMode', 'language', 'receiptLanguage', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
       'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
