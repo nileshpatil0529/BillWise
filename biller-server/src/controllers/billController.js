@@ -556,7 +556,7 @@ export const printBill = async (req, res) => {
 
     // Get bill items from bill_items table
     const billItems = db.prepare(`
-      SELECT bi.*, p.nameHi FROM bill_items bi
+      SELECT bi.*, p.nameHi, p.isLooseItem FROM bill_items bi
       LEFT JOIN products p ON bi.productId = p.productId
       WHERE bi.billId = ?
     `).all(billId);
@@ -643,7 +643,8 @@ export const printBill = async (req, res) => {
       billItems.forEach(item => {
         // Use Hindi name if available and Hindi is selected, otherwise use English name
         const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
-        const qty = (item.quantity || 0).toString();
+        // Format quantity with 2 decimals for loose items, otherwise show as integer
+        const qty = item.isLooseItem ? (item.quantity || 0).toFixed(2) : Math.round(item.quantity || 0).toString();
         const price = (item.unitPrice || 0).toFixed(2);
         
         // If name is longer than 18 chars, wrap to next line
@@ -704,8 +705,8 @@ export const printBill = async (req, res) => {
       // Set QR code model
       receiptText += GS + '(k' + String.fromCharCode(4, 0, 49, 65, 50, 0);
       
-      // Set QR code size (module size 4 - smaller than before)
-      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 67, 4);
+      // Set QR code size (module size 6 - medium size)
+      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 67, 6);
       
       // Set QR code error correction level (M=49)
       receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 69, 49);
@@ -789,7 +790,7 @@ export const printKOT = async (req, res) => {
 
     // Get NEW items (not KOT printed yet) from bill_items table
     const newItems = db.prepare(`
-      SELECT bi.*, p.nameHi FROM bill_items bi
+      SELECT bi.*, p.nameHi, p.isLooseItem FROM bill_items bi
       LEFT JOIN products p ON bi.productId = p.productId
       WHERE bi.billId = ? AND bi.kotPrinted = 0
     `).all(billId);
@@ -863,21 +864,18 @@ export const printKOT = async (req, res) => {
     // Check if Hindi language is selected
     const isHindi = settings?.receiptLanguage === 'hi';
     
-    // Items list (No header, format: Item * qty)
+    // Items list: Item X qty + Note (if present)
     receiptText += ESC + 'a' + '\x00'; // Left align
     
     newItems.forEach(item => {
       // Use Hindi name if available and Hindi is selected
       const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
-      const qty = (item.quantity || 0).toString();
+      // Format quantity with 2 decimals for loose items, otherwise show as integer
+      const qty = item.isLooseItem ? (item.quantity || 0).toFixed(2) : Math.round(item.quantity || 0).toString();
+      const note = item.note ? ' - ' + item.note : '';
       
-      // Format: Item * qty
-      receiptText += displayName + ' * ' + qty + '\n';
-      
-      // Add note if present
-      if (item.note) {
-        receiptText += '  Note: ' + item.note + '\n';
-      }
+      // Format: Item X qty - Note (if present)
+      receiptText += displayName + ' X ' + qty + note + '\n';
     });
     
     // Dotted divider line
