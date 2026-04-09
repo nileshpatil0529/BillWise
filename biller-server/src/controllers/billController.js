@@ -654,9 +654,6 @@ export const printBill = async (req, res) => {
     // Totals section (normal font)
     receiptText += '\n';
     const subtotal = Math.round(bill.subtotal).toFixed(2);
-    // Totals section (normal font)
-    receiptText += '\n';
-    const subtotal = Math.round(bill.subtotal).toFixed(2);
     receiptText += 'Total:' + (currencySymbol + subtotal).padStart(25) + '\n';
     
     if (bill.taxTotal > 0) {
