@@ -1075,22 +1075,14 @@ export const printBarcode = async (req, res) => {
       });
     }
 
+    console.log('Printing barcode for product:', product.name, 'Barcode:', barcode);
+
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';
 
-    // ESC/POS commands for EAN13 barcode label printing
+    // ESC/POS commands for barcode label printing
     const ESC = '\x1B';
     const GS = '\x1D';
-    
-    // Prepare barcode for EAN13 (must be 12-13 digits)
-    let ean13Code = barcode.replace(/[^0-9]/g, ''); // Remove non-numeric characters
-    
-    // Pad with leading zeros if less than 12 digits, or use first 12 if longer
-    if (ean13Code.length < 12) {
-      ean13Code = ean13Code.padStart(12, '0');
-    } else if (ean13Code.length > 12) {
-      ean13Code = ean13Code.substring(0, 12);
-    }
     
     let labelText = '';
     
@@ -1105,22 +1097,26 @@ export const printBarcode = async (req, res) => {
       // Add some top margin
       labelText += '\n';
       
-      // Set barcode height (GS h n) - Height in dots (default 162)
-      labelText += GS + 'h' + '\x64'; // 100 dots height for better scanning
+      // Barcode number (print at top, bold)
+      labelText += ESC + 'E' + String.fromCharCode(1); // Bold ON
+      labelText += barcode + '\n';
+      labelText += ESC + 'E' + String.fromCharCode(0); // Bold OFF
+      labelText += '\n';
+      
+      // Set barcode height (GS h n) - Height in dots
+      labelText += GS + 'h' + String.fromCharCode(80); // 80 dots height
       
       // Set barcode width (GS w n) - Width multiplier (2-6)
-      labelText += GS + 'w' + '\x03'; // Width 3 for better scanning
+      labelText += GS + 'w' + String.fromCharCode(2); // Width 2
       
-      // Set HRI (Human Readable Interpretation) position (GS H n)
-      // 0 = Not printed, 1 = Above, 2 = Below, 3 = Both
-      labelText += GS + 'H' + '\x02'; // Print barcode number below
+      // Set HRI position (GS H n)
+      labelText += GS + 'H' + String.fromCharCode(0); // Don't print HRI (we print manually)
       
-      // Set HRI font (GS f n) - 0 = Font A, 1 = Font B
-      labelText += GS + 'f' + '\x00'; // Font A
-      
-      // Print EAN13 barcode (GS k m d1...d12)
-      // m = 67 (0x43) for EAN13
-      labelText += GS + 'k' + '\x43' + ean13Code;
+      // Print Code128 barcode - GS k m n d1...dn
+      // Code128 = 73 (0x49)
+      const barcodeData = barcode;
+      const dataLength = barcodeData.length;
+      labelText += GS + 'k' + String.fromCharCode(73) + String.fromCharCode(dataLength) + barcodeData;
       
       labelText += '\n\n';
       
@@ -1162,7 +1158,7 @@ export const printBarcode = async (req, res) => {
         success: true,
         message: `Successfully printed ${quantity} barcode label(s)`,
         data: {
-          barcode: ean13Code,
+          barcode: barcode,
           quantity,
           productName: product.name
         }
