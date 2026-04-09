@@ -576,124 +576,127 @@ export const printBill = async (req, res) => {
     // Initialize printer
     receiptText += ESC + '@'; // Initialize
     
-    // Header - Business Name (Center, Double Height)
+    // Header - Business Name (Center, Bold)
     receiptText += ESC + 'a' + '\x01'; // Center align
+    receiptText += ESC + 'E' + '\x01'; // Bold on
     receiptText += GS + '!' + '\x11'; // Double height & width
-    receiptText += (settings?.businessName || 'BILLWISE') + '\n';
+    receiptText += (settings?.businessName || 'My Business') + '\n';
     receiptText += GS + '!' + '\x00'; // Normal size
+    receiptText += ESC + 'E' + '\x00'; // Bold off
     
-    // Business Details (Center)
+    // Business Details (Center, smaller font)
     if (settings?.address) {
-      receiptText += settings.address + '\n';
-    }
-    if (settings?.phone) {
-      receiptText += 'Tel: ' + settings.phone + '\n';
+      receiptText += 'Address: ' + settings.address + '\n';
     }
     if (settings?.taxNumber) {
-      receiptText += 'GSTIN: ' + settings.taxNumber + '\n';
+      receiptText += 'GST No: ' + settings.taxNumber + '\n';
+    }
+    if (settings?.phone) {
+      receiptText += 'Phone: ' + settings.phone + '\n';
     }
     
-    // Divider line
-    receiptText += '--------------------------------\n';
+    // Parse business type data for table info
+    let businessTypeData = {};
+    try {
+      businessTypeData = bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {};
+    } catch (e) {
+      // Ignore parse errors
+    }
     
     // Bill details (Left align)
     receiptText += ESC + 'a' + '\x00'; // Left align
-    receiptText += 'Bill #: ' + bill.billNumber + '\n';
-    receiptText += 'Date: ' + new Date(bill.createdAt).toLocaleString() + '\n';
+    receiptText += '\n';
+    receiptText += 'Date: ' + new Date(bill.createdAt).toLocaleString('en-IN', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    }) + '\n';
     
-    if (bill.customerName) {
-      receiptText += 'Customer: ' + bill.customerName + '\n';
-    }
-    if (bill.customerPhone) {
-      receiptText += 'Phone: ' + bill.customerPhone + '\n';
+    if (businessTypeData.tableNumber) {
+      receiptText += 'Table: ' + businessTypeData.tableNumber + '\n';
     }
     
-    receiptText += '--------------------------------\n';
+    // Dotted divider line
+    receiptText += '................................\n';
     
     // Check if Hindi language is selected for receipts
     const isHindi = settings?.receiptLanguage === 'hi';
     
-    // Items header
-    receiptText += 'Item         Qty  Price  Total\n';
-    receiptText += '--------------------------------\n';
+    // Items header - 3 columns: Name, Qty, Price
+    receiptText += ESC + 'a' + '\x00'; // Left align
+    const headerName = 'Name'.padEnd(18);
+    const headerQty = 'Qty'.padStart(4);
+    const headerPrice = 'Price'.padStart(8);
+    receiptText += headerName + headerQty + headerPrice + '\n';
     
     // Items list
     if (billItems && billItems.length > 0) {
       billItems.forEach(item => {
         // Use Hindi name if available and Hindi is selected, otherwise use English name
         const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
-        const name = displayName.substring(0, 13).padEnd(13);
-        const qty = (item.quantity || 0).toString().padStart(3);
-        const price = Math.round(item.unitPrice || 0).toString().padStart(6);
-        const total = Math.round(item.finalTotal || item.itemTotal || 0).toString().padStart(7);
-        receiptText += name + qty + price + total + '\n';
+        const qty = (item.quantity || 0).toString();
+        const price = '₹' + Math.round(item.unitPrice || 0).toFixed(2);
         
-        // Show discount if any
-        if (item.discountAmount && item.discountAmount > 0) {
-          const discountText = '  Discount: -' + Math.round(item.discountAmount);
-          receiptText += discountText + '\n';
+        // If name is longer than 18 chars, wrap to next line
+        if (displayName.length > 18) {
+          receiptText += displayName.substring(0, 18) + '\n';
+          receiptText += displayName.substring(18, 36).padEnd(18);
+        } else {
+          receiptText += displayName.padEnd(18);
         }
+        
+        receiptText += qty.padStart(4) + price.padStart(8) + '\n';
       });
     } else {
       receiptText += '    No items found\n';
     }
     
-    receiptText += '--------------------------------\n';
+    // Dotted divider line
+    receiptText += '................................\n';
     
-    // Totals (Right align for amounts)
-    receiptText += ESC + 'a' + '\x00'; // Left align
-    
-    const subtotal = Math.round(bill.subtotal).toString();
-    receiptText += 'Subtotal:' + subtotal.padStart(23) + '\n';
-    
-    if (bill.discountTotal > 0) {
-      const discount = Math.round(bill.discountTotal).toString();
-      receiptText += 'Discount:' + ('-' + discount).padStart(23) + '\n';
-    }
-    
-    if (bill.taxTotal > 0) {
-      const tax = Math.round(bill.taxTotal).toString();
-      const taxRate = settings?.taxRates?.[0]?.rate || 0;
-      const taxLabel = `Tax (${taxRate}%):`;
-      receiptText += taxLabel + tax.padStart(32 - taxLabel.length) + '\n';
-    }
-    
-    receiptText += '================================\n';
-    
-    // Grand Total (Normal size, bold)
+    // Price (Bold)
+    receiptText += '\n';
     receiptText += ESC + 'E' + '\x01'; // Bold on
-    const grandTotal = Math.round(bill.grandTotal).toString();
-    receiptText += 'TOTAL: Rs ' + grandTotal + '\n';
+    receiptText += GS + '!' + '\x11'; // Double size
+    receiptText += 'Price'.padEnd(20) + '₹' + Math.round(bill.grandTotal).toFixed(2) + '\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
     receiptText += ESC + 'E' + '\x00'; // Bold off
     
-    receiptText += '================================\n';
-    
-    // Payment details
-    receiptText += 'Payment: ' + bill.paymentMethod.toUpperCase() + '\n';
-    receiptText += 'Status: ' + bill.paymentStatus.toUpperCase() + '\n';
-    
-    if (bill.paymentMethod === 'cash') {
-      receiptText += 'Paid: Rs ' + Math.round(bill.amountPaid) + '\n';
-      if (bill.change > 0) {
-        receiptText += 'Change: Rs ' + Math.round(bill.change) + '\n';
-      }
-    }
-    
-    if (bill.notes) {
-      receiptText += '\nNote: ' + bill.notes + '\n';
-    }
-    
-    receiptText += '--------------------------------\n';
+    // Dotted divider line
+    receiptText += '................................\n';
     
     // Footer (Center)
     receiptText += ESC + 'a' + '\x01'; // Center align
-    if (isHindi) {
-      receiptText += '\nधन्यवाद!\n';
-      receiptText += 'फिर आना!\n\n';
-    } else {
-      receiptText += '\nThank you for your business!\n';
-      receiptText += 'Visit again!\n\n';
+    receiptText += '\nTHANK YOU!\n';
+    
+    // QR Code for online payments (UPI/Online)
+    if (bill.paymentMethod === 'upi' || bill.paymentMethod === 'online') {
+      // QR code with payment amount - using UPI payment string format
+      const upiString = `upi://pay?pa=business@upi&pn=${encodeURIComponent(settings?.businessName || 'My Business')}&am=${Math.round(bill.grandTotal)}&cu=INR`;
+      
+      // ESC/POS QR Code commands
+      // Set QR code model
+      receiptText += GS + '(k' + String.fromCharCode(4, 0, 49, 65, 50, 0);
+      
+      // Set QR code size (module size)
+      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 67, 8);
+      
+      // Set QR code error correction level (L=48, M=49, Q=50, H=51)
+      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 69, 49);
+      
+      // Store QR code data
+      const qrLength = upiString.length + 3;
+      const qrLengthL = qrLength % 256;
+      const qrLengthH = Math.floor(qrLength / 256);
+      receiptText += GS + '(k' + String.fromCharCode(qrLengthL, qrLengthH, 49, 80, 48) + upiString;
+      
+      // Print QR code
+      receiptText += GS + '(k' + String.fromCharCode(3, 0, 49, 81, 48);
+      
+      receiptText += '\n';
     }
+    
+    receiptText += 'Visit Again !\n\n';
     
     // Cut paper
     receiptText += GS + 'V' + '\x41' + '\x03'; // Cut
@@ -783,23 +786,32 @@ export const printKOT = async (req, res) => {
     // Initialize printer
     receiptText += ESC + '@'; // Initialize
     
-    // Header - KOT Title (Center, Double Height)
+    // Header - Business Name (Center, Bold)
     receiptText += ESC + 'a' + '\x01'; // Center align
-    receiptText += GS + '!' + '\x22'; // Double height & width - larger than bill
-    receiptText += 'KITCHEN ORDER\n';
-    receiptText += GS + '!' + '\x00'; // Normal size
-    
-    // Business Name (Center)
-    receiptText += GS + '!' + '\x11'; // Double height & width
-    receiptText += (settings?.businessName || 'BILLWISE') + '\n';
-    receiptText += GS + '!' + '\x00'; // Normal size
-    
-    // Divider line
-    receiptText += '================================\n';
-    
-    // Table/Order details (Left align, Bold)
-    receiptText += ESC + 'a' + '\x00'; // Left align
     receiptText += ESC + 'E' + '\x01'; // Bold on
+    receiptText += GS + '!' + '\x11'; // Double height & width
+    receiptText += (settings?.businessName || 'My Business') + '\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
+    receiptText += ESC + 'E' + '\x00'; // Bold off
+    
+    // Business Details (Center, smaller font)
+    if (settings?.address) {
+      receiptText += 'Address: ' + settings.address + '\n';
+    }
+    if (settings?.taxNumber) {
+      receiptText += 'GST No: ' + settings.taxNumber + '\n';
+    }
+    if (settings?.phone) {
+      receiptText += 'Phone: ' + settings.phone + '\n';
+    }
+    
+    // KOT Title
+    receiptText += '\n';
+    receiptText += ESC + 'E' + '\x01'; // Bold on
+    receiptText += GS + '!' + '\x22'; // Extra large
+    receiptText += '** KITCHEN ORDER **\n';
+    receiptText += GS + '!' + '\x00'; // Normal size
+    receiptText += ESC + 'E' + '\x00'; // Bold off
     
     // Parse business type data for table info
     let businessTypeData = {};
@@ -809,59 +821,63 @@ export const printKOT = async (req, res) => {
       // Ignore parse errors
     }
     
-    const tableNumber = businessTypeData.tableNumber || 'N/A';
-    const tableType = businessTypeData.tableType || 'dine-in';
-    const tableLabel = tableType === 'parcel' ? `Parcel #${tableNumber}` : `Table #${tableNumber}`;
+    // Order details (Left align)
+    receiptText += ESC + 'a' + '\x00'; // Left align
+    receiptText += '\n';
+    receiptText += 'Date: ' + new Date().toLocaleString('en-IN', { 
+      day: '2-digit', 
+      month: '2-digit', 
+      year: 'numeric' 
+    }) + '\n';
     
-    receiptText += GS + '!' + '\x11'; // Double size for table
-    receiptText += tableLabel + '\n';
-    receiptText += GS + '!' + '\x00'; // Normal size
-    
-    receiptText += ESC + 'E' + '\x00'; // Bold off
-    
-    receiptText += 'Bill #: ' + bill.billNumber + '\n';
-    receiptText += 'Time: ' + new Date().toLocaleString() + '\n';
-    
-    if (bill.customerName) {
-      receiptText += 'Customer: ' + bill.customerName + '\n';
+    if (businessTypeData.tableNumber) {
+      const tableType = businessTypeData.tableType || 'dine-in';
+      const tableLabel = tableType === 'parcel' ? 'Parcel' : 'Table';
+      receiptText += tableLabel + ': ' + businessTypeData.tableNumber + '\n';
     }
     
-    receiptText += '================================\n';
+    // Dotted divider line
+    receiptText += '................................\n';
     
     // Check if Hindi language is selected
     const isHindi = settings?.receiptLanguage === 'hi';
     
-    // Items header (Bold, Large)
-    receiptText += ESC + 'E' + '\x01'; // Bold on
-    receiptText += 'NEW ITEMS:\n';
-    receiptText += ESC + 'E' + '\x00'; // Bold off
-    receiptText += '--------------------------------\n';
+    // Items header - 3 columns: Name, Qty, Price
+    receiptText += ESC + 'a' + '\x00'; // Left align
+    const headerName = 'Name'.padEnd(18);
+    const headerQty = 'Qty'.padStart(4);
+    const headerPrice = 'Price'.padStart(8);
+    receiptText += headerName + headerQty + headerPrice + '\n';
     
-    // Items list - Simplified for kitchen (Qty and Item name only)
+    // Items list
     newItems.forEach(item => {
       // Use Hindi name if available and Hindi is selected
       const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
+      const qty = (item.quantity || 0).toString();
+      const price = '₹' + Math.round(item.unitPrice || 0).toFixed(2);
       
-      // Make quantity bold and large
-      receiptText += ESC + 'E' + '\x01'; // Bold on
-      receiptText += GS + '!' + '\x11'; // Double size
-      receiptText += item.quantity + 'x ';
-      receiptText += GS + '!' + '\x00'; // Normal size
-      receiptText += displayName + '\n';
-      receiptText += ESC + 'E' + '\x00'; // Bold off
+      // If name is longer than 18 chars, wrap to next line
+      if (displayName.length > 18) {
+        receiptText += displayName.substring(0, 18) + '\n';
+        receiptText += displayName.substring(18, 36).padEnd(18);
+      } else {
+        receiptText += displayName.padEnd(18);
+      }
+      
+      receiptText += qty.padStart(4) + price.padStart(8) + '\n';
       
       // Add note if present
       if (item.note) {
         receiptText += '  Note: ' + item.note + '\n';
       }
-      receiptText += '\n'; // Extra spacing between items
     });
     
-    receiptText += '================================\n';
+    // Dotted divider line
+    receiptText += '................................\n';
     
     // Footer (Center)
     receiptText += ESC + 'a' + '\x01'; // Center align
-    receiptText += '\n--- END OF KOT ---\n\n';
+    receiptText += '\n** END OF KOT **\n\n';
     
     // Cut paper
     receiptText += GS + 'V' + '\x41' + '\x03'; // Cut
