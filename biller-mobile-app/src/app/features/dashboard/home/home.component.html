@@ -466,7 +466,7 @@
           @if (isHotelMode()) {
             <div class="action-buttons">
               <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                      [disabled]="billService.cartItems().length === 0" class="action-btn kot-btn">
+                      [disabled]="billService.cartItems().length === 0" class="kot-btn">
                 <mat-icon>restaurant</mat-icon>
                 <span>KOT</span>
               </button>
@@ -474,11 +474,6 @@
                       class="menu-btn" [disabled]="billService.cartItems().length === 0"
                       (click)="$event.stopPropagation()">
                 <mat-icon>more_vert</mat-icon>
-              </button>
-              <button mat-flat-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
-                      [disabled]="isPayButtonDisabled()" class="action-btn pay-btn">
-                <mat-icon>payment</mat-icon>
-                <span>Pay</span>
               </button>
             </div>
             <mat-menu #actionMenu="matMenu">
@@ -489,9 +484,10 @@
               </button>
             </mat-menu>
           } @else {
-            <button mat-flat-button color="primary" (click)="saveBill(); $event.stopPropagation()" 
+            <button mat-flat-button color="primary" (click)="saveBillAndPrint(); $event.stopPropagation()" 
                     [disabled]="isSaveBillDisabled()" class="action-btn">
-              {{ translateService.t('home.payNow') }}
+              <mat-icon>print</mat-icon>
+              <span>Print Bill</span>
             </button>
           }
         }
@@ -605,28 +601,28 @@
           <!-- Action Buttons -->
           <div class="footer-actions">
             @if (isHotelMode()) {
-              <button mat-raised-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                      [disabled]="billService.cartItems().length === 0" class="action-btn-expanded kot-btn">
-                <mat-icon>restaurant</mat-icon>
-                Print KOT
-              </button>
-              <button mat-stroked-button (click)="saveOrder(); $event.stopPropagation()" 
-                      [disabled]="billService.cartItems().length === 0 || !hasUnsavedChanges()" 
-                      class="action-btn-expanded save-btn">
-                <mat-icon>save</mat-icon>
-                Save Order
+              <button mat-raised-button color="accent" (click)="completeBillAndPrint(); $event.stopPropagation()" 
+                      [disabled]="!currentBillId() || isPayButtonDisabled()"
+                      class="pay-print-btn">
+                <mat-icon>print</mat-icon>
+                Print Bill
               </button>
               <button mat-raised-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
-                      [disabled]="isPayButtonDisabled()"
-                      class="action-btn-expanded pay-btn">
+                      [disabled]="!currentBillId() || isPayButtonDisabled()"
+                      class="pay-btn">
                 <mat-icon>payment</mat-icon>
-                Complete Payment
+                Save Bill
               </button>
             } @else {
+              <button mat-raised-button color="accent" (click)="saveBillAndPrint(); $event.stopPropagation()" 
+                      [disabled]="isSaveBillDisabled()" class="pay-print-btn">
+                <mat-icon>print</mat-icon>
+                Print Bill
+              </button>
               <button mat-raised-button color="primary" (click)="saveBill(); $event.stopPropagation()" 
                       [disabled]="isSaveBillDisabled()" class="pay-btn">
                 <mat-icon>payment</mat-icon>
-                {{ translateService.t('home.payNow') }}
+                Save Bill
               </button>
             }
           </div>

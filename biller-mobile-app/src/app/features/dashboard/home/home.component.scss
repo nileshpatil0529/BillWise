@@ -1268,54 +1268,13 @@
 
 // Footer Actions
 .footer-actions {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  justify-content: space-between;
   gap: v.$spacing-sm;
   margin-top: v.$spacing-md;
 
-  .action-btn-expanded {
-    height: 56px;
-    font-size: 14px;
-    font-weight: 700;
-    border-radius: v.$radius-lg;
-    letter-spacing: 0.3px;
-    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.1);
-    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-    position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-
-    &:not(:disabled):active {
-      transform: scale(0.98);
-    }
-
-    mat-icon { 
-      font-size: 20px; 
-      width: 20px; 
-      height: 20px;
-      margin: 0;
-    }
-    
-    &.kot-btn {
-      grid-column: span 2;
-    }
-    
-    &.save-btn {
-      grid-column: span 2;
-      color: v.$light-text-primary;
-      border: 2px solid v.$light-divider;
-      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
-      
-      @include m.dark-theme {
-        color: v.$dark-text-primary;
-        border-color: v.$dark-divider;
-      }
-    }
-    
-    &.pay-btn {
-      grid-column: span 2;
-    }
+  button {
+    flex: 0 0 auto;
+    min-width: 140px;
   }
 }

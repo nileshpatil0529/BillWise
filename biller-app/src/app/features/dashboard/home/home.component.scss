@@ -1228,6 +1228,55 @@
       border-color: v.$dark-divider;
     }
 
+    .hotel-actions-grid {
+      display: flex;
+      flex-direction: column;
+      gap: v.$spacing-sm;
+      width: 100%;
+
+      .actions-row {
+        display: flex;
+        gap: v.$spacing-xs;
+        justify-content: flex-end;
+        align-items: center;
+
+        button {
+          &.action-btn {
+            min-width: 120px;
+          }
+        }
+      }
+    }
+
+    .menu-btn {
+      color: v.$light-text-secondary;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+      
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+      
+      &:hover:not(:disabled) {
+        background: rgba(0, 0, 0, 0.04);
+        @include m.dark-theme {
+          background: rgba(255, 255, 255, 0.08);
+        }
+      }
+    }
+
+    .normal-actions-wrapper {
+      display: flex;
+      gap: v.$spacing-sm;
+      justify-content: space-between;
+      width: 100%;
+
+      button {
+        flex: 1;
+        max-width: 200px;
+      }
+    }
+
     .action-btn {
       display: flex;
       align-items: center;
@@ -1248,25 +1297,35 @@
       }
     }
     
-    .menu-btn {
-      color: v.$light-text-secondary;
-      transition: all 0.2s ease;
-      
-      @include m.dark-theme {
-        color: v.$dark-text-secondary;
-      }
-      
-      &:hover:not(:disabled) {
-        background: rgba(0, 0, 0, 0.04);
-        @include m.dark-theme {
-          background: rgba(255, 255, 255, 0.08);
-        }
-      }
-    }
-    
     @include m.mobile {
       flex-direction: row;
       padding: v.$spacing-sm;
+
+      .hotel-actions-grid {
+        width: 100%;
+        
+        .actions-row {
+          justify-content: space-between;
+
+          button.action-btn {
+            flex: 1;
+            min-width: auto;
+            max-width: none;
+          }
+
+          .menu-btn {
+            flex-shrink: 0;
+          }
+        }
+      }
+
+      .normal-actions-wrapper {
+        flex-direction: column;
+
+        button {
+          max-width: 100%;
+        }
+      }
       
       .action-btn {
         flex: 1;

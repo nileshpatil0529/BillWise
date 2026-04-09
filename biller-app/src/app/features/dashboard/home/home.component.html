@@ -638,34 +638,57 @@
         <mat-card-actions>
           @if (isHotelMode()) {
             <!-- Hotel Mode Actions - Modern Action Buttons -->
-            <button mat-raised-button color="accent" (click)="printKOT()" 
-                    [disabled]="billService.cartItems().length === 0" class="action-btn kot-btn">
-              <mat-icon>restaurant</mat-icon>
-              {{ translateService.t('hotel.printKot') || 'Print KOT' }}
-            </button>
-            <button mat-icon-button [matMenuTriggerFor]="kotMenu" 
-                    class="menu-btn" [disabled]="billService.cartItems().length === 0">
-              <mat-icon>more_vert</mat-icon>
-            </button>
-            <mat-menu #kotMenu="matMenu">
-              <button mat-menu-item (click)="saveOrder()" 
-                      [disabled]="billService.cartItems().length === 0 || !hasUnsavedChanges()">
-                <mat-icon>save</mat-icon>
-                <span>{{ translateService.t('common.save') || 'Save Order' }}</span>
-              </button>
-            </mat-menu>
-            <button mat-raised-button color="primary" (click)="completeBill()" 
-                    [disabled]="isPayButtonDisabled()"
-                    class="action-btn pay-btn">
-              <mat-icon>payment</mat-icon>
-              {{ translateService.t('home.payNow') }}
-            </button>
+            <div class="hotel-actions-grid">
+              <div class="actions-row">
+                <button mat-raised-button color="accent" (click)="printKOT()" 
+                        [disabled]="billService.cartItems().length === 0" class="action-btn kot-btn">
+                  <mat-icon>restaurant</mat-icon>
+                  KOT
+                </button>
+                <button mat-icon-button [matMenuTriggerFor]="kotMenu" 
+                        class="menu-btn" [disabled]="billService.cartItems().length === 0">
+                  <mat-icon>more_vert</mat-icon>
+                </button>
+                <mat-menu #kotMenu="matMenu">
+                  <button mat-menu-item (click)="saveOrder()" 
+                          [disabled]="billService.cartItems().length === 0 || !hasUnsavedChanges()">
+                    <mat-icon>save</mat-icon>
+                    <span>Save KOT</span>
+                  </button>
+                </mat-menu>
+                @if (currentBillId()) {
+                  <button mat-raised-button color="primary" (click)="completeBillAndPrint()" 
+                          [disabled]="isPayButtonDisabled()"
+                          class="action-btn">
+                    <mat-icon>print</mat-icon>
+                    Bill
+                  </button>
+                  <button mat-icon-button [matMenuTriggerFor]="billMenu" 
+                          class="menu-btn" [disabled]="isPayButtonDisabled()">
+                    <mat-icon>more_vert</mat-icon>
+                  </button>
+                  <mat-menu #billMenu="matMenu">
+                    <button mat-menu-item (click)="completeBill()" 
+                            [disabled]="isPayButtonDisabled()">
+                      <mat-icon>save</mat-icon>
+                      <span>Save Bill</span>
+                    </button>
+                  </mat-menu>
+                }
+              </div>
+            </div>
           } @else {
             <!-- Normal Mode Actions -->
-            <button mat-raised-button color="primary" (click)="saveBill()" [disabled]="isSaveBillDisabled()">
-              <mat-icon>save</mat-icon>
-              {{ translateService.t('home.payNow') }}
-            </button>
+            <div class="normal-actions-wrapper">
+              <button mat-raised-button color="accent" (click)="saveBillAndPrint()" [disabled]="isSaveBillDisabled()">
+                <mat-icon>print</mat-icon>
+                Print Bill
+              </button>
+              <button mat-raised-button color="primary" (click)="saveBill()" [disabled]="isSaveBillDisabled()">
+                <mat-icon>payment</mat-icon>
+                Save Bill
+              </button>
+            </div>
           }
         </mat-card-actions>
       </mat-card>

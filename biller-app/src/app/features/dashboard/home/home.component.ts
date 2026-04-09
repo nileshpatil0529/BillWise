@@ -680,6 +680,67 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
+  saveBillAndPrint(): void {
+    if (this.billService.cartItems().length === 0) {
+      this.snackBar.open('Cart is empty', 'Close', { 
+        duration: 3000,
+        panelClass: ['warning-snackbar']
+      });
+      return;
+    }
+
+    // Validate customer info for debt payment
+    if (this.paymentMethod() === 'debt') {
+      if (!this.customerName().trim()) {
+        this.snackBar.open('Customer name is required for debt payment', 'Close', { 
+          duration: 3000,
+          panelClass: ['warning-snackbar']
+        });
+        return;
+      }
+      if (!this.customerPhone().trim()) {
+        this.snackBar.open('Phone number is required for debt payment', 'Close', { 
+          duration: 3000,
+          panelClass: ['warning-snackbar']
+        });
+        return;
+      }
+    }
+
+    const billData = {
+      paymentMethod: this.paymentMethod(),
+      paymentStatus: this.paymentMethod() === 'debt' ? 'pending' : 'paid',
+      amountPaid: this.paymentMethod() === 'debt' ? 0 : this.billService.cartTotal(),
+      customerName: this.customerName(),
+      customerPhone: this.customerPhone(),
+      taxEnabled: this.settingsService.settings().taxEnabled
+    };
+
+    this.billService.createBill(billData).subscribe({
+      next: (response) => {
+        if (response.success && response.data?.billId) {
+          // Print the bill
+          this.billService.printBill(response.data.billId).subscribe({
+            next: () => {
+              this.snackBar.open('Bill saved and printed successfully', 'Close', { duration: 3000 });
+              this.clearCart();
+            },
+            error: () => {
+              this.snackBar.open('Bill saved but printing failed', 'Close', { duration: 3000 });
+              this.clearCart();
+            }
+          });
+        }
+      },
+      error: (error) => {
+        this.snackBar.open('Failed to save bill', 'Close', {
+          duration: 3000,
+          panelClass: ['error-snackbar']
+        });
+      }
+    });
+  }
+
   private addProductByBarcode(barcode: string): void {
     // Trim whitespace and special characters
     const cleanBarcode = barcode.trim().replace(/[\r\n]/g, '');
@@ -1456,6 +1517,83 @@ export class HomeComponent implements OnInit, OnDestroy {
             this.cancelTableSelection();
             this.hotelService.loadTables().subscribe();
           }
+        }
+      },
+      error: () => {
+        this.snackBar.open('Failed to complete bill', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  completeBillAndPrint(): void {
+    if (!this.currentBillId()) {
+      this.snackBar.open('Please print KOT first', 'Close', { duration: 3000 });
+      return;
+    }
+
+    const table = this.selectedTable();
+    
+    const billData = {
+      billStatus: 'completed' as const,
+      paymentMethod: this.paymentMethod(),
+      paymentStatus: 'paid' as const,
+      amountPaid: this.billService.cartTotal(),
+      customerName: this.customerName(),
+      customerPhone: this.customerPhone()
+    };
+
+    this.billService.updateBill(this.currentBillId()!, billData).subscribe({
+      next: (response) => {
+        if (response.success) {
+          // Print the bill
+          this.billService.printBill(this.currentBillId()!).subscribe({
+            next: () => {
+              this.snackBar.open('Bill completed and printed successfully', 'Close', { duration: 3000 });
+              
+              // Update table status to available
+              if (table) {
+                this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe({
+                  next: () => {
+                    // Remove from attended tables
+                    this.removeFromAttendedTables(table.id);
+                    
+                    // Reset state
+                    this.cancelTableSelection();
+                    
+                    // Reload tables after status update completes
+                    this.hotelService.loadTables().subscribe();
+                  }
+                });
+              } else {
+                // No table, just reset state
+                this.cancelTableSelection();
+                this.hotelService.loadTables().subscribe();
+              }
+            },
+            error: () => {
+              this.snackBar.open('Bill completed but printing failed', 'Close', { duration: 3000 });
+              
+              // Update table status to available
+              if (table) {
+                this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe({
+                  next: () => {
+                    // Remove from attended tables
+                    this.removeFromAttendedTables(table.id);
+                    
+                    // Reset state
+                    this.cancelTableSelection();
+                    
+                    // Reload tables after status update completes
+                    this.hotelService.loadTables().subscribe();
+                  }
+                });
+              } else {
+                // No table, just reset state
+                this.cancelTableSelection();
+                this.hotelService.loadTables().subscribe();
+              }
+            }
+          });
         }
       },
       error: () => {
