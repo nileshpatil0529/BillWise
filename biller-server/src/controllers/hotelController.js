@@ -1,4 +1,5 @@
 import db from '../config/database.js';
+import { emitTableUpdate, emitTablesRefresh } from '../sockets/index.js';
 
 // ==================== RESTAURANT TABLES ====================
 
@@ -98,6 +99,12 @@ export const createTables = async (req, res) => {
       }
     }
 
+    // Emit WebSocket event if tables were created
+    if (createdTables.length > 0) {
+      console.log('📤 Emitting tables-refresh after creating', createdTables.length, 'tables');
+      emitTablesRefresh();
+    }
+
     res.status(201).json({
       success: true,
       message: `Created ${createdTables.length} tables${skippedTables.length > 0 ? `, ${skippedTables.length} already existed` : ''}`,
@@ -139,6 +146,10 @@ export const updateTable = async (req, res) => {
       id
     );
 
+    // Emit WebSocket events for real-time updates
+    console.log('📤 Emitting table update for table:', id);
+    emitTablesRefresh(); // Refresh all table grids
+
     res.json({
       success: true,
       message: 'Table updated successfully'
@@ -174,6 +185,10 @@ export const deleteTable = async (req, res) => {
 
     db.prepare('DELETE FROM restaurant_tables WHERE id = ?').run(id);
 
+    // Emit WebSocket event for real-time updates
+    console.log('📤 Emitting tables-refresh after deleting table:', id);
+    emitTablesRefresh();
+
     res.json({
       success: true,
       message: 'Table deleted successfully'
@@ -198,6 +213,11 @@ export const updateTableStatus = async (req, res) => {
       SET status = ?, currentBillId = ?, updatedAt = ?
       WHERE id = ?
     `).run(status, currentBillId || null, new Date().toISOString(), id);
+
+    // Emit WebSocket events for real-time updates
+    console.log('📤 Emitting table status update for table:', id, 'status:', status);
+    emitTableUpdate({ tableId: parseInt(id), status, currentBillId: currentBillId || null });
+    emitTablesRefresh(); // Refresh all table grids
 
     res.json({
       success: true,

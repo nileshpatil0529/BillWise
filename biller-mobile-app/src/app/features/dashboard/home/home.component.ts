@@ -27,6 +27,7 @@ import { CustomerService } from '../../../core/services/customer.service';
 import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { BarcodeScannerService } from '../../../core/services/barcode-scanner.service';
+import { SocketService } from '../../../core/services/socket.service';
 import { Product, CartItem } from '../../../core/models/product.model';
 import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
@@ -85,6 +86,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   billStatus = signal<'new' | 'draft' | 'kot-printed'>('new');
   hotelModeInitialized = signal(false); // Flag to track if hotel mode has finished initializing
   savedCartSnapshot = signal<string>(''); // JSON snapshot of last saved cart state
+  private socketListenersSetup = false; // Flag to prevent duplicate listener registration
   
   // Multi-table attendance state
   attendedTables = signal<AttendedTableState[]>([]);
@@ -159,7 +161,8 @@ export class HomeComponent implements OnInit, OnDestroy {
     private dialog: MatDialog,
     private beepService: BeepService,
     private customerService: CustomerService,
-    private barcodeScannerService: BarcodeScannerService
+    private barcodeScannerService: BarcodeScannerService,
+    private socketService: SocketService
   ) {
   }
 
@@ -167,6 +170,15 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Cleanup scanner subscription
     if (this.scannerSubscription) {
       this.scannerSubscription.unsubscribe();
+    }
+
+    // Cleanup socket listeners
+    if (this.isHotelMode()) {
+      this.socketService.off('table-updated');
+      this.socketService.off('tables-refresh-needed');
+      this.socketService.off('bill-created');
+      this.socketService.off('bill-updated');
+      this.socketService.off('kot-printed');
     }
   }
 
@@ -206,6 +218,7 @@ export class HomeComponent implements OnInit, OnDestroy {
 
     // Load tables if hotel mode
     if (this.isHotelMode()) {
+      console.log('🏨 Hotel mode detected');
       this.hotelService.loadTables().subscribe({
         next: () => {
           // Restore last selected table if any
@@ -213,6 +226,28 @@ export class HomeComponent implements OnInit, OnDestroy {
         }
       });
       this.hotelService.loadItemNotes().subscribe();
+
+      // Setup socket listeners after socket connects
+      this.trySetupSocketListeners();
+    } else {
+      console.log('⚠️ Not in hotel mode, socket listeners NOT set up');
+    }
+  }
+
+  // Try to setup socket listeners, will retry when socket connects
+  private trySetupSocketListeners(): void {
+    if (this.socketListenersSetup) {
+      console.log('⚠️ Socket listeners already set up, skipping');
+      return;
+    }
+
+    if (this.socketService.connected()) {
+      console.log('✅ Socket is connected, setting up listeners now...');
+      this.setupSocketListeners();
+      this.socketListenersSetup = true;
+    } else {
+      console.log('⏳ Socket not connected yet, will retry in 1 second...');
+      setTimeout(() => this.trySetupSocketListeners(), 1000);
     }
   }
 
@@ -1737,5 +1772,105 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Get parcel/takeaway
   getParcelTables(): RestaurantTable[] {
     return this.hotelService.tables().filter(t => t.tableType === 'parcel');
+  }
+
+  // ===== SOCKET EVENT HANDLERS FOR REAL-TIME UPDATES =====
+
+  private setupSocketListeners(): void {
+    console.log('🔌 Setting up socket listeners for real-time updates');
+    console.log('🔌 Socket connected status:', this.socketService.connected());
+    
+    // Listen for table updates from other clients
+    this.socketService.on('table-updated', (data: any) => {
+      console.log('📡 WebSocket: table-updated received', data);
+      this.handleTableUpdate(data);
+    });
+
+    this.socketService.on('tables-refresh-needed', () => {
+      console.log('📡 WebSocket: tables-refresh-needed received');
+      this.handleTablesRefresh();
+    });
+
+    this.socketService.on('bill-created', (data: any) => {
+      console.log('📡 WebSocket: bill-created received', data);
+      this.handleBillUpdate(data);
+    });
+
+    this.socketService.on('bill-updated', (data: any) => {
+      console.log('📡 WebSocket: bill-updated received', data);
+      this.handleBillUpdate(data);
+    });
+
+    this.socketService.on('kot-printed', (data: any) => {
+      console.log('📡 WebSocket: kot-printed received', data);
+      this.handleKOTPrinted(data);
+    });
+    
+    console.log('✅ Socket listeners registered for 5 events');
+  }
+
+  private handleTableUpdate(data: any): void {
+    console.log('✅ Handling table update, reloading tables...');
+    // Reload tables to get latest status and grand totals
+    this.hotelService.loadTables().subscribe({
+      next: () => {
+        console.log('✅ Tables reloaded after table-updated event');
+        // If currently viewing this table, update the reference
+        const currentTable = this.selectedTable();
+        if (currentTable && data.tableId === currentTable.id) {
+          const refreshedTable = this.hotelService.tables().find(t => t.id === currentTable.id);
+          if (refreshedTable) {
+            this.selectedTable.set(refreshedTable);
+            console.log('✅ Updated selected table reference');
+          }
+        }
+      }
+    });
+  }
+
+  private handleTablesRefresh(): void {
+    console.log('✅ Handling tables refresh, reloading all tables...');
+    // Reload all tables
+    this.hotelService.loadTables().subscribe({
+      next: () => {
+        console.log('✅ All tables reloaded after tables-refresh-needed event');
+      }
+    });
+  }
+
+  private handleBillUpdate(data: any): void {
+    console.log('✅ Handling bill update, reloading tables to reflect changes...');
+    // Reload tables to reflect bill changes (grand totals, status, etc.)
+    this.hotelService.loadTables().subscribe({
+      next: () => {
+        console.log('✅ Tables reloaded after bill-created/updated event');
+        // If this bill belongs to currently selected table, update selected table
+        const currentTable = this.selectedTable();
+        if (currentTable && data.tableId === currentTable.id) {
+          const refreshedTable = this.hotelService.tables().find(t => t.id === currentTable.id);
+          if (refreshedTable) {
+            this.selectedTable.set(refreshedTable);
+            console.log('✅ Updated selected table reference after bill update');
+          }
+        }
+      }
+    });
+  }
+
+  private handleKOTPrinted(data: any): void {
+    console.log('✅ Handling KOT printed event, reloading tables...');
+    // Reload tables to show KOT printed status
+    this.hotelService.loadTables().subscribe({
+      next: () => {
+        console.log('✅ Tables reloaded after kot-printed event');
+        // Show notification if this is the currently selected table
+        const currentTable = this.selectedTable();
+        if (currentTable && data.tableId === currentTable.id && data.billId === this.currentBillId()) {
+          const message = data.printError ? 'KOT print failed for this table' : 'KOT printed for this table';
+          this.snackBar.open(message, 'OK', { duration: 3000 });
+          console.log('✅ Showed KOT notification for current table');
+        }
+      }
+    });
   }
 }

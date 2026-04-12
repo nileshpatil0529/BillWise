@@ -1,22 +1,30 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import db from '../config/database.js';
+import { emitBillCreated, emitBillUpdate, emitKOTPrinted, emitTableUpdate } from '../sockets/index.js';
 
-// Generate bill number
+// Generate bill number (should be called inside transaction for thread safety)
 const generateBillNumber = () => {
   const date = new Date();
   const prefix = 'INV';
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, '');
   
-  // Count bills for today
-  const todayStart = date.toISOString().slice(0, 10);
+  // Find the highest bill number for today using MAX
   const result = db.prepare(`
-    SELECT COUNT(*) as count FROM bills 
+    SELECT billNumber FROM bills 
     WHERE billNumber LIKE ?
+    ORDER BY billNumber DESC
+    LIMIT 1
   `).get(`${prefix}${dateStr}%`);
   
-  const count = (result.count || 0) + 1;
-  return `${prefix}${dateStr}${count.toString().padStart(4, '0')}`;
+  let nextNumber = 1;
+  if (result?.billNumber) {
+    // Extract the sequence number from the last bill number
+    const lastSequence = parseInt(result.billNumber.slice(-4), 10);
+    nextNumber = lastSequence + 1;
+  }
+  
+  return `${prefix}${dateStr}${nextNumber.toString().padStart(4, '0')}`;
 };
 
 export const getAllBills = async (req, res) => {
@@ -129,7 +137,6 @@ export const createBill = async (req, res) => {
     const billData = req.body;
     
     const billId = uuidv4();
-    const billNumber = generateBillNumber();
     const now = new Date().toISOString();
 
     // Validate items
@@ -180,6 +187,9 @@ export const createBill = async (req, res) => {
 
     // Use transaction for inserting bill and items
     const insertBillAndItems = db.transaction(() => {
+      // Generate bill number inside transaction to prevent race conditions
+      const billNumber = generateBillNumber();
+      
       // Insert bill
       db.prepare(`
         INSERT INTO bills (billId, billNumber, subtotal, discountTotal, taxTotal, grandTotal, paymentMethod, paymentStatus, amountPaid, change, customerName, customerPhone, businessTypeData, notes, createdBy, createdAt, updatedAt, billStatus, tableId, kotPrintedAt, tipAmount)
@@ -246,14 +256,22 @@ export const createBill = async (req, res) => {
     const createdBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(billId);
     const billItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(billId);
 
+    const createdBillData = {
+      ...createdBill,
+      items: billItems,
+      businessTypeData: JSON.parse(createdBill.businessTypeData || '{}')
+    };
+
+    // Emit WebSocket events for real-time updates
+    emitBillCreated(createdBillData);
+    if (tableId) {
+      emitTableUpdate({ tableId, billId, billStatus });
+    }
+
     res.status(201).json({
       success: true,
       message: 'Bill created successfully',
-      data: {
-        ...createdBill,
-        items: billItems,
-        businessTypeData: JSON.parse(createdBill.businessTypeData || '{}')
-      }
+      data: createdBillData
     });
   } catch (error) {
     console.error('Create bill error:', error);
@@ -376,14 +394,22 @@ export const updateBill = async (req, res) => {
     const updatedBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
     const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
 
+    const billData = {
+      ...updatedBill,
+      items,
+      businessTypeData: updatedBill.businessTypeData ? JSON.parse(updatedBill.businessTypeData) : {}
+    };
+
+    // Emit WebSocket event for real-time updates
+    emitBillUpdate(billData);
+    if (updatedBill.tableId) {
+      emitTableUpdate({ tableId: updatedBill.tableId, billId: updatedBill.billId, billStatus: updatedBill.billStatus });
+    }
+
     res.json({
       success: true,
       message: 'Bill updated successfully',
-      data: {
-        ...updatedBill,
-        items,
-        businessTypeData: updatedBill.businessTypeData ? JSON.parse(updatedBill.businessTypeData) : {}
-      }
+      data: billData
     });
   } catch (error) {
     console.error('Update bill error:', error);
@@ -891,6 +917,18 @@ export const printKOT = async (req, res) => {
     fs.appendFile(printerPath, buffer, (err) => {
       if (err) {
         console.error('KOT Print error:', err);
+        
+        // Even on print failure, emit socket event to notify clients
+        const billData = {
+          ...bill,
+          businessTypeData: JSON.parse(bill.businessTypeData || '{}'),
+          printError: true
+        };
+        emitKOTPrinted(billData);
+        if (bill.tableId) {
+          emitTableUpdate({ tableId: bill.tableId, billId: bill.billId, billStatus: bill.billStatus });
+        }
+        
         return res.status(500).json({
           success: false,
           message: `Failed to print KOT: ${err.message}. Check PRINTER_INTERFACE in .env file.`
@@ -905,6 +943,19 @@ export const printKOT = async (req, res) => {
       // Set KOT printed timestamp on bill
       db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
         .run(now, now, billId);
+      
+      // Fetch updated bill data
+      const updatedBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(billId);
+      const billData = {
+        ...updatedBill,
+        businessTypeData: JSON.parse(updatedBill.businessTypeData || '{}')
+      };
+
+      // Emit WebSocket events for real-time updates
+      emitKOTPrinted(billData);
+      if (updatedBill.tableId) {
+        emitTableUpdate({ tableId: updatedBill.tableId, billId: updatedBill.billId, billStatus: updatedBill.billStatus });
+      }
       
       res.json({
         success: true,

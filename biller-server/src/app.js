@@ -1,4 +1,5 @@
 import express from 'express';
+import { createServer } from 'http';
 import cors from 'cors';
 import path from 'path';
 import os from 'os';
@@ -7,6 +8,7 @@ import dotenv from 'dotenv';
 
 import config from './config/config.js';
 import './config/database.js'; // Initialize SQLite database
+import { initializeSocketIO } from './sockets/index.js';
 import authRoutes from './routes/authRoutes.js';
 import productRoutes from './routes/productRoutes.js';
 import billRoutes from './routes/billRoutes.js';
@@ -93,7 +95,12 @@ const getLocalIP = () => {
 // Start server
 const PORT = config.port;
 const HOST = '0.0.0.0'; // Bind to all network interfaces for WiFi access
-app.listen(PORT, HOST, () => {
+
+// Create HTTP server and initialize Socket.IO
+const httpServer = createServer(app);
+initializeSocketIO(httpServer);
+
+httpServer.listen(PORT, HOST, () => {
   const localIP = getLocalIP();
   const ipPadded = `http://${localIP}:${PORT}`.padEnd(25);
   
