@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, ViewChild, ElementRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -20,6 +20,7 @@ import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TranslateService } from '../../../core/services/translate.service';
+import { SocketService } from '../../../core/services/socket.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
 
 // jsPDF import for PDF generation
@@ -48,7 +49,7 @@ declare var jspdf: any;
   templateUrl: './bills.component.html',
   styleUrl: './bills.component.scss'
 })
-export class BillsComponent implements OnInit {
+export class BillsComponent implements OnInit, OnDestroy {
   @ViewChild('billsListContainer') billsListContainer!: ElementRef;
   
   loading = signal(false);
@@ -61,6 +62,7 @@ export class BillsComponent implements OnInit {
   hasMore = signal(true);
   allBills = signal<Bill[]>([]);
   private destroy$ = new Subject<void>();
+  private socketListenersSetup = false; // Flag to prevent duplicate listener registration
 
   // Filters
   startDate = signal<Date | null>(null);
@@ -103,7 +105,8 @@ export class BillsComponent implements OnInit {
     public settingsService: SettingsService,
     public authService: AuthService,
     public translateService: TranslateService,
-    private snackBar: MatSnackBar
+    private snackBar: MatSnackBar,
+    private socketService: SocketService
   ) {}
 
   // Get formatted bill number (truncated for mobile)
@@ -117,11 +120,78 @@ export class BillsComponent implements OnInit {
   ngOnInit(): void {
     // setDatePreset already calls loadBills() and loadReport() internally
     this.setDatePreset('today');
+    
+    // Setup socket listeners for real-time updates (after socket connects)
+    this.trySetupSocketListeners();
+  }
+
+  // Try to setup socket listeners, will retry when socket connects
+  private trySetupSocketListeners(): void {
+    if (this.socketListenersSetup) {
+      console.log('⚠️ Bills: Socket listeners already set up, skipping');
+      return;
+    }
+
+    if (this.socketService.connected()) {
+      console.log('✅ Bills: Socket is connected, setting up listeners now...');
+      this.setupSocketListeners();
+      this.socketListenersSetup = true;
+    } else {
+      console.log('⏳ Bills: Socket not connected yet, will retry in 1 second...');
+      setTimeout(() => this.trySetupSocketListeners(), 1000);
+    }
   }
 
   ngOnDestroy(): void {
+    // Cleanup socket listeners
+    this.socketService.off('bill-created');
+    this.socketService.off('bill-updated');
+    this.socketService.off('bill-deleted');
+    
     this.destroy$.next();
     this.destroy$.complete();
+  }
+
+  private setupSocketListeners(): void {
+    console.log('🔌 Bills: Setting up socket listeners for real-time updates');
+    
+    this.socketService.on('bill-created', (data: any) => {
+      console.log('📡 Bills: bill-created received', data);
+      this.handleBillCreated(data);
+    });
+
+    this.socketService.on('bill-updated', (data: any) => {
+      console.log('📡 Bills: bill-updated received', data);
+      this.handleBillUpdated(data);
+    });
+
+    this.socketService.on('bill-deleted', (data: any) => {
+      console.log('📡 Bills: bill-deleted received', data);
+      this.handleBillDeleted(data);
+    });
+    
+    console.log('✅ Bills: Socket listeners registered');
+  }
+
+  private handleBillCreated(billData: any): void {
+    console.log('✅ Bills: Handling bill created, reloading data...');
+    // Reload bills and report to show new bill
+    this.loadBills(true);
+    this.loadReport();
+  }
+
+  private handleBillUpdated(billData: any): void {
+    console.log('✅ Bills: Handling bill updated, reloading data...');
+    // Reload bills and report to show updated bill
+    this.loadBills(true);
+    this.loadReport();
+  }
+
+  private handleBillDeleted(data: any): void {
+    console.log('✅ Bills: Handling bill deleted, reloading data...');
+    // Reload bills and report to reflect deletion
+    this.loadBills(true);
+    this.loadReport();
   }
 
   ngAfterViewInit(): void {
