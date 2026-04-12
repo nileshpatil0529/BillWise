@@ -95,19 +95,23 @@
                 <mat-icon>more_vert</mat-icon>
               </button>
               <mat-menu #userMenu="matMenu">
-                <button mat-menu-item (click)="openEditUserDialog(user)">
-                  <mat-icon>edit</mat-icon>
-                  <span>{{ translateService.t('common.edit') }}</span>
-                </button>
+                @if (user.uid !== 'admin-001') {
+                  <button mat-menu-item (click)="openEditUserDialog(user)">
+                    <mat-icon>edit</mat-icon>
+                    <span>{{ translateService.t('common.edit') }}</span>
+                  </button>
+                }
                 <button mat-menu-item (click)="resetUserPassword(user)">
                   <mat-icon>lock_reset</mat-icon>
                   <span>{{ translateService.t('users.resetPassword') }}</span>
                 </button>
-                <button mat-menu-item (click)="toggleUserStatus(user)">
-                  <mat-icon>{{ user.isActive ? 'block' : 'check_circle' }}</mat-icon>
-                  <span>{{ user.isActive ? translateService.t('users.deactivate') : translateService.t('users.activate') }}</span>
-                </button>
-                @if (user.uid !== authService.currentUser()?.uid) {
+                @if (user.uid !== 'admin-001') {
+                  <button mat-menu-item (click)="toggleUserStatus(user)">
+                    <mat-icon>{{ user.isActive ? 'block' : 'check_circle' }}</mat-icon>
+                    <span>{{ user.isActive ? translateService.t('users.deactivate') : translateService.t('users.activate') }}</span>
+                  </button>
+                }
+                @if (user.uid !== authService.currentUser()?.uid && user.uid !== 'admin-001') {
                   <mat-divider></mat-divider>
                   <button mat-menu-item (click)="deleteUser(user)" class="delete-action">
                     <mat-icon color="warn">delete</mat-icon>

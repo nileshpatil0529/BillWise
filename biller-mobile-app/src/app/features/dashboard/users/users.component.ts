@@ -127,8 +127,16 @@ export class UsersComponent implements OnInit {
     if (confirm(`Reset password for ${user.displayName}? They will be required to change it on next login.`)) {
       this.userService.resetPassword(user.uid).subscribe({
         next: (response) => {
-          if (!response.success) {
-            // Only show error if reset failed
+          if (response.success) {
+            const defaultPassword = response.data?.defaultPassword || 'User@123';
+            this.snackBar.open(
+              `Password reset successfully. New password: ${defaultPassword}`,
+              'Close',
+              { duration: 8000, panelClass: ['success-snackbar'] }
+            );
+            this.loadUsers();
+          } else {
+            this.snackBar.open(response.message || 'Failed to reset password', 'Close', { duration: 3000 });
           }
         },
         error: (error) => {
