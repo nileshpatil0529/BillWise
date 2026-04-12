@@ -556,28 +556,6 @@ const initializeDatabase = () => {
     console.log('✅ Default admin user created');
   }
 
-  // Insert demo products if products table is empty
-  const productsExist = db.prepare('SELECT COUNT(*) as count FROM products').get();
-  if (productsExist.count === 0) {
-    const demoProducts = [
-      { productId: 'PRD001', name: 'Rice (1kg)', category: 'Groceries', unitPrice: 50, costPrice: 40, stockQuantity: 100, barcode: '8901234567890' },
-      { productId: 'PRD002', name: 'Wheat Flour (1kg)', category: 'Groceries', unitPrice: 45, costPrice: 35, stockQuantity: 80, barcode: '8901234567906' },
-      { productId: 'PRD003', name: 'Sugar (1kg)', category: 'Groceries', unitPrice: 42, costPrice: 38, stockQuantity: 60, barcode: '8901234567913' },
-      { productId: 'PRD004', name: 'Cooking Oil (1L)', category: 'Groceries', unitPrice: 120, costPrice: 100, stockQuantity: 50, barcode: '8901234567920' },
-      { productId: 'PRD005', name: 'Salt (1kg)', category: 'Groceries', unitPrice: 20, costPrice: 15, stockQuantity: 200, barcode: '8901234567937' }
-    ];
-
-    const insertProduct = db.prepare(`
-      INSERT INTO products (productId, name, category, unitPrice, costPrice, stockQuantity, barcode, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, 'active')
-    `);
-
-    for (const p of demoProducts) {
-      insertProduct.run(p.productId, p.name, p.category, p.unitPrice, p.costPrice, p.stockQuantity, p.barcode);
-    }
-    console.log('✅ Demo products inserted');
-  }
-
   console.log('✅ SQLite database initialized successfully');
   console.log(`📁 Database location: ${dbPath}`);
 };
