@@ -1253,7 +1253,9 @@ export class HomeComponent implements OnInit, OnDestroy {
   // Change to a new table (switch to work on occupied table's order)
   changeToTable(newTable: RestaurantTable): void {
     const oldTable = this.selectedTable();
-    if (!oldTable || newTable.id === oldTable.id) {
+    
+    // If same table, just close the overlay
+    if (oldTable && newTable.id === oldTable.id) {
       this.changingTable.set(false);
       return;
     }
@@ -1261,7 +1263,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     // If new table is occupied, switch to work on that table's order
     if (newTable.status === 'occupied') {
       // Save current table state first if we have a selected table
-      if (this.selectedTable()) {
+      if (oldTable) {
         this.saveCurrentTableState();
       }
       
@@ -1269,6 +1271,13 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.selectTable(newTable);
       
       // Close the overlay
+      this.cancelChangeTable();
+      return;
+    }
+    
+    // If we don't have a currently selected table, just select the new one
+    if (!oldTable) {
+      this.selectTable(newTable);
       this.cancelChangeTable();
       return;
     }
@@ -1829,7 +1838,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private handleTableUpdate(data: any): void {
-    console.log('✅ Handling table update, reloading tables...');
+    console.log('✅ Handling table update, reloading tables...', data);
     // Reload tables to get latest status and grand totals
     this.hotelService.loadTables().subscribe({
       next: () => {
@@ -1839,8 +1848,26 @@ export class HomeComponent implements OnInit, OnDestroy {
         if (currentTable && data.tableId === currentTable.id) {
           const refreshedTable = this.hotelService.tables().find(t => t.id === currentTable.id);
           if (refreshedTable) {
-            this.selectedTable.set(refreshedTable);
-            console.log('✅ Updated selected table reference');
+            // Check if table status changed to available (cart was cleared in another browser)
+            if (refreshedTable.status === 'available' && currentTable.status === 'occupied') {
+              console.log('🧹 Table cleared in another browser, clearing local cart and resetting state');
+              // Clear local cart and reset state
+              this.billService.clearCart();
+              this.billService.billDiscount.set(0);
+              this.customerName.set('');
+              this.customerPhone.set('');
+              this.selectedTable.set(null);
+              this.currentBillId.set(null);
+              this.billStatus.set('new');
+              this.savedCartSnapshot.set('');
+              
+              // Show notification
+              this.snackBar.open('Table cleared in another session', 'OK', { duration: 3000 });
+            } else {
+              // Just update the table reference
+              this.selectedTable.set(refreshedTable);
+              console.log('✅ Updated selected table reference');
+            }
           }
         }
       }
@@ -1858,7 +1885,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   }
 
   private handleBillUpdate(data: any): void {
-    console.log('✅ Handling bill update, reloading tables to reflect changes...');
+    console.log('✅ Handling bill update, reloading tables to reflect changes...', data);
     // Reload tables to reflect bill changes (grand totals, status, etc.)
     this.hotelService.loadTables().subscribe({
       next: () => {
@@ -1870,6 +1897,45 @@ export class HomeComponent implements OnInit, OnDestroy {
           if (refreshedTable) {
             this.selectedTable.set(refreshedTable);
             console.log('✅ Updated selected table reference after bill update');
+            
+            // If we're viewing this bill, reload it to get updated items
+            if (this.currentBillId() && data.billId && this.currentBillId() === data.billId) {
+              console.log('🔄 Loading updated bill items from another browser...');
+              this.billService.getBillById(data.billId).subscribe({
+                next: (response) => {
+                  if (response.success && response.data) {
+                    const bill = response.data;
+                    // Update bill status
+                    this.billStatus.set(bill.kotPrintedAt ? 'kot-printed' : 'draft');
+                    
+                    // Reload cart items from the updated bill
+                    this.billService.clearCart();
+                    if (bill.items) {
+                      const cartItems = bill.items.map((item: any) => ({
+                        productId: item.productId,
+                        name: item.name,
+                        unitPrice: item.unitPrice,
+                        category: item.category || 'General',
+                        stockQuantity: 9999,
+                        status: 'active' as const,
+                        quantity: item.quantity,
+                        discount: 0,
+                        discountType: 'fixed' as const,
+                        lineTotal: item.unitPrice * item.quantity,
+                        note: item.note
+                      }));
+                      this.billService.cartItems.set(cartItems);
+                    }
+                    // Update snapshot
+                    this.updateCartSnapshot();
+                    console.log('✅ Cart items updated from another browser');
+                  }
+                },
+                error: (err) => {
+                  console.error('Failed to reload bill items:', err);
+                }
+              });
+            }
           }
         }
       }
