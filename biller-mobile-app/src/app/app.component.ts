@@ -32,8 +32,8 @@ export class AppComponent {
   private lockOrientation(): void {
     if (typeof window !== 'undefined' && 'screen' in window && window.screen.orientation) {
       // Modern Screen Orientation API
-      const orientation = window.screen.orientation;
-      if ('lock' in orientation) {
+      const orientation = window.screen.orientation as any;
+      if (orientation && typeof orientation.lock === 'function') {
         orientation.lock('portrait').catch(() => {
           // Lock may fail in some contexts (not fullscreen), ignore error
         });
