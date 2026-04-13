@@ -19,10 +19,25 @@ export class AppComponent {
     // Initialize auto-blur service to prevent barcode scanner triggering buttons
     this.autoBlurService.initialize();
     
+    // Lock orientation to portrait
+    this.lockOrientation();
+    
     // Apply dark-theme class to body for overlay components (mat-menu, dialogs, etc.)
     effect(() => {
       const isDark = this.settingsService.currentTheme() === 'dark';
       document.body.classList.toggle('dark-theme', isDark);
     });
+  }
+
+  private lockOrientation(): void {
+    if (typeof window !== 'undefined' && 'screen' in window && window.screen.orientation) {
+      // Modern Screen Orientation API
+      const orientation = window.screen.orientation;
+      if ('lock' in orientation) {
+        orientation.lock('portrait').catch(() => {
+          // Lock may fail in some contexts (not fullscreen), ignore error
+        });
+      }
+    }
   }
 }

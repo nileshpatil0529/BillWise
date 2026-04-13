@@ -224,8 +224,8 @@ export const createBill = async (req, res) => {
 
       // Insert items
       const insertItem = db.prepare(`
-        INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, note)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, kotPrintedQuantity, note)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       // Always insert with kotPrinted=0, printKOT will mark them after printing
@@ -239,6 +239,7 @@ export const createBill = async (req, res) => {
           item.itemTotal,
           item.finalTotal,
           0,  // Always 0, will be marked by printKOT endpoint
+          0,  // kotPrintedQuantity starts at 0
           item.note || null
         );
 
@@ -331,7 +332,8 @@ export const updateBill = async (req, res) => {
         existingItems.forEach(item => {
           existingItemsMap[item.productId] = {
             quantity: item.quantity,
-            kotPrinted: item.kotPrinted || 0
+            kotPrinted: item.kotPrinted || 0,
+            kotPrintedQuantity: item.kotPrintedQuantity || 0
           };
         });
         
@@ -351,23 +353,27 @@ export const updateBill = async (req, res) => {
         // Insert all items from current cart with correct quantities
         if (updates.items.length > 0) {
           const insertItem = db.prepare(`
-            INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, kotPrintedQuantity, note)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
 
           for (const item of updates.items) {
             const itemTotal = item.unitPrice * item.quantity;
             const existingItem = existingItemsMap[item.productId];
             
-            // Only preserve kotPrinted=1 if quantity is exactly the same
-            // Any quantity change (increase or decrease) resets kotPrinted to 0
-            // This ensures accurate tracking: new quantities need new KOT
+            // Preserve kotPrintedQuantity to track what was already sent to kitchen
             let kotPrintedStatus = 0;
-            if (existingItem && existingItem.kotPrinted === 1 && item.quantity === existingItem.quantity) {
-              kotPrintedStatus = 1;
+            let kotPrintedQty = 0;
+            if (existingItem) {
+              // Preserve the quantity that was already printed
+              kotPrintedQty = existingItem.kotPrintedQuantity || 0;
+              // If quantity unchanged and was fully printed, keep kotPrinted=1
+              if (existingItem.kotPrinted === 1 && item.quantity === existingItem.quantity) {
+                kotPrintedStatus = 1;
+              }
             }
             
-            insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus, item.note || null);
+            insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus, kotPrintedQty, item.note || null);
             
             // Deduct stock for new quantities (skip for hotel mode)
             if (item.productId && !isHotelMode) {
@@ -840,11 +846,13 @@ export const printKOT = async (req, res) => {
       });
     }
 
-    // Get NEW items (not KOT printed yet) from bill_items table
+    // Get NEW items (quantity > kotPrintedQuantity) from bill_items table
     const newItems = db.prepare(`
-      SELECT bi.*, p.nameHi, p.isLooseItem FROM bill_items bi
+      SELECT bi.*, p.nameHi, p.isLooseItem, 
+             (bi.quantity - COALESCE(bi.kotPrintedQuantity, 0)) as newQuantity
+      FROM bill_items bi
       LEFT JOIN products p ON bi.productId = p.productId
-      WHERE bi.billId = ? AND bi.kotPrinted = 0
+      WHERE bi.billId = ? AND bi.quantity > COALESCE(bi.kotPrintedQuantity, 0)
     `).all(billId);
 
     if (!newItems || newItems.length === 0) {
@@ -923,7 +931,8 @@ export const printKOT = async (req, res) => {
       // Use Hindi name if available and Hindi is selected
       const displayName = (isHindi && item.nameHi) ? item.nameHi : (item.name || 'Unknown');
       // Format quantity with 2 decimals for loose items, otherwise show as integer
-      const qty = item.isLooseItem ? (item.quantity || 0).toFixed(2) : Math.round(item.quantity || 0).toString();
+      // Use newQuantity (difference) instead of total quantity
+      const qty = item.isLooseItem ? (item.newQuantity || 0).toFixed(2) : Math.round(item.newQuantity || 0).toString();
       const note = item.note ? ' - ' + item.note : '';
       
       // Format: Item X qty - Note (if present)
@@ -962,8 +971,14 @@ export const printKOT = async (req, res) => {
       
       // Mark items as KOT printed AFTER successful printing
       const now = new Date().toISOString();
-      const updateKot = db.prepare('UPDATE bill_items SET kotPrinted = 1 WHERE billId = ? AND kotPrinted = 0');
-      updateKot.run(billId);
+      
+      // Update kotPrintedQuantity to current quantity for items that were just printed
+      const updateKotQty = db.prepare(`
+        UPDATE bill_items 
+        SET kotPrinted = 1, kotPrintedQuantity = quantity 
+        WHERE billId = ? AND quantity > COALESCE(kotPrintedQuantity, 0)
+      `);
+      updateKotQty.run(billId);
       
       // Set KOT printed timestamp on bill
       db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
