@@ -1633,50 +1633,37 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const table = this.selectedTable();
-    
-    const billData = {
-      billStatus: 'completed' as const,
-      paymentMethod: this.paymentMethod(),
-      paymentStatus: 'paid' as const,
-      amountPaid: this.billService.cartTotal(),
-      customerName: this.customerName(),
-      customerPhone: this.customerPhone()
-    };
 
-    this.billService.updateBill(this.currentBillId()!, billData).subscribe({
-      next: (response) => {
-        if (response.success) {
-          // Print the bill
-          this.billService.printBill(this.currentBillId()!).subscribe({
-            next: () => {
-              this.snackBar.open('Bill completed and printed successfully', 'Close', { duration: 3000 });
-              
-              // Remove from attended tables if applicable
-              if (table) {
-                this.removeFromAttendedTables(table.id);
-              }
-              
-              // Reset state - table status will be updated via WebSocket
-              this.cancelTableSelection();
-              
-              // Reload tables to reflect changes
-              this.hotelService.loadTables().subscribe();
-            },
-            error: () => {
-              this.snackBar.open('Bill completed but print failed', 'Close', { duration: 3000 });
-              
-              // Still reset state even if print fails
+    // Print the bill first
+    this.billService.printBill(this.currentBillId()!).subscribe({
+      next: () => {
+        // Only after successful print, complete the bill
+        const billData = {
+          billStatus: 'completed' as const,
+          paymentMethod: this.paymentMethod(),
+          paymentStatus: 'paid' as const,
+          amountPaid: this.billService.cartTotal(),
+          customerName: this.customerName(),
+          customerPhone: this.customerPhone()
+        };
+        this.billService.updateBill(this.currentBillId()!, billData).subscribe({
+          next: (response) => {
+            if (response.success) {
+              this.snackBar.open('Bill printed and completed successfully', 'Close', { duration: 3000 });
               if (table) {
                 this.removeFromAttendedTables(table.id);
               }
               this.cancelTableSelection();
               this.hotelService.loadTables().subscribe();
             }
-          });
-        }
+          },
+          error: () => {
+            this.snackBar.open('Bill printed but failed to complete', 'Close', { duration: 3000 });
+          }
+        });
       },
       error: () => {
-        this.snackBar.open('Failed to complete bill', 'Close', { duration: 3000 });
+        this.snackBar.open('Failed to print bill', 'Close', { duration: 3000 });
       }
     });
   }
