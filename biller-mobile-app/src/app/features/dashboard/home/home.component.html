@@ -8,6 +8,9 @@
             <mat-icon>table_restaurant</mat-icon>
             {{ translateService.t('hotel.selectTable') }}
           </mat-card-title>
+          <button mat-icon-button class="close-button" (click)="dismissTableSelection()">
+            <mat-icon>close</mat-icon>
+          </button>
         </mat-card-header>
         <mat-card-content>
           <!-- Dine-in Tables -->
@@ -20,6 +23,7 @@
                           class="table-btn"
                           [class.occupied]="table.status === 'occupied'"
                           [class.available]="table.status === 'available'"
+                          [disabled]="table.status === 'occupied'"
                           (click)="selectTable(table)">
                     <div class="table-content">
                       <mat-icon>table_restaurant</mat-icon>
@@ -44,6 +48,7 @@
                           class="table-btn parcel"
                           [class.occupied]="table.status === 'occupied'"
                           [class.available]="table.status === 'available'"
+                          [disabled]="table.status === 'occupied'"
                           (click)="selectTable(table)">
                     <div class="table-content">
                       <mat-icon>takeout_dining</mat-icon>
@@ -341,40 +346,46 @@
     }
   </div>
 
-  <div class="content-area" [class.hidden]="needsTableSelection()">
-    <!-- Hotel Mode: Table Info Bar -->
-    @if (isHotelMode() && selectedTable()) {
-      <div class="table-info-bar">
-        <!-- Cart Icon -->
-        <mat-icon [matBadge]="billService.cartItemCount() > 0 ? billService.cartItemCount() : null" 
-                  matBadgeColor="accent" 
-                  matBadgeSize="medium"
-                  class="cart-icon">
-          shopping_cart
-        </mat-icon>
-        
+  <!-- Hotel Mode: Table Info Bar - Always Visible -->
+  @if (isHotelMode()) {
+    <div class="table-info-bar">
+      <!-- Cart Icon -->
+      <mat-icon [matBadge]="billService.cartItemCount() > 0 ? billService.cartItemCount() : null" 
+                matBadgeColor="accent" 
+                matBadgeSize="medium"
+                class="cart-icon">
+        shopping_cart
+      </mat-icon>
+      
+      @if (selectedTable()) {
         <mat-chip [highlighted]="true" class="table-chip">
           <span>{{ selectedTable()?.tableNumber }}</span>
         </mat-chip>
+      } @else {
+        <mat-chip class="table-chip">
+          <span>No Table</span>
+        </mat-chip>
+      }
+      
+      <!-- Occupied Tables Button -->
+      <div class="attended-tables-container">
+        <button mat-icon-button 
+                (click)="startChangeTable()"
+                class="attended-tables-btn">
+          <mat-icon [matBadge]="getOccupiedTables().length > 0 ? getOccupiedTables().length : null" matBadgeColor="warn" matBadgeSize="small" aria-hidden="false">
+            grid_view
+          </mat-icon>
+        </button>
         
-        <!-- Occupied Tables Button -->
-        <div class="attended-tables-container">
-          <button mat-icon-button 
-                  (click)="startChangeTable()"
-                  class="attended-tables-btn">
-            <mat-icon [matBadge]="getOccupiedTables().length > 0 ? getOccupiedTables().length : null" matBadgeColor="warn" matBadgeSize="small" aria-hidden="false">
-              grid_view
-            </mat-icon>
-          </button>
-          
-          <button mat-icon-button color="warn" (click)="clearCart()" 
-                  [disabled]="billService.cartItems().length === 0">
-            <mat-icon>delete</mat-icon>
-          </button>
-        </div>
+        <button mat-icon-button color="warn" (click)="clearCart()" 
+                [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())">
+          <mat-icon>delete</mat-icon>
+        </button>
       </div>
-    }
-    
+    </div>
+  }
+
+  <div class="content-area" [class.hidden]="needsTableSelection()">
     <!-- Non-Hotel Mode: Cart Header -->
     @if (!isHotelMode()) {
       <div class="cart-header-bar">
@@ -390,7 +401,7 @@
         
         <!-- Clear Cart Button -->
         <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="billService.cartItems().length === 0">
+                [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())">
           <mat-icon>delete</mat-icon>
         </button>
       </div>

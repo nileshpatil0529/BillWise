@@ -1710,6 +1710,9 @@
   
   mat-card-header {
     padding: v.$spacing-md v.$spacing-lg;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     
     mat-card-title {
       display: flex;
@@ -1720,6 +1723,11 @@
       mat-icon {
         color: var(--mat-primary);
       }
+    }
+
+    .close-button {
+      flex-shrink: 0;
+      margin-left: auto;
     }
   }
   

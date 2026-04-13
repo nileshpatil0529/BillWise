@@ -58,6 +58,9 @@
       color: white;
       padding: v.$spacing-md;
       flex-shrink: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
 
       mat-card-title {
         display: flex;
@@ -67,6 +70,11 @@
         font-size: 16px;
 
         mat-icon { font-size: 20px; width: 20px; height: 20px; }
+      }
+
+      .close-button {
+        flex-shrink: 0;
+        color: white;
       }
 
       .spacer { flex: 1; }

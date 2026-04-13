@@ -8,6 +8,9 @@
             <mat-icon>table_restaurant</mat-icon>
             {{ translateService.t('hotel.selectTable') }}
           </mat-card-title>
+          <button mat-icon-button class="close-button" (click)="dismissTableSelection()">
+            <mat-icon>close</mat-icon>
+          </button>
         </mat-card-header>
         <mat-card-content>
           <!-- Dine-in Tables -->
@@ -20,6 +23,7 @@
                           class="table-btn"
                           [class.occupied]="table.status === 'occupied'"
                           [class.available]="table.status === 'available'"
+                          [disabled]="table.status === 'occupied'"
                           (click)="selectTable(table)">
                     <div class="table-content">
                       <mat-icon>table_restaurant</mat-icon>
@@ -44,6 +48,7 @@
                           class="table-btn parcel"
                           [class.occupied]="table.status === 'occupied'"
                           [class.available]="table.status === 'available'"
+                          [disabled]="table.status === 'occupied'"
                           (click)="selectTable(table)">
                     <div class="table-content">
                       <mat-icon>takeout_dining</mat-icon>
@@ -396,7 +401,7 @@
         }
         
         <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="billService.cartItems().length === 0"
+                [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())"
                 matTooltip="Clear All">
           <mat-icon>delete_sweep</mat-icon>
         </button>

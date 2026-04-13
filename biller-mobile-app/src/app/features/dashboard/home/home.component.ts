@@ -86,6 +86,7 @@ export class HomeComponent implements OnInit, OnDestroy {
   billStatus = signal<'new' | 'draft' | 'kot-printed'>('new');
   hotelModeInitialized = signal(false); // Flag to track if hotel mode has finished initializing
   savedCartSnapshot = signal<string>(''); // JSON snapshot of last saved cart state
+  tableSelectionDismissed = signal(false); // Flag to track if user dismissed table selection popup
   private socketListenersSetup = false; // Flag to prevent duplicate listener registration
   
   // Multi-table attendance state
@@ -346,6 +347,8 @@ export class HomeComponent implements OnInit, OnDestroy {
   needsTableSelection(): boolean {
     // Don't show table selection until hotel mode is initialized
     if (!this.hotelModeInitialized()) return false;
+    // Don't show if user has dismissed it
+    if (this.tableSelectionDismissed()) return false;
     return this.isHotelMode() && !this.selectedTable();
   }
 
@@ -1055,6 +1058,16 @@ export class HomeComponent implements OnInit, OnDestroy {
       this.customerPhone.set('');
       this.billService.clearCart();
       this.savedCartSnapshot.set('[]'); // Initialize empty snapshot for new order
+      
+      // Mark table as occupied immediately (billId will be assigned when bill is saved)
+      this.hotelService.updateTableStatus(table.id, 'occupied', undefined).subscribe({
+        next: () => {
+          console.log(`✅ Table ${table.tableNumber} marked as occupied`);
+        },
+        error: (err) => {
+          console.error('Failed to mark table as occupied:', err);
+        }
+      });
     }
   }
 
@@ -1099,6 +1112,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     });
   }
 
+  // Dismiss table selection popup
+  dismissTableSelection(): void {
+    this.tableSelectionDismissed.set(true);
+  }
+
   // Cancel table selection (save state and go to table selection)
   cancelTableSelection(): void {
     // Save current table state if there are items
@@ -1111,6 +1129,7 @@ export class HomeComponent implements OnInit, OnDestroy {
     this.currentBillId.set(null);
     this.billStatus.set('new');
     this.changingTable.set(false);
+    this.tableSelectionDismissed.set(false); // Reset dismissed flag when canceling
     this.customerName.set('');
     this.customerPhone.set('');
     this.billService.clearCart();
