@@ -179,17 +179,26 @@ if [ ! -f "biller-server/.env" ]; then
   log_step "Creating environment configuration..."
   cp biller-server/.env.example biller-server/.env
   log_success "Environment file created"
+  ENV_CHANGED=true
 else
   log_success "Environment file already exists"
+  ENV_CHANGED=false
 fi
 
 # Configure PRINTER_INTERFACE in .env (always fix to ensure Linux path)
 log_step "Configuring printer interface path..."
-# Remove any existing PRINTER_INTERFACE lines (including Windows paths)
-sed -i '/^PRINTER_INTERFACE=/d' biller-server/.env
-# Add correct Linux path
-echo "PRINTER_INTERFACE=/dev/usb/lp0" >> biller-server/.env
-log_success "Printer interface configured to ${CYAN}/dev/usb/lp0${NC}"
+# Check if current value is wrong
+CURRENT_PRINTER=$(grep "^PRINTER_INTERFACE=" biller-server/.env 2>/dev/null | cut -d'=' -f2)
+if [ "$CURRENT_PRINTER" != "/dev/usb/lp0" ]; then
+  # Remove any existing PRINTER_INTERFACE lines (including Windows paths)
+  sed -i '/^PRINTER_INTERFACE=/d' biller-server/.env
+  # Add correct Linux path
+  echo "PRINTER_INTERFACE=/dev/usb/lp0" >> biller-server/.env
+  log_success "Printer interface fixed: ${YELLOW}$CURRENT_PRINTER${NC} → ${CYAN}/dev/usb/lp0${NC}"
+  ENV_CHANGED=true
+else
+  log_success "Printer interface already correct ${CYAN}/dev/usb/lp0${NC}"
+fi
 
 # Printer Setup
 section "🖨️  PRINTER SETUP"
@@ -281,8 +290,13 @@ else
   log_success "Systemd service already exists"
 fi
 
-# Ask to restart server if code changed
-if confirm "Restart BillWise server now?"; then
+# Auto-restart if .env was changed, otherwise ask user
+if [ "$ENV_CHANGED" = true ]; then
+  log_warn "Environment configuration was changed"
+  log_step "Restarting server to apply changes..."
+  sudo systemctl restart billwise
+  log_success "BillWise server restarted with new configuration"
+elif confirm "Restart BillWise server now?" "N"; then
   log_step "Restarting server..."
   sudo systemctl restart billwise
   log_success "BillWise server restarted"
@@ -379,5 +393,11 @@ echo ""
 echo -e "  ${CYAN}▶${NC} Server running at: ${BOLD}http://localhost:3000${NC}"
 echo -e "  ${CYAN}▶${NC} Public URL: ${BOLD}https://billwise.site${NC}"
 echo ""
+echo -e "  ${CYAN}▶${NC} Printer configured: ${BOLD}/dev/usb/lp0${NC}"
+echo ""
+if [ "$ENV_CHANGED" = true ]; then
+  echo -e "  ${GREEN}✓${NC} Server restarted with updated configuration"
+  echo ""
+fi
 echo -e "  ${YELLOW}⚠${NC} Remember to logout/login for printer permissions"
 echo ""
