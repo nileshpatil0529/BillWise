@@ -109,38 +109,74 @@ else
   log_success ".env file already exists"
 fi
 
-# Printer Setup
-log_info "Configuring thermal printer..."
-if ! grep -q "PRINTER_INTERFACE=/dev/usb/lp0" biller-server/.env; then
+# Configure PRINTER_INTERFACE in .env
+if ! grep -q "PRINTER_INTERFACE=" biller-server/.env; then
   echo "PRINTER_INTERFACE=/dev/usb/lp0" >> biller-server/.env
-  log_success "Printer interface configured in .env"
+  log_success "Printer interface added to .env"
+elif ! grep -q "PRINTER_INTERFACE=/dev/usb/lp0" biller-server/.env; then
+  sed -i 's|PRINTER_INTERFACE=.*|PRINTER_INTERFACE=/dev/usb/lp0|g' biller-server/.env
+  log_success "Printer interface updated in .env"
 fi
 
+# Printer Setup
+section "PRINTER SETUP"
+
+# Check if user is already in printer groups
+if groups $USER | grep -q '\blp\b' && groups $USER | grep -q '\bdialout\b'; then
+  log_success "User already in printer groups (lp, dialout)"
+  GROUPS_CONFIGURED=true
+else
+  GROUPS_CONFIGURED=false
+fi
+
+# Check if udev rule exists
+if [ -f "/etc/udev/rules.d/99-usb-printer.rules" ]; then
+  log_success "Printer udev rules already configured"
+  UDEV_CONFIGURED=true
+else
+  UDEV_CONFIGURED=false
+fi
+
+# Check if printer device exists
 if [ -e "/dev/usb/lp0" ]; then
-  # Add user to printer groups
-  log_info "Adding user to printer groups..."
-  sudo usermod -a -G lp $USER
-  sudo usermod -a -G dialout $USER
+  log_success "Printer device detected: /dev/usb/lp0"
   
-  # Create udev rule for persistent permissions
-  log_info "Creating udev rule for persistent printer access..."
-  sudo bash -c 'cat > /etc/udev/rules.d/99-usb-printer.rules' <<EOF
+  # Configure if not already done
+  if [ "$GROUPS_CONFIGURED" = false ] || [ "$UDEV_CONFIGURED" = false ]; then
+    log_info "Configuring printer permissions..."
+    
+    # Add user to printer groups
+    if [ "$GROUPS_CONFIGURED" = false ]; then
+      log_info "Adding user to printer groups..."
+      sudo usermod -a -G lp $USER
+      sudo usermod -a -G dialout $USER
+    fi
+    
+    # Create udev rule
+    if [ "$UDEV_CONFIGURED" = false ]; then
+      log_info "Creating udev rule for persistent printer access..."
+      sudo bash -c 'cat > /etc/udev/rules.d/99-usb-printer.rules' <<EOF
 SUBSYSTEM=="usb", MODE="0666", GROUP="lp"
 SUBSYSTEM=="usbmisc", MODE="0666", GROUP="lp"
 KERNEL=="lp[0-9]*", MODE="0666", GROUP="lp"
 EOF
-  
-  # Reload udev rules
-  sudo udevadm control --reload-rules
-  sudo udevadm trigger
-  
-  # Apply immediate permissions
-  sudo chmod 666 /dev/usb/lp0
-  
-  log_success "Printer setuped."
-  log_warn "Note: You may need to logout and login again for group changes to take effect"
+      
+      # Reload udev rules
+      sudo udevadm control --reload-rules
+      sudo udevadm trigger
+    fi
+    
+    # Apply immediate permissions
+    sudo chmod 666 /dev/usb/lp0
+    
+    log_success "Printer setuped."
+    log_warn "Note: You may need to logout and login again for group changes to take effect"
+  else
+    log_success "Printer already setup."
+  fi
 else
-  log_warn "Printer device /dev/usb/lp0 not found. Please connect printer and rerun script"
+  log_warn "Printer device /dev/usb/lp0 not found."
+  log_info "Please connect printer and run: sudo chmod 666 /dev/usb/lp0"
 fi
 
 # 4. Systemd Service for Server
