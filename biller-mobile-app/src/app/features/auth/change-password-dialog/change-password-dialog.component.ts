@@ -79,7 +79,7 @@ export class ChangePasswordDialogComponent {
           
           this.dialogRef.close(true);
         } else {
-          this.snackBar.open(response.message || 'Failed to change password', 'Close', { duration: 3000 });
+          // Info snack bar removed
         }
         this.saving.set(false);
       },

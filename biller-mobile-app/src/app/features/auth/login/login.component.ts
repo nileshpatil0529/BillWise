@@ -80,7 +80,7 @@ export class LoginComponent {
             }, 100);
           }
         } else {
-          this.snackBar.open(response.message || 'Login failed', 'Close', {
+          // Info snack bar removed
             duration: 5000,
             panelClass: ['error-snackbar']
           });

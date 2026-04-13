@@ -778,7 +778,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.billService.deleteBill(billId).subscribe({
         next: (response) => {
           console.log('✅ Bill deleted from database successfully:', response);
-          this.snackBar.open('Bill deleted successfully', 'OK', { duration: 2000 });
+          // Success snack bar removed
         },
         error: (err) => {
           console.error('❌ Error deleting bill from database:', err);
@@ -855,6 +855,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       next: (response) => {
         if (response.success) {
           this.clearCart();
+          // Collapse bill summary panel after save
+          this.showBillSummary.set(false);
+          // Success snack bar removed
         }
       },
       error: (error) => {
@@ -908,11 +911,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           // Print the bill
           this.billService.printBill(response.data.billId).subscribe({
             next: () => {
-              this.snackBar.open('Bill saved and printed successfully', 'Close', { duration: 3000 });
+              // Success snack bar removed
               this.clearCart();
             },
             error: () => {
-              this.snackBar.open('Bill saved but printing failed', 'Close', { duration: 3000 });
+              // Info snack bar removed
               this.clearCart();
             }
           });
@@ -1266,7 +1269,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
               }
             });
             
-            this.snackBar.open(`Switched to ${newTable.tableNumber}`, 'Close', { duration: 2000 });
+            // Success snack bar removed
           }
         },
         error: () => {
@@ -1281,7 +1284,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // Close the overlay
       this.cancelChangeTable();
       
-      this.snackBar.open(`Switched to ${newTable.tableNumber}`, 'Close', { duration: 2000 });
+      // Success snack bar removed
     }
   }
 
@@ -1551,7 +1554,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         next: (response) => {
           if (response.success) {
             this.updateCartSnapshot(); // Update snapshot after successful save
-            this.snackBar.open('Order saved successfully', 'Close', { duration: 2000 });
+            // Success snack bar removed
             // Reload tables to update grandTotal
             this.hotelService.loadTables().subscribe();
           }
@@ -1569,7 +1572,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.currentBillId.set(response.data.billId);
             console.log('✅ saveOrder: currentBillId set to:', this.currentBillId());
             this.updateCartSnapshot(); // Update snapshot after successful save
-            this.snackBar.open('Order saved successfully', 'Close', { duration: 2000 });
+            // Success snack bar removed
             
             // Update table status and reload tables
             this.hotelService.updateTableStatus(table.id, 'occupied', response.data.billId).subscribe({
@@ -1641,13 +1644,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.billService.printKOT(this.currentBillId()!).subscribe({
               next: (printResponse) => {
                 if (printResponse.success) {
-                  this.snackBar.open('Order saved and KOT printed successfully', 'Close', { duration: 2000 });
+                  // Success snack bar removed
                   this.billStatus.set('kot-printed');
                 }
               },
               error: (err) => {
                 const message = err.error?.message || 'Failed to print KOT';
-                this.snackBar.open(`Order saved but ${message}. Please retry printing.`, 'Close', { duration: 5000 });
+                // Info snack bar removed
                 // Bill is saved, just print failed - user can retry
               }
             });
@@ -1679,13 +1682,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.billService.printKOT(response.data.billId).subscribe({
               next: (printResponse) => {
                 if (printResponse.success) {
-                  this.snackBar.open('Order saved and KOT printed successfully', 'Close', { duration: 2000 });
+                  // Success snack bar removed
                   this.billStatus.set('kot-printed');
                 }
               },
               error: (err) => {
                 const message = err.error?.message || 'Failed to print KOT';
-                this.snackBar.open(`Order saved but ${message}. Please retry printing.`, 'Close', { duration: 5000 });
+                // Info snack bar removed
                 // Bill is saved, just print failed - user can retry
               }
             });
@@ -1706,7 +1709,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const table = this.selectedTable();
-    
     const billData = {
       billStatus: 'completed' as const,
       paymentMethod: this.paymentMethod(),
@@ -1719,18 +1721,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.billService.updateBill(this.currentBillId()!, billData).subscribe({
       next: (response) => {
         if (response.success) {
-          this.snackBar.open('Bill completed successfully', 'Close', { duration: 3000 });
-          
-          // Remove from attended tables if applicable
+          // Success snack bar removed
           if (table) {
             this.removeFromAttendedTables(table.id);
           }
-          
-          // Reset state - table status will be updated via WebSocket
           this.cancelTableSelection();
-          
-          // Reload tables to reflect changes
           this.hotelService.loadTables().subscribe();
+          // Collapse bill summary panel after save in hotel mode
+          this.showBillSummary.set(false);
         }
       },
       error: () => {
@@ -1762,12 +1760,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         this.billService.updateBill(this.currentBillId()!, billData).subscribe({
           next: (response) => {
             if (response.success) {
-              this.snackBar.open('Bill printed and completed successfully', 'Close', { duration: 3000 });
+              // Success snack bar removed
               if (table) {
                 this.removeFromAttendedTables(table.id);
               }
               this.cancelTableSelection();
               this.hotelService.loadTables().subscribe();
+              // Collapse bill summary panel after print & complete
+              this.showBillSummary.set(false);
             }
           },
           error: () => {
@@ -1858,7 +1858,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.savedCartSnapshot.set('');
       
       // Show notification
-      this.snackBar.open('Bill completed in another session', 'OK', { duration: 3000 });
+      // Info snack bar removed
     }
     
     // Reload tables to get latest status and grand totals
@@ -1947,7 +1947,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         const currentTable = this.selectedTable();
         if (currentTable && data.tableId === currentTable.id && data.billId === this.currentBillId()) {
           const message = data.printError ? 'KOT print failed for this table' : 'KOT printed for this table';
-          this.snackBar.open(message, 'OK', { duration: 3000 });
+          // Info snack bar removed
           console.log('✅ Showed KOT notification for current table');
         }
       }

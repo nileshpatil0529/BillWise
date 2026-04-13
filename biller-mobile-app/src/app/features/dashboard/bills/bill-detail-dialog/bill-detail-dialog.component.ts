@@ -627,7 +627,7 @@ export class BillDetailDialogComponent {
       error: (error: any) => {
         this.printing = false;
         const message = error.error?.message || 'Failed to print bill';
-        this.snackBar.open(message, 'Close', { duration: 5000 });
+        // Info snack bar removed
       }
     });
   }
