@@ -53,6 +53,46 @@ set -e
 LOG_FILE="billwise_setup.log"
 exec > >(tee -a $LOG_FILE) 2>&1
 
+# ==============================
+# SELF-UPDATE MECHANISM
+# ==============================
+SCRIPT_URL="https://raw.githubusercontent.com/nileshpatil0529/BillWise/main/BillWise_setup.sh"
+SCRIPT_NAME="BillWise_setup.sh"
+
+# Check if script should update itself
+if [ "$1" != "--skip-update" ]; then
+  echo -e "${BLUE}ℹ${NC}  Checking for script updates..."
+  
+  # Remove old script if exists
+  if [ -f "${SCRIPT_NAME}.tmp" ]; then
+    rm -f "${SCRIPT_NAME}.tmp"
+  fi
+  
+  # Download latest version
+  if wget -q "$SCRIPT_URL" -O "${SCRIPT_NAME}.tmp"; then
+    # Check if download was successful and file is not empty
+    if [ -s "${SCRIPT_NAME}.tmp" ]; then
+      # Compare with current script
+      if ! cmp -s "${SCRIPT_NAME}.tmp" "$0"; then
+        echo -e "${GREEN}✓${NC}  New version found, updating..."
+        chmod +x "${SCRIPT_NAME}.tmp"
+        mv "${SCRIPT_NAME}.tmp" "$SCRIPT_NAME"
+        echo -e "${GREEN}✓${NC}  Script updated, restarting..."
+        exec ./"$SCRIPT_NAME" --skip-update "$@"
+      else
+        echo -e "${GREEN}✓${NC}  Already running latest version"
+        rm -f "${SCRIPT_NAME}.tmp"
+      fi
+    else
+      echo -e "${YELLOW}⚠${NC}  Update check failed, continuing with current version"
+      rm -f "${SCRIPT_NAME}.tmp"
+    fi
+  else
+    echo -e "${YELLOW}⚠${NC}  Could not check for updates, continuing with current version"
+    rm -f "${SCRIPT_NAME}.tmp"
+  fi
+fi
+
 echo ""
 echo -e "${BOLD}${CYAN}╔═══════════════════════════════════════════════════╗${NC}"
 echo -e "${BOLD}${CYAN}║                                                   ║${NC}"
