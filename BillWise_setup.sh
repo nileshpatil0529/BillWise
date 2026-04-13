@@ -99,6 +99,50 @@ else
   log_warn "Skipping biller-server dependencies"
 fi
 
+# Environment Setup
+section "ENVIRONMENT SETUP"
+if [ ! -f "biller-server/.env" ]; then
+  log_info "Creating .env file from example..."
+  cp biller-server/.env.example biller-server/.env
+  log_success ".env file created"
+else
+  log_success ".env file already exists"
+fi
+
+# Printer Setup
+log_info "Configuring thermal printer..."
+if ! grep -q "PRINTER_INTERFACE=/dev/usb/lp0" biller-server/.env; then
+  echo "PRINTER_INTERFACE=/dev/usb/lp0" >> biller-server/.env
+  log_success "Printer interface configured in .env"
+fi
+
+if [ -e "/dev/usb/lp0" ]; then
+  # Add user to printer groups
+  log_info "Adding user to printer groups..."
+  sudo usermod -a -G lp $USER
+  sudo usermod -a -G dialout $USER
+  
+  # Create udev rule for persistent permissions
+  log_info "Creating udev rule for persistent printer access..."
+  sudo bash -c 'cat > /etc/udev/rules.d/99-usb-printer.rules' <<EOF
+SUBSYSTEM=="usb", MODE="0666", GROUP="lp"
+SUBSYSTEM=="usbmisc", MODE="0666", GROUP="lp"
+KERNEL=="lp[0-9]*", MODE="0666", GROUP="lp"
+EOF
+  
+  # Reload udev rules
+  sudo udevadm control --reload-rules
+  sudo udevadm trigger
+  
+  # Apply immediate permissions
+  sudo chmod 666 /dev/usb/lp0
+  
+  log_success "Printer setuped."
+  log_warn "Note: You may need to logout and login again for group changes to take effect"
+else
+  log_warn "Printer device /dev/usb/lp0 not found. Please connect printer and rerun script"
+fi
+
 # 4. Systemd Service for Server
 section "SYSTEMD SERVICE"
 SERVICE_FILE="/etc/systemd/system/billwise.service"
