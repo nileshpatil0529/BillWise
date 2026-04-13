@@ -1,4 +1,4 @@
-import { Component, OnInit, OnDestroy, signal, computed, ViewChild, ElementRef, inject, TemplateRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, AfterViewInit, signal, computed, ViewChild, ElementRef, inject, TemplateRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -69,7 +69,7 @@ interface AttendedTableState {
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
-export class HomeComponent implements OnInit, OnDestroy {
+export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   @ViewChild('searchInput') searchInput!: ElementRef;
 
   searchQuery = signal('');
@@ -140,6 +140,11 @@ export class HomeComponent implements OnInit, OnDestroy {
     private barcodeScannerService: BarcodeScannerService,
     private socketService: SocketService
   ) {
+  }
+
+  ngAfterViewInit(): void {
+    // Auto-focus on search input
+    setTimeout(() => this.searchInput?.nativeElement?.focus(), 300);
   }
 
   ngOnDestroy(): void {
@@ -526,6 +531,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     // Highlight the added item
     this.highlightedProductId.set(product.productId);
     setTimeout(() => this.highlightedProductId.set(null), 1000);
+    
+    // Focus back on search
+    setTimeout(() => this.searchInput?.nativeElement?.focus(), 100);
   }
 
   // Helper to get current quantity in cart for a product
@@ -597,6 +605,9 @@ export class HomeComponent implements OnInit, OnDestroy {
     setTimeout(() => this.highlightedProductId.set(null), 1000);
 
     this.closeLooseItemDialog();
+    
+    // Focus back on search
+    setTimeout(() => this.searchInput?.nativeElement?.focus(), 100);
   }
 
   getLooseItemUnit(): string {

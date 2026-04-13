@@ -303,10 +303,10 @@
   }
 
   <!-- Search Section -->
-  <mat-card class="search-card" [class.hidden]="needsTableSelection()">
+  <mat-card class="search-card" [class.hidden]="needsTableSelection() || (isHotelMode() && !selectedTable())">
     <div class="search-row">
       <mat-form-field appearance="outline" class="search-field">
-        <mat-label>{{ translateService.t('home.searchProducts') }}</mat-label>
+        <mat-label style="margin-left: 40px;">{{ translateService.t('home.searchProducts') }}</mat-label>
         <input matInput
                #searchInput
                [value]="searchQuery()"
