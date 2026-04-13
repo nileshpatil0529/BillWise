@@ -23,6 +23,22 @@ export class SocketService {
         this.disconnect();
       }
     });
+
+    // PWA: Reconnect when app comes to foreground
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && !this.socket?.connected && this.authService.currentUser()) {
+        console.log('📱 App resumed, reconnecting socket...');
+        this.connect();
+      }
+    });
+
+    // PWA: Handle network changes
+    window.addEventListener('online', () => {
+      if (this.authService.currentUser()) {
+        console.log('🌐 Network online, reconnecting socket...');
+        this.connect();
+      }
+    });
   }
 
   connect(): void {
