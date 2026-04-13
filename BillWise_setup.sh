@@ -183,14 +183,13 @@ else
   log_success "Environment file already exists"
 fi
 
-# Configure PRINTER_INTERFACE in .env
-if ! grep -q "PRINTER_INTERFACE=" biller-server/.env; then
-  echo "PRINTER_INTERFACE=/dev/usb/lp0" >> biller-server/.env
-  log_success "Printer interface configured"
-elif ! grep -q "PRINTER_INTERFACE=/dev/usb/lp0" biller-server/.env; then
-  sed -i 's|PRINTER_INTERFACE=.*|PRINTER_INTERFACE=/dev/usb/lp0|g' biller-server/.env
-  log_success "Printer interface updated"
-fi
+# Configure PRINTER_INTERFACE in .env (always fix to ensure Linux path)
+log_step "Configuring printer interface path..."
+# Remove any existing PRINTER_INTERFACE lines (including Windows paths)
+sed -i '/^PRINTER_INTERFACE=/d' biller-server/.env
+# Add correct Linux path
+echo "PRINTER_INTERFACE=/dev/usb/lp0" >> biller-server/.env
+log_success "Printer interface configured to ${CYAN}/dev/usb/lp0${NC}"
 
 # Printer Setup
 section "🖨️  PRINTER SETUP"

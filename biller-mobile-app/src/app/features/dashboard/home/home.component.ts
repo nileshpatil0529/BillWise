@@ -1719,25 +1719,18 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.billService.updateBill(this.currentBillId()!, billData).subscribe({
       next: (response) => {
         if (response.success) {
-          // Update table status to available
+          this.snackBar.open('Bill completed successfully', 'Close', { duration: 3000 });
+          
+          // Remove from attended tables if applicable
           if (table) {
-            this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe({
-              next: () => {
-                // Remove from attended tables
-                this.removeFromAttendedTables(table.id);
-                
-                // Reset state
-                this.cancelTableSelection();
-                
-                // Reload tables after status update completes
-                this.hotelService.loadTables().subscribe();
-              }
-            });
-          } else {
-            // No table, just reset state
-            this.cancelTableSelection();
-            this.hotelService.loadTables().subscribe();
+            this.removeFromAttendedTables(table.id);
           }
+          
+          // Reset state - table status will be updated via WebSocket
+          this.cancelTableSelection();
+          
+          // Reload tables to reflect changes
+          this.hotelService.loadTables().subscribe();
         }
       },
       error: () => {
@@ -1771,48 +1764,26 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             next: () => {
               this.snackBar.open('Bill completed and printed successfully', 'Close', { duration: 3000 });
               
-              // Update table status to available
+              // Remove from attended tables if applicable
               if (table) {
-                this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe({
-                  next: () => {
-                    // Remove from attended tables
-                    this.removeFromAttendedTables(table.id);
-                    
-                    // Reset state
-                    this.cancelTableSelection();
-                    
-                    // Reload tables after status update completes
-                    this.hotelService.loadTables().subscribe();
-                  }
-                });
-              } else {
-                // No table, just reset state
-                this.cancelTableSelection();
-                this.hotelService.loadTables().subscribe();
+                this.removeFromAttendedTables(table.id);
               }
+              
+              // Reset state - table status will be updated via WebSocket
+              this.cancelTableSelection();
+              
+              // Reload tables to reflect changes
+              this.hotelService.loadTables().subscribe();
             },
             error: () => {
-              this.snackBar.open('Bill completed but printing failed', 'Close', { duration: 3000 });
+              this.snackBar.open('Bill completed but print failed', 'Close', { duration: 3000 });
               
-              // Update table status to available
+              // Still reset state even if print fails
               if (table) {
-                this.hotelService.updateTableStatus(table.id, 'available', undefined).subscribe({
-                  next: () => {
-                    // Remove from attended tables
-                    this.removeFromAttendedTables(table.id);
-                    
-                    // Reset state
-                    this.cancelTableSelection();
-                    
-                    // Reload tables after status update completes
-                    this.hotelService.loadTables().subscribe();
-                  }
-                });
-              } else {
-                // No table, just reset state
-                this.cancelTableSelection();
-                this.hotelService.loadTables().subscribe();
+                this.removeFromAttendedTables(table.id);
               }
+              this.cancelTableSelection();
+              this.hotelService.loadTables().subscribe();
             }
           });
         }
@@ -1880,37 +1851,33 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   private handleTableUpdate(data: any): void {
     console.log('✅ Handling table update, reloading tables...', data);
+    
+    // Check if this is a bill completion event for the current table
+    const currentTable = this.selectedTable();
+    const shouldClearCart = currentTable && 
+                           data.tableId === currentTable.id && 
+                           (data.status === 'available' || data.billStatus === 'completed');
+    
+    if (shouldClearCart) {
+      console.log('🧹 Bill completed in another browser, clearing local cart and resetting state');
+      // Clear local cart and reset state
+      this.billService.clearCart();
+      this.billService.billDiscount.set(0);
+      this.customerName.set('');
+      this.customerPhone.set('');
+      this.selectedTable.set(null);
+      this.currentBillId.set(null);
+      this.billStatus.set('new');
+      this.savedCartSnapshot.set('');
+      
+      // Show notification
+      this.snackBar.open('Bill completed in another session', 'OK', { duration: 3000 });
+    }
+    
     // Reload tables to get latest status and grand totals
     this.hotelService.loadTables().subscribe({
       next: () => {
         console.log('✅ Tables reloaded after table-updated event');
-        // If currently viewing this table, update the reference
-        const currentTable = this.selectedTable();
-        if (currentTable && data.tableId === currentTable.id) {
-          const refreshedTable = this.hotelService.tables().find(t => t.id === currentTable.id);
-          if (refreshedTable) {
-            // Check if table status changed to available (cart was cleared in another browser)
-            if (refreshedTable.status === 'available' && currentTable.status === 'occupied') {
-              console.log('🧹 Table cleared in another browser, clearing local cart and resetting state');
-              // Clear local cart and reset state
-              this.billService.clearCart();
-              this.billService.billDiscount.set(0);
-              this.customerName.set('');
-              this.customerPhone.set('');
-              this.selectedTable.set(null);
-              this.currentBillId.set(null);
-              this.billStatus.set('new');
-              this.savedCartSnapshot.set('');
-              
-              // Show notification
-              this.snackBar.open('Table cleared in another session', 'OK', { duration: 3000 });
-            } else {
-              // Just update the table reference
-              this.selectedTable.set(refreshedTable);
-              console.log('✅ Updated selected table reference');
-            }
-          }
-        }
       }
     });
   }

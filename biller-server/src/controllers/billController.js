@@ -304,6 +304,17 @@ export const updateBill = async (req, res) => {
       if (updates.billStatus) {
         db.prepare('UPDATE bills SET billStatus = ?, updatedAt = ? WHERE billId = ?')
           .run(updates.billStatus, now, id);
+        
+        // If bill is being completed and has a table, mark table as available
+        if (updates.billStatus === 'completed' && bill.tableId) {
+          try {
+            db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL WHERE id = ?')
+              .run('available', bill.tableId);
+            console.log('✅ Table marked as available after bill completion:', bill.tableId);
+          } catch (tableError) {
+            console.log('⚠️ Could not update table status (table might not exist):', tableError.message);
+          }
+        }
       }
 
       // Handle items update - Replace all items with new cart state
@@ -403,7 +414,21 @@ export const updateBill = async (req, res) => {
     // Emit WebSocket event for real-time updates
     emitBillUpdate(billData);
     if (updatedBill.tableId) {
-      emitTableUpdate({ tableId: updatedBill.tableId, billId: updatedBill.billId, billStatus: updatedBill.billStatus });
+      // If bill is completed, emit table-updated with status 'available'
+      if (updatedBill.billStatus === 'completed') {
+        emitTableUpdate({ 
+          tableId: updatedBill.tableId, 
+          billId: null, 
+          status: 'available',
+          billStatus: 'completed' 
+        });
+      } else {
+        emitTableUpdate({ 
+          tableId: updatedBill.tableId, 
+          billId: updatedBill.billId, 
+          billStatus: updatedBill.billStatus 
+        });
+      }
     }
 
     res.json({
