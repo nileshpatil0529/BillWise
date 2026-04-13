@@ -401,3 +401,6 @@ if [ "$ENV_CHANGED" = true ]; then
 fi
 echo -e "  ${YELLOW}⚠${NC} Remember to logout/login for printer permissions"
 echo ""
+
+# Clean up setup script
+rm -rf BillWise_setup.sh
