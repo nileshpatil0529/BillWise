@@ -101,7 +101,11 @@ export const emitBillCreated = (billData) => {
  */
 export const emitBillDeleted = (billId) => {
   if (io) {
+    console.log('📤 Socket: Emitting bill-deleted event to bills room, billId:', billId);
     io.to('bills').emit('bill-deleted', { billId });
+    console.log('✅ Socket: bill-deleted event emitted successfully');
+  } else {
+    console.error('❌ Socket: Cannot emit bill-deleted - io is null');
   }
 };
 

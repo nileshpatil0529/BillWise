@@ -656,6 +656,30 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   clearCart(): void {
+    const billId = this.currentBillId();
+    
+    console.log('🧹 clearCart called, currentBillId:', billId);
+    
+    // Delete bill from database if it exists (for pending/draft bills)
+    if (billId) {
+      console.log('📤 Calling deleteBill API for billId:', billId);
+      this.billService.deleteBill(billId).subscribe({
+        next: (response) => {
+          console.log('✅ Bill deleted from database successfully:', response);
+          this.snackBar.open('Bill deleted successfully', 'OK', { duration: 2000 });
+        },
+        error: (err) => {
+          console.error('❌ Error deleting bill from database:', err);
+          this.snackBar.open('Failed to delete bill from database', 'Close', {
+            duration: 3000,
+            panelClass: ['error-snackbar']
+          });
+        }
+      });
+    } else {
+      console.log('ℹ️ No bill to delete (currentBillId is null)');
+    }
+
     // Mark table as available if in hotel mode
     if (this.isHotelMode() && this.selectedTable()) {
       const currentTable = this.selectedTable();
@@ -1428,7 +1452,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.billService.createBill({ ...billData, items: billData.items } as any).subscribe({
         next: (response) => {
           if (response.success) {
+            console.log('✅ saveOrder: Bill created with billId:', response.data.billId);
             this.currentBillId.set(response.data.billId);
+            console.log('✅ saveOrder: currentBillId set to:', this.currentBillId());
             this.updateCartSnapshot(); // Update snapshot after successful save
             this.snackBar.open('Order saved successfully', 'Close', { duration: 2000 });
             
@@ -1449,6 +1475,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Print KOT (Kitchen Order Ticket) - Save and Print
   printKOT(): void {
+    console.log('📝 printKOT called, currentBillId:', this.currentBillId());
+    
     if (this.billService.cartItems().length === 0) {
       this.snackBar.open('No items to print', 'Close', { duration: 3000 });
       return;
@@ -1521,7 +1549,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.billService.createBill({ ...billData, items: billData.items } as any).subscribe({
         next: (response) => {
           if (response.success) {
+            console.log('✅ printKOT: Bill created with billId:', response.data.billId);
             this.currentBillId.set(response.data.billId);
+            console.log('✅ printKOT: currentBillId set to:', this.currentBillId());
             // Data saved successfully - update snapshot, table status, and reload tables
             this.updateCartSnapshot();
             

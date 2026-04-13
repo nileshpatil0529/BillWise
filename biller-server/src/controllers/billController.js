@@ -1,7 +1,7 @@
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import db from '../config/database.js';
-import { emitBillCreated, emitBillUpdate, emitKOTPrinted, emitTableUpdate } from '../sockets/index.js';
+import { emitBillCreated, emitBillUpdate, emitKOTPrinted, emitTableUpdate, emitBillDeleted } from '../sockets/index.js';
 
 // Generate bill number (should be called inside transaction for thread safety)
 const generateBillNumber = () => {
@@ -978,11 +978,88 @@ export const printKOT = async (req, res) => {
   }
 };
 
+export const deleteBill = async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('🗑️  deleteBill called for billId:', id);
+    
+    // Check if bill exists
+    const bill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
+    
+    if (!bill) {
+      console.log('❌ Bill not found in database:', id);
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found'
+      });
+    }
+    
+    console.log('✅ Bill found, proceeding with deletion:', bill.billNumber);
+
+    // Get settings to check if stock tracking is enabled
+    const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+    const isHotelMode = settings?.applicationType === 'hotel';
+
+    // Restore stock before deleting (skip for hotel mode)
+    if (!isHotelMode) {
+      const billItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+      for (const item of billItems) {
+        if (item.productId) {
+          db.prepare('UPDATE products SET stockQuantity = stockQuantity + ? WHERE productId = ?')
+            .run(item.quantity, item.productId);
+        }
+      }
+    }
+
+    // If bill has a table, try to mark table as available (skip if table doesn't exist)
+    if (bill.tableId) {
+      try {
+        db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL WHERE id = ?')
+          .run('available', bill.tableId);
+        console.log('✅ Table marked as available:', bill.tableId);
+        // Emit table update
+        emitTableUpdate({ tableId: bill.tableId, billId: null, status: 'available' });
+      } catch (tableError) {
+        console.log('⚠️ Could not update table (table may not exist):', tableError.message);
+        // Continue with bill deletion even if table update fails
+      }
+    }
+
+    // Delete bill items first (foreign key constraint)
+    db.prepare('DELETE FROM bill_items WHERE billId = ?').run(id);
+    console.log('✅ Deleted bill items for billId:', id);
+    
+    // Delete the bill
+    db.prepare('DELETE FROM bills WHERE billId = ?').run(id);
+    console.log('✅ Deleted bill from database, billId:', id);
+
+    // Emit WebSocket event for real-time updates
+    console.log('📡 Emitting bill-deleted WebSocket event for billId:', id);
+    emitBillDeleted(id);
+
+    res.json({
+      success: true,
+      message: 'Bill deleted successfully',
+      data: { billId: id }
+    });
+    console.log('✅ Delete bill response sent successfully');
+  } catch (error) {
+    console.error('❌ Delete bill error:', error);
+    console.error('❌ Error stack:', error.stack);
+    res.status(500).json({
+      success: false,
+      message: error.message || 'Failed to delete bill',
+      error: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
+};
+
 export default {
   getAllBills,
   getBillById,
   createBill,
   updateBill,
+  deleteBill,
   getReport,
   printBill,
   printKOT

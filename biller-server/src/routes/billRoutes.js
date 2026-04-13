@@ -4,6 +4,7 @@ import {
   getBillById,
   createBill,
   updateBill,
+  deleteBill,
   getReport,
   printBill,
   printKOT
@@ -21,6 +22,7 @@ router.get('/report', getReport);
 router.get('/:id', getBillById);
 router.post('/', createBill);
 router.put('/:id', updateBill);
+router.delete('/:id', deleteBill);
 router.post('/print', printBill);
 router.post('/print-kot', printKOT);
 

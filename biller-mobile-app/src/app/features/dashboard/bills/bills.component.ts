@@ -188,10 +188,12 @@ export class BillsComponent implements OnInit, OnDestroy {
   }
 
   private handleBillDeleted(data: any): void {
-    console.log('✅ Bills: Handling bill deleted, reloading data...');
+    console.log('✅ Bills: Handling bill deleted event, billId:', data.billId);
+    console.log('📊 Bills: Current bills count before reload:', this.allBills().length);
     // Reload bills and report to reflect deletion
     this.loadBills(true);
     this.loadReport();
+    console.log('🔄 Bills: Triggered reload after bill deletion');
   }
 
   ngAfterViewInit(): void {

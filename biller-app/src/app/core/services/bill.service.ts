@@ -205,6 +205,10 @@ export class BillService {
     return this.http.put(`${this.API_URL}/${id}`, updates);
   }
 
+  deleteBill(id: string): Observable<any> {
+    return this.http.delete(`${this.API_URL}/${id}`);
+  }
+
   getReport(startDate?: string, endDate?: string): Observable<{ success: boolean; data: ReportData }> {
     let params = new HttpParams();
     if (startDate) params = params.set('startDate', startDate);
