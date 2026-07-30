@@ -829,9 +829,18 @@ mat-paginator {
   }
 
   .total-calculation {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+
     .calc-detail {
       font-size: 13px;
       opacity: 0.9;
+
+      &.discount-detail {
+        color: #ffcc80;
+      }
     }
   }
 

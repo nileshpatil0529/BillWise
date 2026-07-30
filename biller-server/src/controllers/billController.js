@@ -383,16 +383,21 @@ export const updateBill = async (req, res) => {
           }
         }
 
-        // Recalculate totals based on new items
+        // Recalculate totals based on new items, preserving existing discount and tax
         const allItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
         let subtotal = 0;
         for (const item of allItems) {
           subtotal += item.itemTotal;
         }
-        const grandTotal = subtotal; // Add tax/discount logic if needed
-        
-        db.prepare('UPDATE bills SET subtotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
-          .run(subtotal, grandTotal, now, id);
+        // Use incoming billDiscount if provided, otherwise keep existing discountTotal
+        const newDiscountTotal = updates.billDiscount !== undefined
+          ? (parseFloat(updates.billDiscount) || 0)
+          : (bill.discountTotal || 0);
+        const newTaxTotal = bill.taxTotal || 0;
+        const newGrandTotal = subtotal - newDiscountTotal + newTaxTotal;
+
+        db.prepare('UPDATE bills SET subtotal = ?, discountTotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
+          .run(subtotal, newDiscountTotal, newGrandTotal, now, id);
       }
       
       // Note: kotItems marking is handled by printKOT endpoint after successful printing
@@ -406,6 +411,15 @@ export const updateBill = async (req, res) => {
         db.prepare(`UPDATE bills SET ${key} = ?, updatedAt = ? WHERE billId = ?`)
           .run(updates[key], now, id);
       }
+    }
+
+    // Handle billDiscount update standalone (when no items are being updated)
+    if (updates.billDiscount !== undefined && updates.items === undefined) {
+      const currentBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
+      const newDiscountTotal = parseFloat(updates.billDiscount) || 0;
+      const newGrandTotal = (currentBill.subtotal || 0) - newDiscountTotal + (currentBill.taxTotal || 0);
+      db.prepare('UPDATE bills SET discountTotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
+        .run(newDiscountTotal, newGrandTotal, now, id);
     }
 
     const updatedBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);

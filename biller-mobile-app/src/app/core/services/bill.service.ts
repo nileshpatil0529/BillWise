@@ -27,7 +27,11 @@ export class BillService {
     if (!settings.discountEnabled) {
       return 0;
     }
-    return this.billDiscount();
+    const discount = this.billDiscount();
+    if (this.billDiscountType() === 'percentage') {
+      return (this.cartSubtotal() * discount) / 100;
+    }
+    return discount;
   });
   
   cartTax = computed(() => {
@@ -59,7 +63,7 @@ export class BillService {
 
   // Bill discount
   billDiscount = signal<number>(0);
-  billDiscountType = signal<'percentage' | 'fixed'>('percentage');
+  billDiscountType = signal<'percentage' | 'fixed'>('fixed');
 
   constructor(private http: HttpClient) {}
 

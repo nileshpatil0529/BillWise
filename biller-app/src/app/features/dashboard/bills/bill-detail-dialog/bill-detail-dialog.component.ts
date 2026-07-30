@@ -112,19 +112,15 @@ import { Bill, BillItem } from '../../../../core/models/bill.model';
             <span>{{ data.subtotal | currency:'INR':'symbol':'1.2-2' }}</span>
           </div>
 
-          @if (data.discountTotal > 0) {
-            <div class="summary-row discount">
-              <span><mat-icon>sell</mat-icon> Discount</span>
-              <span>-{{ data.discountTotal | currency:'INR':'symbol':'1.2-2' }}</span>
-            </div>
-          }
+          <div class="summary-row discount">
+            <span><mat-icon>sell</mat-icon> Discount</span>
+            <span>-{{ (data.discountTotal || 0) | currency:'INR':'symbol':'1.2-2' }}</span>
+          </div>
 
-          @if (data.taxTotal > 0) {
-            <div class="summary-row">
-              <span>Tax</span>
-              <span>{{ data.taxTotal | currency:'INR':'symbol':'1.2-2' }}</span>
-            </div>
-          }
+          <div class="summary-row">
+            <span>Tax</span>
+            <span>{{ (data.taxTotal || 0) | currency:'INR':'symbol':'1.2-2' }}</span>
+          </div>
 
           <mat-divider></mat-divider>
 

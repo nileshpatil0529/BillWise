@@ -1,5 +1,6 @@
 import { Component, effect, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
+import { MatIconRegistry } from '@angular/material/icon';
 import { SettingsService } from './core/services/settings.service';
 import { AutoBlurService } from './core/services/auto-blur.service';
 
@@ -14,8 +15,12 @@ export class AppComponent {
   title = 'biller-app';
   private settingsService = inject(SettingsService);
   private autoBlurService = inject(AutoBlurService);
+  private matIconRegistry = inject(MatIconRegistry);
 
   constructor() {
+    // Use legacy Material Icons ligature font
+    this.matIconRegistry.setDefaultFontSetClass('material-icons');
+
     // Initialize auto-blur service to prevent barcode scanner triggering buttons
     this.autoBlurService.initialize();
     

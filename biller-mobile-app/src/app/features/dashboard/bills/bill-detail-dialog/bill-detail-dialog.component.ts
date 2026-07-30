@@ -91,18 +91,14 @@ import { SettingsService } from '../../../../core/services/settings.service';
           <span>Subtotal</span>
           <span>{{ formatCurrency(data.subtotal) }}</span>
         </div>
-        @if (data.discountTotal > 0) {
-          <div class="total-row discount">
-            <span>Discount</span>
-            <span>-{{ formatCurrency(data.discountTotal) }}</span>
-          </div>
-        }
-        @if (data.taxTotal > 0) {
-          <div class="total-row">
-            <span>Tax</span>
-            <span>{{ formatCurrency(data.taxTotal) }}</span>
-          </div>
-        }
+        <div class="total-row discount">
+          <span>Discount</span>
+          <span>-{{ formatCurrency(data.discountTotal || 0) }}</span>
+        </div>
+        <div class="total-row">
+          <span>Tax</span>
+          <span>{{ formatCurrency(data.taxTotal || 0) }}</span>
+        </div>
         <div class="total-row grand">
           <span>Grand Total</span>
           <span>{{ formatCurrency(data.grandTotal) }}</span>

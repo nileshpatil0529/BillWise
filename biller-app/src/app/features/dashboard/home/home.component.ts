@@ -41,6 +41,7 @@ interface AttendedTableState {
   cartItems: CartItem[];
   customerName: string;
   customerPhone: string;
+  billDiscount: number;
 }
 
 @Component({
@@ -264,8 +265,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.currentBillId.set(bill.billId);
             this.billStatus.set(bill.kotPrintedAt ? 'kot-printed' : 'draft');
             
-            // Load cart items from bill
+            // Load cart items and discount from bill
             this.billService.clearCart();
+            this.billService.billDiscount.set(bill.discountTotal || 0);
             if (bill.items) {
               const cartItems = bill.items.map((item: any) => ({
                 productId: item.productId,
@@ -1009,8 +1011,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           this.currentBillId.set(bill.billId);
           this.billStatus.set(bill.kotPrintedAt ? 'kot-printed' : 'draft');
           
-          // Load cart items from bill
+          // Load cart items and discount from bill
           this.billService.clearCart();
+          this.billService.billDiscount.set(bill.discountTotal || 0);
           if (bill.items) {
             const cartItems = bill.items.map((item: any) => ({
               productId: item.productId,
@@ -1164,7 +1167,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       });
     } else {
-      // No bill yet, just update local state
+      // No bill yet — free old table and occupy new one so socket events fire to all clients
+      this.hotelService.updateTableStatus(oldTable.id, 'available', undefined).subscribe();
+      this.hotelService.updateTableStatus(newTable.id, 'occupied', undefined).subscribe();
       this.selectedTable.set(newTable);
       this.saveSelectedTable(newTable.id);
       
@@ -1257,7 +1262,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       });
     } else {
-      // No bill yet, just switch table - update attended tables if exists
+      // No bill yet — free old table so socket events fire to all clients
+      this.hotelService.updateTableStatus(oldTable.id, 'available', undefined).subscribe({
+        next: () => this.hotelService.loadTables().subscribe()
+      });
+      this.hotelService.updateTableStatus(newTable.id, 'occupied', undefined).subscribe();
       this.attendedTables.update(tables => {
         return tables.map(state => {
           if (state.table.id === oldTable.id) {
@@ -1270,8 +1279,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.selectedTable.set(newTable);
       this.saveSelectedTable(newTable.id);
       this.changingTable.set(false);
-      
-      // Table selected successfully - no snackbar feedback needed
     }
   }
 
@@ -1288,7 +1295,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       billStatus: this.billStatus(),
       cartItems: [...this.billService.cartItems()],
       customerName: this.customerName(),
-      customerPhone: this.customerPhone()
+      customerPhone: this.customerPhone(),
+      billDiscount: this.billService.billDiscount()
     };
     
     // Update or add to attended tables
@@ -1313,8 +1321,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.customerName.set(state.customerName);
     this.customerPhone.set(state.customerPhone);
     
-    // Restore cart items
+    // Restore cart items and discount
     this.billService.clearCart();
+    this.billService.billDiscount.set(state.billDiscount || 0);
     state.cartItems.forEach(item => {
       const product = {
         productId: item.productId,
@@ -1413,6 +1422,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       customerPhone: this.customerPhone(),
       businessTypeData: { tableNumber: table.tableNumber, tableType: table.tableType },
       taxEnabled: this.settingsService.settings().taxEnabled,
+      billDiscount: this.billService.billDiscount(),
       items: this.billService.cartItems().map(item => ({
         productId: item.productId,
         name: item.name,
@@ -1496,6 +1506,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       customerPhone: this.customerPhone(),
       businessTypeData: { tableNumber: table.tableNumber, tableType: table.tableType },
       taxEnabled: this.settingsService.settings().taxEnabled,
+      billDiscount: this.billService.billDiscount(),
       items: this.billService.cartItems().map(item => ({
         productId: item.productId,
         name: item.name,
@@ -1599,6 +1610,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       paymentMethod: this.paymentMethod(),
       paymentStatus: 'paid' as const,
       amountPaid: this.billService.cartTotal(),
+      billDiscount: this.billService.billDiscount(),
       customerName: this.customerName(),
       customerPhone: this.customerPhone()
     };
@@ -1643,6 +1655,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           paymentMethod: this.paymentMethod(),
           paymentStatus: 'paid' as const,
           amountPaid: this.billService.cartTotal(),
+          billDiscount: this.billService.billDiscount(),
           customerName: this.customerName(),
           customerPhone: this.customerPhone()
         };

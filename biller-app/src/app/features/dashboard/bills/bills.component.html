@@ -69,9 +69,9 @@
       <!-- Grand Total Sticky Footer -->
       <div class="grand-total-bar">
         <div class="total-calculation">
-          @if (selectedBill()!.taxTotal > 0) {
-            <span class="calc-detail">{{ formatCurrency(selectedBill()!.subtotal - selectedBill()!.discountTotal) }} + {{ formatCurrency(selectedBill()!.taxTotal) }} (Tax)</span>
-          }
+          <span class="calc-detail">Subtotal: {{ formatCurrency(selectedBill()!.subtotal || 0) }}</span>
+          <span class="calc-detail discount-detail">Discount: -{{ formatCurrency(selectedBill()!.discountTotal || 0) }}</span>
+          <span class="calc-detail">Tax: {{ formatCurrency(selectedBill()!.taxTotal || 0) }}</span>
         </div>
         <div class="grand-total-amount">
           <span class="grand-label">Grand Total</span>

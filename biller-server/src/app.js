@@ -52,6 +52,15 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// Device detection debug endpoint
+app.get('/api/device', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  res.json({
+    userAgent: ua,
+    detectedAs: isMobileDevice(ua) ? 'mobile' : 'desktop'
+  });
+});
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/products', productRoutes);
@@ -61,18 +70,41 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/hotel', hotelRoutes);
 
-// Serve Angular built app (static files)
-const publicPath = path.join(__dirname, '..', 'public', 'browser');
-app.use(express.static(publicPath));
+// Device detection - mobile/tablet vs desktop
+// Uses the standard `Mobi` token (Google's recommended check) plus known mobile OS identifiers.
+// Avoids the bare word "mobile" which can appear in some desktop UA strings.
+const isMobileDevice = (userAgent = '') => {
+  return /Mobi|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Windows Phone/i.test(userAgent);
+};
 
-// SPA fallback - redirect all non-API routes to index.html
+// Serve Angular built apps (static files)
+const desktopPath = path.join(__dirname, '..', 'public', 'desktop', 'browser');
+const mobilePath  = path.join(__dirname, '..', 'public', 'mobile', 'browser');
+
+// Serve static assets from both build folders
+app.use('/desktop', express.static(desktopPath));
+app.use('/mobile',  express.static(mobilePath));
+
+// Root static - serve shared assets (whichever folder exists first wins)
+app.use(express.static(desktopPath));
+app.use(express.static(mobilePath));
+
+// SPA fallback - detect device and serve correct index.html
 // Express 5 requires named wildcard parameter
+// Override: add ?app=desktop or ?app=mobile to force a specific app
 app.get('/{*splat}', (req, res, next) => {
   // Skip API routes
   if (req.path.startsWith('/api')) {
     return next();
   }
-  res.sendFile(path.join(publicPath, 'index.html'));
+  const ua = req.headers['user-agent'] || '';
+  const override = req.query.app; // ?app=desktop or ?app=mobile
+  const serveMobile = override === 'mobile' || (override !== 'desktop' && isMobileDevice(ua));
+  if (serveMobile) {
+    res.sendFile(path.join(mobilePath, 'index.html'));
+  } else {
+    res.sendFile(path.join(desktopPath, 'index.html'));
+  }
 });
 
 // API 404 handler (only for /api routes)
@@ -102,17 +134,29 @@ initializeSocketIO(httpServer);
 
 httpServer.listen(PORT, HOST, () => {
   const localIP = getLocalIP();
-  const ipPadded = `http://${localIP}:${PORT}`.padEnd(25);
-  
+  const ipUrl       = `http://${localIP}:${PORT}`.padEnd(38);
+  const localUrl    = `http://localhost:${PORT}`.padEnd(38);
+  const networkName = `http://local.billwise:${PORT}`.padEnd(38);
+
   console.log(`
-  ╔════════════════════════════════════════════════════════════╗
-  ║                                                            ║
-  ║   🚀 Biller Server Started Successfully!                   ║
-  ║   📍 Local:   http://localhost:${PORT}                       ║
-  ║   🌐 Network: ${ipPadded}║
-  ║   🌍 Environment: ${config.nodeEnv.padEnd(27)}║
-  ║   📅 Started: ${new Date().toLocaleString().padEnd(30)}║
-  ╚════════════════════════════════════════════════════════════╝
+  ╔══════════════════════════════════════════════════════════════╗
+  ║                                                              ║
+  ║   🚀 BillWise Server Started Successfully!                   ║
+  ║                                                              ║
+  ║   📍 Local:        ${localUrl}║
+  ║   🌐 Network IP:   ${ipUrl}║
+  ║   🏷️  Network Name: ${networkName}║
+  ║                                                              ║
+  ║   📱 Mobile/Tablet → mobile app served automatically         ║
+  ║   🖥️  Desktop/Laptop → desktop app served automatically      ║
+  ║                                                              ║
+  ║   🌍 Environment: ${config.nodeEnv.padEnd(41)}║
+  ║   📅 Started:     ${new Date().toLocaleString().padEnd(41)}║
+  ║                                                              ║
+  ║   💡 To use local.billwise on devices:                       ║
+  ║      Add to each device's hosts file:                        ║
+  ║      ${`${localIP}  local.billwise`.padEnd(54)}║
+  ╚══════════════════════════════════════════════════════════════╝
   `);
 });
 
