@@ -1280,14 +1280,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       });
     } else {
-      // No bill yet, just update local state
+      // No bill yet — free old table and occupy new one so socket events fire to all clients
+      this.hotelService.updateTableStatus(oldTable.id, 'available', undefined).subscribe();
+      this.hotelService.updateTableStatus(newTable.id, 'occupied', undefined).subscribe();
       this.selectedTable.set(newTable);
       this.saveSelectedTable(newTable.id);
       
       // Close the overlay
       this.cancelChangeTable();
-      
-      // Success snack bar removed
     }
   }
 
@@ -1373,7 +1373,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       });
     } else {
-      // No bill yet, just switch table - update attended tables if exists
+      // No bill yet — free old table and occupy new one so socket events fire to all clients
+      this.hotelService.updateTableStatus(oldTable.id, 'available', undefined).subscribe({
+        next: () => this.hotelService.loadTables().subscribe()
+      });
+      this.hotelService.updateTableStatus(newTable.id, 'occupied', undefined).subscribe();
       this.attendedTables.update(tables => {
         return tables.map(state => {
           if (state.table.id === oldTable.id) {
