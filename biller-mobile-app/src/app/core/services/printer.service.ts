@@ -1,11 +1,9 @@
 import { Injectable, signal, inject, PLATFORM_ID } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { isPlatformBrowser } from '@angular/common';
-import { Observable, from, throwError } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PrinterConfig, PaperSize } from '../models/settings.model';
-
-declare const qz: any;
 
 // Paper widths in characters
 const WIDTH: Record<PaperSize, number> = { '2inch': 32, '3inch': 48 };
@@ -13,12 +11,13 @@ const WIDTH: Record<PaperSize, number> = { '2inch': 32, '3inch': 48 };
 @Injectable({ providedIn: 'root' })
 export class PrinterService {
   private readonly API_URL = `${environment.apiUrl}/printer-config`;
+  private readonly AGENT_URL = 'http://127.0.0.1:32145';
   private http = inject(HttpClient);
   private platformId = inject(PLATFORM_ID);
   private isBrowser = isPlatformBrowser(this.platformId);
 
   config = signal<PrinterConfig>({ printerName: null, paperSize: '3inch', enabled: false });
-  qzStatus = signal<'unchecked' | 'connected' | 'disconnected' | 'loading'>('unchecked');
+  agentStatus = signal<'unchecked' | 'connected' | 'disconnected' | 'loading'>('unchecked');
   availablePrinters = signal<string[]>([]);
 
   // ─── Config API ────────────────────────────────────────────────────────────
@@ -47,87 +46,35 @@ export class PrinterService {
     return this.http.put(this.API_URL, cfg);
   }
 
-  // ─── QZ Tray ───────────────────────────────────────────────────────────────
+  // ─── Local Print Agent ─────────────────────────────────────────────────────
 
-  private async loadQZScript(): Promise<void> {
+  async connectAgent(): Promise<void> {
     if (!this.isBrowser) return;
-    if (typeof qz !== 'undefined') return;
-    return new Promise((resolve, reject) => {
-      const existing = document.querySelector('script[data-qz]');
-      if (existing) { resolve(); return; }
-      const s = document.createElement('script');
-      s.setAttribute('data-qz', 'true');
-      s.src = 'https://cdn.jsdelivr.net/npm/qz-tray@2.2.4/qz-tray.js';
-      s.onload = () => resolve();
-      s.onerror = () => reject(new Error('Failed to load QZ Tray library'));
-      document.head.appendChild(s);
-    });
-  }
-
-  async connectQZ(): Promise<void> {
-    this.qzStatus.set('loading');
+    this.agentStatus.set('loading');
     try {
-      await this.loadQZScript();
-      // Use QZ signing certificate and signature endpoints
-      qz.security.setCertificatePromise((resolve: any, reject: any) => {
-        fetch(`${environment.apiUrl}/qz/cert`, { cache: 'no-store' })
-          .then(response => response.ok ? response.text() : Promise.reject(response.statusText))
-          .then(resolve)
-          .catch(reject);
-      });
-      qz.security.setSignatureAlgorithm('SHA512');
-      qz.security.setSignaturePromise((toSign: any) => {
-        return (resolve: any, reject: any) => {
-          fetch(`${environment.apiUrl}/qz/sign?request=${encodeURIComponent(toSign)}`, {
-            cache: 'no-store',
-            headers: { 'Content-Type': 'text/plain' }
-          })
-            .then(response => response.ok ? response.text() : Promise.reject(response.statusText))
-            .then(resolve)
-            .catch(reject);
-        };
-      });
-
-      if (!qz.websocket.isActive()) {
-        await qz.websocket.connect();
-      }
-      this.qzStatus.set('connected');
+      await this.fetchAgent('/health');
+      this.agentStatus.set('connected');
       await this.refreshPrinters();
     } catch (err: any) {
-      this.qzStatus.set('disconnected');
-      throw new Error(err?.message || 'QZ Tray is not running');
+      this.agentStatus.set('disconnected');
+      throw new Error(err?.message || 'BillWise Print Agent is not running');
     }
   }
 
-  async disconnectQZ(): Promise<void> {
-    try {
-      if (typeof qz !== 'undefined' && qz.websocket.isActive()) {
-        await qz.websocket.disconnect();
-      }
-    } catch { /* ignore */ }
-    this.qzStatus.set('disconnected');
+  disconnectAgent(): void {
+    this.agentStatus.set('disconnected');
   }
 
   async refreshPrinters(): Promise<string[]> {
     try {
-      // qz.printers.find() returns string | string[] depending on QZ Tray version/count
-      const result: string | string[] = await qz.printers.find();
-      const printers: string[] = Array.isArray(result)
-        ? result
-        : result ? [result] : [];
-
-      // Fallback: try getDefault() if find() returned nothing
-      if (printers.length === 0) {
-        try {
-          const def: string = await qz.printers.getDefault();
-          if (def) printers.push(def);
-        } catch { /* no default printer available */ }
-      }
+      const response = await this.fetchAgent('/printers');
+      const printers = Array.isArray(response?.printers) ? response.printers : [];
 
       this.availablePrinters.set(printers);
       return printers;
     } catch (err: any) {
-      console.error('QZ Tray refreshPrinters error:', err);
+      console.error('Print Agent refreshPrinters error:', err);
+      this.agentStatus.set('disconnected');
       this.availablePrinters.set([]);
       return [];
     }
@@ -135,7 +82,7 @@ export class PrinterService {
 
   isReady(): boolean {
     return (
-      this.qzStatus() === 'connected' &&
+      this.agentStatus() === 'connected' &&
       this.config().enabled &&
       !!this.config().printerName
     );
@@ -158,8 +105,22 @@ export class PrinterService {
   }
 
   private async sendRaw(printerName: string, escData: string): Promise<void> {
-    const qzConfig = qz.configs.create(printerName);
-    await qz.print(qzConfig, [{ type: 'raw', format: 'command', data: escData }]);
+    const response = await this.fetchAgent('/print', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ printerName, data: escData })
+    });
+    if (!response?.success) {
+      throw new Error(response?.message || 'Print failed');
+    }
+  }
+
+  private async fetchAgent(path: string, init?: RequestInit): Promise<any> {
+    const res = await fetch(`${this.AGENT_URL}${path}`, { ...init, cache: 'no-store' });
+    if (!res.ok) {
+      throw new Error(`Agent request failed (${res.status})`);
+    }
+    return res.json();
   }
 
   // ─── ESC/POS builders ──────────────────────────────────────────────────────

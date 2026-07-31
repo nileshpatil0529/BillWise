@@ -1,18 +1,18 @@
 <div class="printer-config-wrapper">
 
-  <!-- QZ Tray Status -->
+  <!-- Print Agent Status -->
   <mat-card class="status-card">
     <mat-card-header>
       <mat-icon mat-card-avatar>print</mat-icon>
-      <mat-card-title>Printer Setup (QZ Tray)</mat-card-title>
-      <mat-card-subtitle>Connect your thermal printer via QZ Tray desktop app</mat-card-subtitle>
+      <mat-card-title>Printer Setup (BillWise Print Agent)</mat-card-title>
+      <mat-card-subtitle>Install local print service once and it auto-starts with Windows</mat-card-subtitle>
     </mat-card-header>
 
     <mat-card-content>
-      <div class="qz-status-row">
-        <div class="status-indicator" [class]="qzStatus()">
+      <div class="agent-status-row">
+        <div class="status-indicator" [class]="agentStatus()">
           <mat-icon>
-            @switch (qzStatus()) {
+            @switch (agentStatus()) {
               @case ('connected') { check_circle }
               @case ('disconnected') { cancel }
               @case ('loading') { hourglass_empty }
@@ -20,34 +20,34 @@
             }
           </mat-icon>
           <span>
-            @switch (qzStatus()) {
-              @case ('connected') { QZ Tray Connected }
-              @case ('disconnected') { QZ Tray Not Running }
-              @case ('loading') { Connecting... }
+            @switch (agentStatus()) {
+              @case ('connected') { Print Agent Connected }
+              @case ('disconnected') { Print Agent Not Running }
+              @case ('loading') { Checking Agent... }
               @default { Not Checked }
             }
           </span>
         </div>
 
-        @if (qzStatus() !== 'connected') {
-          <div class="qz-actions">
-            <button mat-stroked-button (click)="connectQZ()" [disabled]="qzStatus() === 'loading'">
-              <mat-icon>refresh</mat-icon>
-              Connect QZ Tray
-            </button>
-            <a mat-stroked-button href="https://qz.io/download/" target="_blank">
+        @if (agentStatus() !== 'connected') {
+          <div class="agent-actions">
+            <a mat-stroked-button [href]="agentDownloadUrl" target="_blank" rel="noopener">
               <mat-icon>download</mat-icon>
-              Download QZ Tray
+              Download Print Service (.exe)
             </a>
+            <button mat-stroked-button (click)="verifyAgent()" [disabled]="checkingAgent() || agentStatus() === 'loading'">
+              <mat-icon>verified</mat-icon>
+              I Installed, Verify Now
+            </button>
           </div>
           <p class="hint-text">
-            QZ Tray is a free desktop app that allows browser-based printing to thermal printers.
-            Download, install, and start it — then click "Connect QZ Tray" above.
+            1) Download the installer from above. 2) Run it and allow startup registration.
+            3) After install completes, click "I Installed, Verify Now".
           </p>
         }
       </div>
 
-      @if (qzStatus() === 'connected') {
+      @if (agentStatus() === 'connected') {
         <mat-divider></mat-divider>
 
         <!-- Enable Toggle -->
@@ -67,7 +67,7 @@
             <div class="section-label">
               <mat-icon>print</mat-icon>
               <span>Select Printer</span>
-              <button mat-icon-button (click)="refreshPrinters()" matTooltip="Refresh printers">
+              <button mat-icon-button (click)="refreshPrinters()">
                 <mat-icon>refresh</mat-icon>
               </button>
             </div>
@@ -135,7 +135,7 @@
     </mat-card-content>
 
     <mat-card-actions align="end">
-      <button mat-flat-button color="primary" (click)="saveConfig()" [disabled]="saving() || qzStatus() !== 'connected'">
+      <button mat-flat-button color="primary" (click)="saveConfig()" [disabled]="saving() || agentStatus() !== 'connected'">
         @if (saving()) {
           <mat-spinner diameter="20"></mat-spinner>
           Saving...

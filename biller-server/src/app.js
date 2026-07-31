@@ -17,7 +17,6 @@ import customerRoutes from './routes/customerRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import hotelRoutes from './routes/hotelRoutes.js';
 import printerRoutes from './routes/printerRoutes.js';
-import qzRoutes from './routes/qzRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // ES Module dirname equivalent
@@ -72,7 +71,6 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/hotel', hotelRoutes);
 app.use('/api/printer-config', printerRoutes);
-app.use('/api/qz', qzRoutes);
 
 // Device detection - mobile/tablet vs desktop
 // Uses the standard `Mobi` token (Google's recommended check) plus known mobile OS identifiers.
@@ -84,10 +82,12 @@ const isMobileDevice = (userAgent = '') => {
 // Serve Angular built apps (static files)
 const desktopPath = path.join(__dirname, '..', 'public', 'desktop', 'browser');
 const mobilePath  = path.join(__dirname, '..', 'public', 'mobile', 'browser');
+const downloadsPath = path.join(__dirname, '..', 'public', 'downloads');
 
 // Serve static assets from both build folders
 app.use('/desktop', express.static(desktopPath));
 app.use('/mobile',  express.static(mobilePath));
+app.use('/downloads', express.static(downloadsPath));
 
 // Root static - desktop assets only at root; mobile assets are scoped to /mobile/
 // (avoids SW scope collision: desktop SW registers at /, mobile SW at /mobile/)

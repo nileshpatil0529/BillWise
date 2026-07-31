@@ -9,7 +9,7 @@
   width: 100%;
 }
 
-.qz-status-row {
+.agent-status-row {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -29,7 +29,7 @@
   &.unchecked { color: #9e9e9e; }
 }
 
-.qz-actions {
+.agent-actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;

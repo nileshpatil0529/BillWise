@@ -226,6 +226,7 @@ export class BillService {
 
   printBill(billId: string): Observable<any> {
     if (this.printerService.isReady()) {
+      // Print locally through the BillWise print agent
       return this.getBillById(billId).pipe(
         switchMap((res: any) => {
           const bill = res.data;

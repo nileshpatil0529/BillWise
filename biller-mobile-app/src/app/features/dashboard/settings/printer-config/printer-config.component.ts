@@ -14,6 +14,7 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { PrinterService } from '../../../../core/services/printer.service';
 import { SocketService } from '../../../../core/services/socket.service';
 import { PrinterConfig, PaperSize } from '../../../../core/models/settings.model';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-printer-config',
@@ -39,12 +40,14 @@ export class PrinterConfigComponent implements OnInit {
   printerService: PrinterService = inject(PrinterService);
   private socketService: SocketService = inject(SocketService);
   private snackBar: MatSnackBar = inject(MatSnackBar);
+  readonly agentDownloadUrl = `${environment.apiUrl.replace('/api', '')}/downloads/BillWisePrintAgent.exe`;
 
   saving = signal(false);
   testing = signal(false);
+  checkingAgent = signal(false);
 
   // Typed proxies for template strict-type-checking
-  readonly qzStatus = computed(() => this.printerService.qzStatus());
+  readonly agentStatus = computed(() => this.printerService.agentStatus());
   readonly availablePrinters = computed(() => this.printerService.availablePrinters());
 
   // Local form state
@@ -59,24 +62,25 @@ export class PrinterConfigComponent implements OnInit {
         this.enabled.set(cfg.enabled);
         this.selectedPrinter.set(cfg.printerName);
         this.paperSize.set(cfg.paperSize);
-        // Auto-connect QZ Tray if enabled
-        if (cfg.enabled) {
-          this.connectQZ();
-        }
+        this.verifyAgent();
       }
     });
   }
 
-  connectQZ(): void {
-    this.printerService.connectQZ().catch((_err: unknown) => {
-      this.snackBar.open(
-        'QZ Tray not detected. Please install and start QZ Tray, then try again.',
-        'Download',
-        { duration: 8000 }
-      ).onAction().subscribe(() => {
-        window.open('https://qz.io/download/', '_blank');
-      });
-    });
+  downloadAgent(): void {
+    window.open(this.agentDownloadUrl, '_blank');
+  }
+
+  verifyAgent(): void {
+    this.checkingAgent.set(true);
+    this.printerService.connectAgent()
+      .then(() => {
+        this.snackBar.open('Print Agent connected', 'OK', { duration: 3000 });
+      })
+      .catch((_err: unknown) => {
+        this.snackBar.open('Print Agent not detected. Install it and click Verify again.', 'OK', { duration: 4000 });
+      })
+      .finally(() => this.checkingAgent.set(false));
   }
 
   refreshPrinters(): void {

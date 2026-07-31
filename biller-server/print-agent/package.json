@@ -1,0 +1,26 @@
+{
+  "name": "billwise-print-agent",
+  "version": "1.0.0",
+  "description": "Local Windows print agent for BillWise",
+  "main": "src/index.cjs",
+  "bin": "src/index.cjs",
+  "scripts": {
+    "start": "node src/index.cjs --service",
+    "install-local": "node src/index.cjs --install",
+    "build:exe": "pkg src/index.cjs --targets node18-win-x64 --output dist/BillWisePrintAgent.exe",
+    "publish": "node scripts/publish.js"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "targets": [
+      "node18-win-x64"
+    ],
+    "outputPath": "dist"
+  }
+}

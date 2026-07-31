@@ -107,7 +107,7 @@ export class SocketService {
       this.ngZone.run(() => console.log('📨 Received from server:', data));
     });
 
-    // Routed print job arrives — execute print locally via QZ Tray
+    // Routed print job arrives — execute print locally via the print agent
     this.socket.on('print-job', async (payload: any) => {
       const { requestId, bill, settings, type } = payload;
       try {

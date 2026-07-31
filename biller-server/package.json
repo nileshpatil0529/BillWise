@@ -9,6 +9,7 @@
     "dev": "nodemon src/app.js",
     "build:desktop": "cd ../biller-app && npm run build",
     "build:mobile": "cd ../biller-mobile-app && npm run build",
+    "build:print-agent": "cd print-agent && npm install && npm run build:exe && npm run publish",
     "build": "npm run build:desktop && npm run build:mobile",
     "build:prod": "cd ../biller-app && npx ng build --configuration=production && cd ../biller-mobile-app && npx ng build --configuration=production",
     "serve": "npm run build && node src/app.js",

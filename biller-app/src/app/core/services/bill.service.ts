@@ -226,7 +226,7 @@ export class BillService {
 
   printBill(billId: string): Observable<any> {
     if (this.printerService.isReady()) {
-      // Print locally — fetch bill data then send to QZ Tray
+      // Print locally through the BillWise print agent
       return this.getBillById(billId).pipe(
         switchMap((res: any) => {
           const bill = res.data;
