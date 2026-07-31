@@ -68,13 +68,23 @@ export class PrinterService {
     this.qzStatus.set('loading');
     try {
       await this.loadQZScript();
-      // Allow unsigned connection for local use
+      // Use QZ signing certificate and signature endpoints
       qz.security.setCertificatePromise((resolve: any, reject: any) => {
-        resolve('');
+        fetch(`${environment.apiUrl}/qz/cert`, { cache: 'no-store' })
+          .then(response => response.ok ? response.text() : Promise.reject(response.statusText))
+          .then(resolve)
+          .catch(reject);
       });
+      qz.security.setSignatureAlgorithm('SHA512');
       qz.security.setSignaturePromise((toSign: any) => {
         return (resolve: any, reject: any) => {
-          resolve('');
+          fetch(`${environment.apiUrl}/qz/sign?request=${encodeURIComponent(toSign)}`, {
+            cache: 'no-store',
+            headers: { 'Content-Type': 'text/plain' }
+          })
+            .then(response => response.ok ? response.text() : Promise.reject(response.statusText))
+            .then(resolve)
+            .catch(reject);
         };
       });
 
