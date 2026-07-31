@@ -94,10 +94,25 @@ export class PrinterService {
 
   async refreshPrinters(): Promise<string[]> {
     try {
-      const printers: string[] = await qz.printers.find();
+      // qz.printers.find() returns string | string[] depending on QZ Tray version/count
+      const result: string | string[] = await qz.printers.find();
+      const printers: string[] = Array.isArray(result)
+        ? result
+        : result ? [result] : [];
+
+      // Fallback: try getDefault() if find() returned nothing
+      if (printers.length === 0) {
+        try {
+          const def: string = await qz.printers.getDefault();
+          if (def) printers.push(def);
+        } catch { /* no default printer available */ }
+      }
+
       this.availablePrinters.set(printers);
       return printers;
-    } catch {
+    } catch (err: any) {
+      console.error('QZ Tray refreshPrinters error:', err);
+      this.availablePrinters.set([]);
       return [];
     }
   }
