@@ -85,26 +85,31 @@ const mobilePath  = path.join(__dirname, '..', 'public', 'mobile', 'browser');
 app.use('/desktop', express.static(desktopPath));
 app.use('/mobile',  express.static(mobilePath));
 
-// Root static - serve shared assets (whichever folder exists first wins)
+// Root static - desktop assets only at root; mobile assets are scoped to /mobile/
+// (avoids SW scope collision: desktop SW registers at /, mobile SW at /mobile/)
 app.use(express.static(desktopPath));
-app.use(express.static(mobilePath));
 
-// SPA fallback - detect device and serve correct index.html
-// Express 5 requires named wildcard parameter
+// SPA fallback - handles both apps
 // Override: add ?app=desktop or ?app=mobile to force a specific app
 app.get('/{*splat}', (req, res, next) => {
   // Skip API routes
   if (req.path.startsWith('/api')) {
     return next();
   }
+
+  // Mobile app Angular-router paths all live under /mobile/
+  if (req.path === '/mobile' || req.path.startsWith('/mobile/')) {
+    return res.sendFile(path.join(mobilePath, 'index.html'));
+  }
+
   const ua = req.headers['user-agent'] || '';
   const override = req.query.app; // ?app=desktop or ?app=mobile
   const serveMobile = override === 'mobile' || (override !== 'desktop' && isMobileDevice(ua));
   if (serveMobile) {
-    res.sendFile(path.join(mobilePath, 'index.html'));
-  } else {
-    res.sendFile(path.join(desktopPath, 'index.html'));
+    // Redirect mobile browsers to the mobile app's scoped path
+    return res.redirect(302, '/mobile/');
   }
+  res.sendFile(path.join(desktopPath, 'index.html'));
 });
 
 // API 404 handler (only for /api routes)
