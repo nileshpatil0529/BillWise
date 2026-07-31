@@ -12,15 +12,18 @@ const STARTUP_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
 const STARTUP_VALUE = 'BillWisePrintAgent';
 const LEGACY_STARTUP_VALUES = ['BillWiseStartup', 'BillWiseStartupAgent'];
 const AGENT_VERSION = '1.1.0';
+const STARTUP_SCRIPT_NAME = 'BillWisePrintAgent-startup.vbs';
 
 function getInstallContext() {
   const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
   const installDir = path.join(localAppData, 'BillWisePrintAgent');
   const targetExe = path.join(installDir, 'BillWisePrintAgent.exe');
+  const startupScript = path.join(installDir, STARTUP_SCRIPT_NAME);
   return {
     installDir,
     targetExe,
-    startupCommand: `"${targetExe}" --service`
+    startupScript,
+    startupCommand: `wscript.exe "${startupScript}"`
   };
 }
 
@@ -41,6 +44,14 @@ function copyWithRetry(source, target, retries = 3) {
     }
   }
   throw lastError || new Error('Failed to copy executable to install directory');
+}
+
+function ensureStartupScript(targetExe, startupScript) {
+  const scriptBody = [
+    'Set shell = CreateObject("WScript.Shell")',
+    `shell.Run """${targetExe}"" --service", 0, False`
+  ].join('\r\n');
+  fs.writeFileSync(startupScript, scriptBody, 'utf8');
 }
 
 function removeStartupValue(valueName) {
@@ -196,11 +207,12 @@ finally {
 
 async function startService() {
   if (process.platform === 'win32') {
-    const { installDir, targetExe, startupCommand } = getInstallContext();
+    const { installDir, targetExe, startupScript, startupCommand } = getInstallContext();
     fs.mkdirSync(installDir, { recursive: true });
 
     if (Boolean(process.pkg) && path.resolve(process.execPath) !== path.resolve(targetExe)) {
       copyWithRetry(process.execPath, targetExe);
+      ensureStartupScript(targetExe, startupScript);
       const bootstrapChild = spawn(targetExe, ['--service'], {
         detached: true,
         stdio: 'ignore',
@@ -210,6 +222,7 @@ async function startService() {
       return;
     }
 
+    ensureStartupScript(targetExe, startupScript);
     ensureStartupRegistration(startupCommand);
   }
 
@@ -268,7 +281,7 @@ function installAndStart() {
     process.exit(1);
   }
 
-  const { installDir, targetExe, startupCommand } = getInstallContext();
+  const { installDir, targetExe, startupScript, startupCommand } = getInstallContext();
   fs.mkdirSync(installDir, { recursive: true });
 
   const currentExe = process.execPath;
@@ -285,6 +298,8 @@ function installAndStart() {
     console.error('Install failed because target executable is missing after copy.');
     process.exit(1);
   }
+
+  ensureStartupScript(targetExe, startupScript);
 
   try {
     ensureStartupRegistration(startupCommand);
