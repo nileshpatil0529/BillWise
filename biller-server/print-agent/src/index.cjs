@@ -16,7 +16,8 @@ function escapeSingleQuotes(text) {
 
 function runPowerShell(command) {
   return spawnSync('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command], {
-    encoding: 'utf8'
+    encoding: 'utf8',
+    windowsHide: true
   });
 }
 
@@ -187,7 +188,8 @@ function installAndStart() {
 
   const startupCommand = `"${targetExe}" --service`;
   const regResult = spawnSync('reg.exe', ['add', STARTUP_KEY, '/v', STARTUP_VALUE, '/t', 'REG_SZ', '/d', startupCommand, '/f'], {
-    encoding: 'utf8'
+    encoding: 'utf8',
+    windowsHide: true
   });
 
   if (regResult.status !== 0) {
@@ -197,7 +199,8 @@ function installAndStart() {
 
   const child = spawn(targetExe, ['--service'], {
     detached: true,
-    stdio: 'ignore'
+    stdio: 'ignore',
+    windowsHide: true
   });
   child.unref();
 
