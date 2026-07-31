@@ -69,9 +69,13 @@ export class PrinterService {
     try {
       await this.loadQZScript();
       // Allow unsigned connection for local use
-      qz.security.setCertificatePromise((resolve: any) => resolve(''));
-      qz.security.setSignaturePromise((_: any, promiseFactory: any) => {
-        promiseFactory((resolve: any) => resolve(''));
+      qz.security.setCertificatePromise((resolve: any, reject: any) => {
+        resolve('');
+      });
+      qz.security.setSignaturePromise((toSign: any) => {
+        return (resolve: any, reject: any) => {
+          resolve('');
+        };
       });
 
       if (!qz.websocket.isActive()) {
