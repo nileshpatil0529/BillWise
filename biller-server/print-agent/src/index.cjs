@@ -9,6 +9,7 @@ const { spawn, spawnSync } = require('child_process');
 const AGENT_PORT = 32145;
 const AGENT_HOST = '127.0.0.1';
 const STARTUP_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+const STARTUP_APPROVED_RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run';
 const STARTUP_VALUE = 'BillWisePrintAgent';
 const LEGACY_STARTUP_VALUES = ['BillWiseStartup', 'BillWiseStartupAgent'];
 const AGENT_VERSION = '1.1.0';
@@ -16,6 +17,8 @@ const STARTUP_SCRIPT_NAME = 'BillWisePrintAgent-startup.vbs';
 
 function getInstallContext() {
   const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const windowsDir = process.env.WINDIR || 'C:\\Windows';
+  const wscriptPath = path.join(windowsDir, 'System32', 'wscript.exe');
   const installDir = path.join(localAppData, 'BillWisePrintAgent');
   const targetExe = path.join(installDir, 'BillWisePrintAgent.exe');
   const startupScript = path.join(installDir, STARTUP_SCRIPT_NAME);
@@ -23,7 +26,7 @@ function getInstallContext() {
     installDir,
     targetExe,
     startupScript,
-    startupCommand: `wscript.exe "${startupScript}"`
+    startupCommand: `"${wscriptPath}" //B //NoLogo "${startupScript}"`
   };
 }
 
@@ -61,8 +64,17 @@ function removeStartupValue(valueName) {
   });
 }
 
+function removeStartupApprovedValue(valueName) {
+  spawnSync('reg.exe', ['delete', STARTUP_APPROVED_RUN_KEY, '/v', valueName, '/f'], {
+    encoding: 'utf8',
+    windowsHide: true
+  });
+}
+
 function ensureStartupRegistration(startupCommand) {
+  const allValues = [STARTUP_VALUE, ...LEGACY_STARTUP_VALUES];
   LEGACY_STARTUP_VALUES.forEach(removeStartupValue);
+  allValues.forEach(removeStartupApprovedValue);
 
   const regResult = spawnSync('reg.exe', ['add', STARTUP_KEY, '/v', STARTUP_VALUE, '/t', 'REG_SZ', '/d', startupCommand, '/f'], {
     encoding: 'utf8',
