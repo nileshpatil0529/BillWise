@@ -1,6 +1,7 @@
 const cors = require('cors');
 const express = require('express');
 const fs = require('fs');
+const http = require('http');
 const os = require('os');
 const path = require('path');
 const { spawn, spawnSync } = require('child_process');
@@ -9,9 +10,77 @@ const AGENT_PORT = 32145;
 const AGENT_HOST = '127.0.0.1';
 const STARTUP_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
 const STARTUP_VALUE = 'BillWisePrintAgent';
+const LEGACY_STARTUP_VALUES = ['BillWiseStartup', 'BillWiseStartupAgent'];
+const AGENT_VERSION = '1.1.0';
+
+function getInstallContext() {
+  const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
+  const installDir = path.join(localAppData, 'BillWisePrintAgent');
+  const targetExe = path.join(installDir, 'BillWisePrintAgent.exe');
+  return {
+    installDir,
+    targetExe,
+    startupCommand: `"${targetExe}" --service`
+  };
+}
 
 function escapeSingleQuotes(text) {
   return String(text).replace(/'/g, "''");
+}
+
+function copyWithRetry(source, target, retries = 3) {
+  let lastError = null;
+  for (let i = 0; i < retries; i += 1) {
+    try {
+      fs.copyFileSync(source, target);
+      if (fs.existsSync(target)) {
+        return;
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  throw lastError || new Error('Failed to copy executable to install directory');
+}
+
+function removeStartupValue(valueName) {
+  spawnSync('reg.exe', ['delete', STARTUP_KEY, '/v', valueName, '/f'], {
+    encoding: 'utf8',
+    windowsHide: true
+  });
+}
+
+function ensureStartupRegistration(startupCommand) {
+  LEGACY_STARTUP_VALUES.forEach(removeStartupValue);
+
+  const regResult = spawnSync('reg.exe', ['add', STARTUP_KEY, '/v', STARTUP_VALUE, '/t', 'REG_SZ', '/d', startupCommand, '/f'], {
+    encoding: 'utf8',
+    windowsHide: true
+  });
+
+  if (regResult.status !== 0) {
+    throw new Error(regResult.stderr || 'Failed to create startup registry entry');
+  }
+}
+
+function isAgentAlreadyRunning() {
+  return new Promise(resolve => {
+    const req = http.get({
+      hostname: AGENT_HOST,
+      port: AGENT_PORT,
+      path: '/health',
+      timeout: 800
+    }, res => {
+      resolve(res.statusCode === 200);
+      res.resume();
+    });
+
+    req.on('error', () => resolve(false));
+    req.on('timeout', () => {
+      req.destroy();
+      resolve(false);
+    });
+  });
 }
 
 function runPowerShell(command) {
@@ -125,13 +194,41 @@ finally {
   }
 }
 
-function startService() {
+async function startService() {
+  if (process.platform === 'win32') {
+    const { installDir, targetExe, startupCommand } = getInstallContext();
+    fs.mkdirSync(installDir, { recursive: true });
+
+    if (Boolean(process.pkg) && path.resolve(process.execPath) !== path.resolve(targetExe)) {
+      copyWithRetry(process.execPath, targetExe);
+      const bootstrapChild = spawn(targetExe, ['--service'], {
+        detached: true,
+        stdio: 'ignore',
+        windowsHide: true
+      });
+      bootstrapChild.unref();
+      return;
+    }
+
+    ensureStartupRegistration(startupCommand);
+  }
+
+  if (await isAgentAlreadyRunning()) {
+    return;
+  }
+
   const app = express();
   app.use(cors({ origin: true }));
   app.use(express.json({ limit: '2mb' }));
 
   app.get('/health', (_req, res) => {
-    res.json({ success: true, status: 'ok', service: 'BillWisePrintAgent' });
+    res.json({
+      success: true,
+      status: 'ok',
+      service: 'BillWisePrintAgent',
+      version: AGENT_VERSION,
+      pid: process.pid
+    });
   });
 
   app.get('/printers', (_req, res) => {
@@ -171,9 +268,7 @@ function installAndStart() {
     process.exit(1);
   }
 
-  const localAppData = process.env.LOCALAPPDATA || path.join(os.homedir(), 'AppData', 'Local');
-  const installDir = path.join(localAppData, 'BillWisePrintAgent');
-  const targetExe = path.join(installDir, 'BillWisePrintAgent.exe');
+  const { installDir, targetExe, startupCommand } = getInstallContext();
   fs.mkdirSync(installDir, { recursive: true });
 
   const currentExe = process.execPath;
@@ -183,17 +278,18 @@ function installAndStart() {
   }
 
   if (path.resolve(currentExe) !== path.resolve(targetExe)) {
-    fs.copyFileSync(currentExe, targetExe);
+    copyWithRetry(currentExe, targetExe);
   }
 
-  const startupCommand = `"${targetExe}" --service`;
-  const regResult = spawnSync('reg.exe', ['add', STARTUP_KEY, '/v', STARTUP_VALUE, '/t', 'REG_SZ', '/d', startupCommand, '/f'], {
-    encoding: 'utf8',
-    windowsHide: true
-  });
+  if (!fs.existsSync(targetExe)) {
+    console.error('Install failed because target executable is missing after copy.');
+    process.exit(1);
+  }
 
-  if (regResult.status !== 0) {
-    console.error(regResult.stderr || 'Failed to create startup registry entry');
+  try {
+    ensureStartupRegistration(startupCommand);
+  } catch (error) {
+    console.error(error.message || 'Failed to create startup registry entry');
     process.exit(1);
   }
 
@@ -211,9 +307,15 @@ const args = new Set(process.argv.slice(2));
 const isPackagedExe = Boolean(process.pkg) && process.execPath.toLowerCase().endsWith('.exe');
 
 if (args.has('--service')) {
-  startService();
+  startService().catch(error => {
+    console.error(error?.message || 'Service startup failed');
+    process.exit(1);
+  });
 } else if (args.has('--install') || isPackagedExe) {
   installAndStart();
 } else {
-  startService();
+  startService().catch(error => {
+    console.error(error?.message || 'Service startup failed');
+    process.exit(1);
+  });
 }
