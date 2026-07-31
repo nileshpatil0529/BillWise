@@ -1,0 +1,169 @@
+<div class="printer-config-wrapper">
+
+  <!-- QZ Tray Status -->
+  <mat-card class="status-card">
+    <mat-card-header>
+      <mat-icon mat-card-avatar>print</mat-icon>
+      <mat-card-title>Printer Setup (QZ Tray)</mat-card-title>
+      <mat-card-subtitle>Connect your thermal printer via QZ Tray desktop app</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <div class="qz-status-row">
+        <div class="status-indicator" [class]="qzStatus()">
+          <mat-icon>
+            @switch (qzStatus()) {
+              @case ('connected') { check_circle }
+              @case ('disconnected') { cancel }
+              @case ('loading') { hourglass_empty }
+              @default { help }
+            }
+          </mat-icon>
+          <span>
+            @switch (qzStatus()) {
+              @case ('connected') { QZ Tray Connected }
+              @case ('disconnected') { QZ Tray Not Running }
+              @case ('loading') { Connecting... }
+              @default { Not Checked }
+            }
+          </span>
+        </div>
+
+        @if (qzStatus() !== 'connected') {
+          <div class="qz-actions">
+            <button mat-stroked-button (click)="connectQZ()" [disabled]="qzStatus() === 'loading'">
+              <mat-icon>refresh</mat-icon>
+              Connect QZ Tray
+            </button>
+            <a mat-stroked-button href="https://qz.io/download/" target="_blank">
+              <mat-icon>download</mat-icon>
+              Download QZ Tray
+            </a>
+          </div>
+          <p class="hint-text">
+            QZ Tray is a free desktop app that allows browser-based printing to thermal printers.
+            Download, install, and start it — then click "Connect QZ Tray" above.
+          </p>
+        }
+      </div>
+
+      @if (qzStatus() === 'connected') {
+        <mat-divider></mat-divider>
+
+        <!-- Enable Toggle -->
+        <div class="toggle-row">
+          <div class="toggle-info">
+            <span class="toggle-title">Enable Printing on this device</span>
+            <span class="toggle-description">This device will accept print jobs (local and routed from other users)</span>
+          </div>
+          <mat-slide-toggle [checked]="enabled()" (change)="enabled.set($event.checked)"></mat-slide-toggle>
+        </div>
+
+        @if (enabled()) {
+          <mat-divider></mat-divider>
+
+          <!-- Printer Selection -->
+          <div class="form-section">
+            <div class="section-label">
+              <mat-icon>print</mat-icon>
+              <span>Select Printer</span>
+              <button mat-icon-button (click)="refreshPrinters()" matTooltip="Refresh printers">
+                <mat-icon>refresh</mat-icon>
+              </button>
+            </div>
+
+            @if (availablePrinters().length === 0) {
+              <p class="hint-text warning">No printers found. Make sure your printer is connected and drivers are installed.</p>
+            } @else {
+              <mat-form-field appearance="outline" class="full-width">
+                <mat-label>Printer</mat-label>
+                <mat-select [value]="selectedPrinter()" (selectionChange)="selectedPrinter.set($event.value)">
+                  @for (printer of availablePrinters(); track printer) {
+                    <mat-option [value]="printer">{{ printer }}</mat-option>
+                  }
+                </mat-select>
+                <mat-icon matPrefix>print</mat-icon>
+              </mat-form-field>
+            }
+          </div>
+
+          <mat-divider></mat-divider>
+
+          <!-- Paper Size -->
+          <div class="form-section">
+            <div class="section-label">
+              <mat-icon>straighten</mat-icon>
+              <span>Paper Size</span>
+            </div>
+            <div class="paper-size-options">
+              <div class="paper-option" [class.selected]="paperSize() === '2inch'" (click)="paperSize.set('2inch')">
+                <mat-icon>receipt</mat-icon>
+                <div class="paper-info">
+                  <span class="paper-name">2 inch (58mm)</span>
+                  <span class="paper-desc">32 characters per line</span>
+                </div>
+              </div>
+              <div class="paper-option" [class.selected]="paperSize() === '3inch'" (click)="paperSize.set('3inch')">
+                <mat-icon>receipt_long</mat-icon>
+                <div class="paper-info">
+                  <span class="paper-name">3 inch (80mm)</span>
+                  <span class="paper-desc">48 characters per line</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          @if (selectedPrinter()) {
+            <mat-divider></mat-divider>
+            <div class="test-print-row">
+              <button mat-stroked-button color="accent" (click)="testPrint()" [disabled]="testing()">
+                @if (testing()) {
+                  <mat-spinner diameter="18"></mat-spinner>
+                  Printing...
+                } @else {
+                  <ng-container>
+                    <mat-icon>print</mat-icon>
+                    Test Print
+                  </ng-container>
+                }
+              </button>
+              <span class="hint-text">Prints a sample receipt to verify your setup.</span>
+            </div>
+          }
+        }
+      }
+    </mat-card-content>
+
+    <mat-card-actions align="end">
+      <button mat-flat-button color="primary" (click)="saveConfig()" [disabled]="saving() || qzStatus() !== 'connected'">
+        @if (saving()) {
+          <mat-spinner diameter="20"></mat-spinner>
+          Saving...
+        } @else {
+          <ng-container>
+            <mat-icon>save</mat-icon>
+            Save Configuration
+          </ng-container>
+        }
+      </button>
+    </mat-card-actions>
+  </mat-card>
+
+  <!-- Info box -->
+  <mat-card class="info-card">
+    <mat-card-content>
+      <div class="info-row">
+        <mat-icon class="info-icon">info</mat-icon>
+        <div>
+          <p><strong>How print routing works:</strong></p>
+          <ul>
+            <li>If you have a printer set up on this device, bills and KOTs print here directly.</li>
+            <li>If another user clicks Print but has no printer, the job is routed to you automatically.</li>
+            <li>If no user with a printer is online, an error message is shown to the requester.</li>
+            <li>Only one printer user per shop is needed — but multiple are supported.</li>
+          </ul>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>

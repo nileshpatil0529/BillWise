@@ -1,10 +1,12 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, from } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { environment } from '../../../environments/environment';
 import { Bill, BillResponse, BillItem, ReportData } from '../models/bill.model';
 import { CartItem, Product } from '../models/product.model';
 import { SettingsService } from './settings.service';
+import { PrinterService } from './printer.service';
 
 @Injectable({
   providedIn: 'root'
@@ -12,6 +14,7 @@ import { SettingsService } from './settings.service';
 export class BillService {
   private readonly API_URL = `${environment.apiUrl}/bills`;
   private settingsService = inject(SettingsService);
+  private printerService = inject(PrinterService);
 
   // Cart state
   cartItems = signal<CartItem[]>([]);
@@ -222,10 +225,49 @@ export class BillService {
   }
 
   printBill(billId: string): Observable<any> {
+    if (this.printerService.isReady()) {
+      // Print locally — fetch bill data then send to QZ Tray
+      return this.getBillById(billId).pipe(
+        switchMap((res: any) => {
+          const bill = res.data;
+          const settings = this.buildSettingsPayload();
+          return from(this.printerService.printReceipt(bill, settings)
+            .then(() => ({ success: true, message: 'Bill printed successfully' })));
+        })
+      );
+    }
+    // No local printer — route via server socket
     return this.http.post(`${this.API_URL}/print`, { billId });
   }
 
   printKOT(billId: string): Observable<any> {
+    if (this.printerService.isReady()) {
+      return this.getBillById(billId).pipe(
+        switchMap((res: any) => {
+          const bill = res.data;
+          const settings = this.buildSettingsPayload();
+          return from(
+            this.printerService.printKOT(bill, settings).then(() =>
+              this.http.post(`${this.API_URL}/${billId}/mark-kot-printed`, {}).toPromise()
+            ).then(() => ({ success: true, message: 'KOT printed successfully' }))
+          );
+        })
+      );
+    }
     return this.http.post(`${this.API_URL}/print-kot`, { billId });
+  }
+
+  private buildSettingsPayload(): any {
+    const s = this.settingsService.settings();
+    return {
+      businessName: s.businessName,
+      address: s.address,
+      phone: s.phone,
+      taxNumber: s.taxNumber,
+      upiId: s.upiId,
+      footerText: s.footerText,
+      taxRates: s.taxRates,
+      receiptLanguage: s.receiptLanguage
+    };
   }
 }

@@ -550,6 +550,18 @@ const initializeDatabase = () => {
     // Already updated
   }
 
+  // Printer config per user
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS user_printer_configs (
+      userId TEXT PRIMARY KEY,
+      printerName TEXT,
+      paperSize TEXT DEFAULT '3inch',
+      enabled INTEGER DEFAULT 0,
+      updatedAt TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (userId) REFERENCES users(uid) ON DELETE CASCADE
+    )
+  `);
+
   // Insert default admin user if not exists
   const adminExists = db.prepare('SELECT COUNT(*) as count FROM users WHERE email = ?').get(config.admin.email);
   if (adminExists.count === 0) {

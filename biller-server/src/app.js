@@ -16,6 +16,7 @@ import settingsRoutes from './routes/settingsRoutes.js';
 import customerRoutes from './routes/customerRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import hotelRoutes from './routes/hotelRoutes.js';
+import printerRoutes from './routes/printerRoutes.js';
 import { errorHandler, notFound } from './middleware/errorHandler.js';
 
 // ES Module dirname equivalent
@@ -69,6 +70,7 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/hotel', hotelRoutes);
+app.use('/api/printer-config', printerRoutes);
 
 // Device detection - mobile/tablet vs desktop
 // Uses the standard `Mobi` token (Google's recommended check) plus known mobile OS identifiers.

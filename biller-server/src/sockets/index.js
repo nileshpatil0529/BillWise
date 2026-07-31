@@ -1,6 +1,15 @@
 import { Server } from 'socket.io';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../config/database.js';
 
 let io;
+
+// userId → socketId for all connected users (for targeted responses)
+const userSockets = new Map();
+// userId → socketId for users who have printer registered
+const printerUsers = new Map();
+// requestId → { requesterUserId, billId, type } for pending routed jobs
+const pendingPrintJobs = new Map();
 
 /**
  * Initialize Socket.IO server
@@ -35,7 +44,75 @@ export const initializeSocketIO = (httpServer) => {
       console.log(`🎯 Socket ${socket.id} joined products room`);
     });
 
+    // User identification — places them in a personal room for targeted events
+    socket.on('identify', ({ userId }) => {
+      if (!userId) return;
+      socket.join(`user:${userId}`);
+      userSockets.set(userId, socket.id);
+      socket.data.userId = userId;
+    });
+
+    // Register as a printer-capable client
+    socket.on('register-printer', ({ userId }) => {
+      if (!userId) return;
+      printerUsers.set(userId, socket.id);
+      console.log(`🖨️ Printer registered: user=${userId}, socket=${socket.id}`);
+    });
+
+    // Unregister printer (e.g., user disabled config or closed printer tab)
+    socket.on('unregister-printer', ({ userId }) => {
+      printerUsers.delete(userId);
+      console.log(`🖨️ Printer unregistered: user=${userId}`);
+    });
+
+    // Printer client responds with result of a routed print job
+    socket.on('print-job-result', ({ requestId, success, error, type }) => {
+      const pending = pendingPrintJobs.get(requestId);
+      if (!pending) return;
+      pendingPrintJobs.delete(requestId);
+
+      // For KOT: mark items as printed in DB on success
+      if (type === 'kot' && success && pending.billId) {
+        try {
+          const now = new Date().toISOString();
+          db.prepare(`
+            UPDATE bill_items
+            SET kotPrinted = 1, kotPrintedQuantity = quantity
+            WHERE billId = ? AND quantity > COALESCE(kotPrintedQuantity, 0)
+          `).run(pending.billId);
+          db.prepare('UPDATE bills SET kotPrintedAt = ?, updatedAt = ? WHERE billId = ?')
+            .run(now, now, pending.billId);
+
+          const updatedBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(pending.billId);
+          if (updatedBill) {
+            const billData = { ...updatedBill, businessTypeData: JSON.parse(updatedBill.businessTypeData || '{}') };
+            emitKOTPrinted(billData);
+            if (updatedBill.tableId) {
+              emitTableUpdate({ tableId: updatedBill.tableId, billId: updatedBill.billId, billStatus: updatedBill.billStatus });
+            }
+          }
+        } catch (e) {
+          console.error('Socket: Error marking KOT printed:', e.message);
+        }
+      }
+
+      // Relay result back to the original requester
+      if (pending.requesterUserId) {
+        io.to(`user:${pending.requesterUserId}`).emit('print-response', {
+          requestId,
+          success,
+          error: error || null,
+          type
+        });
+      }
+    });
+
     socket.on('disconnect', (reason) => {
+      const userId = socket.data.userId;
+      if (userId) {
+        userSockets.delete(userId);
+        printerUsers.delete(userId);
+      }
       console.log('❌ Socket client disconnected:', socket.id, reason);
     });
 
@@ -45,6 +122,39 @@ export const initializeSocketIO = (httpServer) => {
 
   console.log('🔌 Socket.IO server initialized');
   return io;
+};
+
+/**
+ * Route a print job to any online user who has a printer registered.
+ * Returns { success, message, requestId? }
+ */
+export const routePrintJob = (payload, requesterUserId) => {
+  if (!io) return { success: false, message: 'Socket server not initialized' };
+
+  // Find any registered printer user
+  let printerSocketId = null;
+  let printerUserId = null;
+  for (const [uid, sid] of printerUsers.entries()) {
+    printerSocketId = sid;
+    printerUserId = uid;
+    break;
+  }
+
+  if (!printerSocketId) {
+    return {
+      success: false,
+      message: 'No printer is currently available. Ask a user with printer setup to stay connected.'
+    };
+  }
+
+  const requestId = uuidv4();
+  const billId = payload.bill?.billId || null;
+  pendingPrintJobs.set(requestId, { requesterUserId, billId, type: payload.type });
+
+  io.to(printerSocketId).emit('print-job', { requestId, ...payload });
+  console.log(`🖨️ Print job routed: requestId=${requestId}, type=${payload.type}, printer user=${printerUserId}`);
+
+  return { success: true, message: 'Print job sent to printer', requestId };
 };
 
 /**

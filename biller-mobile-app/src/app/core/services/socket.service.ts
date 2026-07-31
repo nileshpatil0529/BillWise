@@ -1,7 +1,9 @@
-import { Injectable, signal, effect, NgZone } from '@angular/core';
+import { Injectable, signal, effect, NgZone, inject } from '@angular/core';
 import { Socket, io } from 'socket.io-client';
+import { MatSnackBar } from '@angular/material/snack-bar';
 import { environment } from '../../../environments/environment';
 import { AuthService } from './auth.service';
+import { PrinterService } from './printer.service';
 
 @Injectable({
   providedIn: 'root'
@@ -9,10 +11,17 @@ import { AuthService } from './auth.service';
 export class SocketService {
   private socket: Socket | null = null;
   public connected = signal(false);
+  private snackBar = inject(MatSnackBar);
+
+  // Lazily injected to avoid circular dependency (PrinterService → SocketService → PrinterService)
+  private get printerService(): PrinterService {
+    return this._printerService;
+  }
 
   constructor(
     private authService: AuthService,
-    private ngZone: NgZone
+    private ngZone: NgZone,
+    private _printerService: PrinterService
   ) {
     // Auto-connect when user logs in
     effect(() => {
@@ -46,7 +55,6 @@ export class SocketService {
       return;
     }
 
-    // Connect to root URL, not /api (Socket.IO server is on root)
     const socketUrl = environment.apiUrl.replace('/api', '');
     
     this.socket = io(socketUrl, {
@@ -62,21 +70,26 @@ export class SocketService {
         this.connected.set(true);
         console.log('✅ Socket connected:', this.socket?.id);
         
-        // Join rooms for specific updates
         this.socket?.emit('join-tables-room');
-        console.log('🎯 Joining tables room');
         this.socket?.emit('join-bills-room');
-        console.log('🎯 Joining bills room');
         this.socket?.emit('join-products-room');
-        console.log('🎯 Joining products room');
+
+        // Identify this user so server can route targeted events
+        const user = this.authService.currentUser();
+        if (user?.uid) {
+          this.socket?.emit('identify', { userId: user.uid });
+          // Register printer if enabled
+          const cfg = this.printerService.config();
+          if (cfg.enabled && cfg.printerName) {
+            this.socket?.emit('register-printer', { userId: user.uid });
+          }
+        }
       });
     });
 
     this.socket.on('disconnect', (reason) => {
       this.ngZone.run(() => {
         this.connected.set(false);
-        
-        // Auto-reconnect if not intentional disconnect
         if (reason === 'io server disconnect') {
           this.socket?.connect();
         }
@@ -90,12 +103,55 @@ export class SocketService {
       });
     });
 
-    // Listen for welcome message from server
     this.socket.on('connected', (data) => {
+      this.ngZone.run(() => console.log('📨 Received from server:', data));
+    });
+
+    // Routed print job arrives — execute print locally via QZ Tray
+    this.socket.on('print-job', async (payload: any) => {
+      const { requestId, bill, settings, type } = payload;
+      try {
+        if (!this.printerService.isReady()) {
+          throw new Error('Local printer not ready');
+        }
+        if (type === 'kot') {
+          await this.printerService.printKOT(bill, settings);
+        } else {
+          await this.printerService.printReceipt(bill, settings);
+        }
+        this.socket?.emit('print-job-result', { requestId, success: true, type });
+        this.ngZone.run(() => this.snackBar.open('Print completed', 'OK', { duration: 3000 }));
+      } catch (err: any) {
+        this.socket?.emit('print-job-result', { requestId, success: false, error: err?.message, type });
+        this.ngZone.run(() =>
+          this.snackBar.open('Print failed: ' + (err?.message || 'Unknown error'), 'OK', { duration: 5000 })
+        );
+      }
+    });
+
+    // Result of a print request we initiated via server routing
+    this.socket.on('print-response', ({ success, error, type }: any) => {
       this.ngZone.run(() => {
-        console.log('📨 Received from server:', data);
+        if (success) {
+          const label = type === 'kot' ? 'KOT' : 'Bill';
+          this.snackBar.open(`${label} printed successfully`, 'OK', { duration: 3000 });
+        } else {
+          this.snackBar.open('Print failed: ' + (error || 'Unknown error'), 'OK', { duration: 5000 });
+        }
       });
     });
+  }
+
+  /** Call after saving printer config to update server registration */
+  refreshPrinterRegistration(): void {
+    const user = this.authService.currentUser();
+    if (!user?.uid || !this.socket?.connected) return;
+    const cfg = this.printerService.config();
+    if (cfg.enabled && cfg.printerName) {
+      this.socket.emit('register-printer', { userId: user.uid });
+    } else {
+      this.socket.emit('unregister-printer', { userId: user.uid });
+    }
   }
 
   disconnect(): void {
@@ -109,7 +165,6 @@ export class SocketService {
   on(event: string, callback: (...args: any[]) => void): void {
     if (this.socket) {
       this.socket.on(event, (...args) => {
-        // Run callbacks inside Angular zone for proper change detection
         this.ngZone.run(() => callback(...args));
       });
     }

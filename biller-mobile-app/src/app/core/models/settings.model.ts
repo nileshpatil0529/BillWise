@@ -2,6 +2,7 @@ export type ApplicationType = 'general' | 'hotel' | 'grocery' | 'clothing' | 'el
 export type ThemeType = 'light' | 'dark';
 export type ScannerType = 'none' | 'usb';
 export type LanguageType = 'en' | 'hi';
+export type ViewMode = 'desktop' | 'mobile';
 
 export interface TaxRate {
   name: string;
@@ -19,6 +20,12 @@ export interface Category {
   enabled: boolean;
 }
 
+export interface TableColumn {
+  key: string;
+  label: string;
+  visible: boolean;
+}
+
 // Unit for loose items (grocery mode)
 export interface Unit {
   id: number;
@@ -26,20 +33,6 @@ export interface Unit {
   symbol: string;     // e.g., "kg", "ltr"
   allowDecimal: boolean; // Whether decimals are allowed
 }
-
-export interface TableColumn {
-  key: string;
-  label: string;
-  visible: boolean;
-}
-
-export interface TableColumnPreferences {
-  products: TableColumn[];
-  bills: TableColumn[];
-  customers: TableColumn[];
-}
-
-export type ViewMode = 'desktop' | 'mobile';
 
 export interface Settings {
   businessName: string;
@@ -64,12 +57,25 @@ export interface Settings {
   footerText: string;
   lowStockAlertEnabled: boolean;
   lowStockThreshold: number;
-  tableColumns?: TableColumnPreferences;
-  viewMode?: ViewMode; // 'desktop' or 'mobile' - affects table display
-  language?: LanguageType; // 'en' or 'hi' - UI language
-  receiptLanguage?: LanguageType; // 'en' or 'hi' - Receipt/Bill language
-  units?: Unit[]; // Units for loose items (grocery mode)
+  language?: LanguageType;
+  receiptLanguage?: LanguageType;
+  units?: Unit[];
+  viewMode?: ViewMode;
+  tableColumns?: {
+    products?: TableColumn[];
+    bills?: TableColumn[];
+    customers?: TableColumn[];
+  };
   updatedAt: string;
+}
+
+export type PaperSize = '2inch' | '3inch';
+
+export interface PrinterConfig {
+  userId?: string;
+  printerName: string | null;
+  paperSize: PaperSize;
+  enabled: boolean;
 }
 
 export interface ApplicationTypeConfig {

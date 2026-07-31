@@ -56,6 +56,15 @@ export interface Settings {
   updatedAt: string;
 }
 
+export type PaperSize = '2inch' | '3inch';
+
+export interface PrinterConfig {
+  userId?: string;
+  printerName: string | null;
+  paperSize: PaperSize;
+  enabled: boolean;
+}
+
 export interface ApplicationTypeConfig {
   name: string;
   description: string;

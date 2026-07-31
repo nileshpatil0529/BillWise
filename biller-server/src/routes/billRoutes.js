@@ -5,10 +5,9 @@ import {
   createBill,
   updateBill,
   deleteBill,
-  getReport,
-  printBill,
-  printKOT
+  getReport
 } from '../controllers/billController.js';
+import { requestPrint, markKOTPrinted } from '../controllers/printerController.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = express.Router();
@@ -23,7 +22,8 @@ router.get('/:id', getBillById);
 router.post('/', createBill);
 router.put('/:id', updateBill);
 router.delete('/:id', deleteBill);
-router.post('/print', printBill);
-router.post('/print-kot', printKOT);
+router.post('/print', requestPrint);
+router.post('/print-kot', (req, res) => { req.body.type = 'kot'; return requestPrint(req, res); });
+router.post('/:id/mark-kot-printed', markKOTPrinted);
 
 export default router;
