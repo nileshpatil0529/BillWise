@@ -272,48 +272,8 @@ export class PrinterService {
   }
 
   private buildReceiptImage(bill: any, settings: any, paperSize: PaperSize): string {
-    const lines: string[] = [];
-    const items: any[] = bill.items || [];
     const isHindi = settings?.receiptLanguage === 'hi';
-
-    lines.push(settings?.businessName || 'My Business');
-    if (settings?.address) lines.push(String(settings.address));
-    if (settings?.taxNumber) lines.push('GST: ' + settings.taxNumber);
-    if (settings?.phone) lines.push('Ph: ' + settings.phone);
-    lines.push('');
-
-    lines.push('Date: ' + new Date(bill.createdAt).toLocaleString('en-IN', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: true
-    }));
-    lines.push('Bill: ' + (bill.billNumber || '').slice(-5));
-    const btd = bill.businessTypeData || {};
-    if (btd.tableNumber) lines.push('Table: ' + btd.tableNumber);
-    lines.push('-');
-
-    items.forEach(item => {
-      const name = this.pickItemName(item, isHindi);
-      const qty = item.isLooseItem ? Number(item.quantity || 0).toFixed(2) : String(Math.round(item.quantity || 0));
-      const price = Number(item.unitPrice || 0).toFixed(2);
-      const amount = Number(item.finalTotal ?? item.itemTotal ?? ((item.quantity || 0) * (item.unitPrice || 0))).toFixed(2);
-      lines.push(name);
-      lines.push(`Qty: ${qty}  Rate: ${price}  Amt: ${amount}`);
-    });
-
-    lines.push('-');
-    lines.push('Subtotal: Rs.' + Number(bill.subtotal || 0).toFixed(2));
-    if (Number(bill.taxTotal || 0) > 0) {
-      const rate = settings?.taxRates?.[0]?.rate || 0;
-      lines.push(`Tax (${rate}%): Rs.${Number(bill.taxTotal).toFixed(2)}`);
-    }
-    if (Number(bill.discountTotal || 0) > 0) {
-      lines.push('Discount: -Rs.' + Number(bill.discountTotal).toFixed(2));
-    }
-    lines.push('Grand Total: Rs.' + Number(bill.grandTotal || 0).toFixed(2));
-    lines.push('');
-    if (settings?.footerText) lines.push(String(settings.footerText));
-
-    return this.renderLinesToPngBase64(lines, paperSize, isHindi);
+    return this.renderReceiptTableToPngBase64(bill, settings, paperSize, isHindi);
   }
 
   private buildKOTImage(bill: any, settings: any, paperSize: PaperSize): string {
@@ -343,6 +303,209 @@ export class PrinterService {
     });
 
     return this.renderLinesToPngBase64(lines, paperSize, isHindi);
+  }
+
+  private renderReceiptTableToPngBase64(bill: any, settings: any, paperSize: PaperSize, isHindi: boolean): string {
+    if (!this.isBrowser) {
+      throw new Error('Image print is available only in browser runtime');
+    }
+
+    const width = paperSize === '2inch' ? 384 : 576;
+    const padding = 14;
+    const gap = 8;
+    const qtyW = paperSize === '2inch' ? 58 : 72;
+    const rateW = paperSize === '2inch' ? 78 : 96;
+    const amtW = paperSize === '2inch' ? 86 : 106;
+    const nameW = width - (padding * 2) - qtyW - rateW - amtW - (gap * 3);
+
+    const fontFamily = isHindi
+      ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif'
+      : '"Consolas", "Courier New", monospace';
+    const titleSize = paperSize === '2inch' ? 20 : 22;
+    const bodySize = paperSize === '2inch' ? 16 : 18;
+    const smallSize = paperSize === '2inch' ? 14 : 15;
+    const rowHeight = paperSize === '2inch' ? 22 : 24;
+
+    const measureCanvas = document.createElement('canvas');
+    const m = measureCanvas.getContext('2d');
+    if (!m) throw new Error('Unable to initialize print canvas');
+    m.font = `400 ${bodySize}px ${fontFamily}`;
+
+    const items: any[] = bill.items || [];
+    const itemNameLines = items.map(item => this.wrapText(m, this.pickItemName(item, isHindi), nameW));
+    const addressLines = settings?.address ? this.wrapText(m, String(settings.address), width - (padding * 2)) : [];
+    const footerLines = settings?.footerText ? this.wrapText(m, String(settings.footerText), width - (padding * 2)) : [];
+
+    let height = 0;
+    height += padding;
+    height += titleSize + 8;
+    height += addressLines.length * (smallSize + 6);
+    if (settings?.taxNumber) height += smallSize + 6;
+    if (settings?.phone) height += smallSize + 6;
+    height += 8;
+    height += (smallSize + 6) * 2;
+    if (bill.businessTypeData?.tableNumber) height += smallSize + 6;
+    height += 10;
+    height += 1 + 10;
+    height += rowHeight;
+    height += 1 + 8;
+
+    itemNameLines.forEach(lines => {
+      height += Math.max(1, lines.length) * rowHeight + 4;
+    });
+
+    height += 1 + 10;
+    height += rowHeight;
+    if (Number(bill.taxTotal || 0) > 0) height += rowHeight;
+    if (Number(bill.discountTotal || 0) > 0) height += rowHeight;
+    height += rowHeight + 6;
+    height += 1 + 10;
+    height += footerLines.length * (smallSize + 6);
+    height += padding;
+
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = Math.max(300, Math.ceil(height * scale));
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Unable to initialize print canvas');
+
+    ctx.scale(scale, scale);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, Math.ceil(height));
+    ctx.fillStyle = '#000000';
+    ctx.textBaseline = 'top';
+
+    const xName = padding;
+    const xQty = xName + nameW + gap;
+    const xRate = xQty + qtyW + gap;
+    const xAmt = xRate + rateW + gap;
+    const right = width - padding;
+
+    const drawSep = (yPos: number) => {
+      ctx.beginPath();
+      ctx.moveTo(padding, yPos);
+      ctx.lineTo(right, yPos);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#000000';
+      ctx.stroke();
+    };
+
+    const drawRight = (text: string, x: number, yPos: number, w: number, font: string) => {
+      ctx.font = font;
+      const tw = ctx.measureText(text).width;
+      ctx.fillText(text, Math.max(x, x + w - tw), yPos);
+    };
+
+    let y = padding;
+
+    ctx.font = `700 ${titleSize}px ${fontFamily}`;
+    const businessName = String(settings?.businessName || 'My Business');
+    const titleW = ctx.measureText(businessName).width;
+    ctx.fillText(businessName, Math.max(padding, (width - titleW) / 2), y);
+    y += titleSize + 8;
+
+    ctx.font = `400 ${smallSize}px ${fontFamily}`;
+    addressLines.forEach(line => {
+      const lw = ctx.measureText(line).width;
+      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
+      y += smallSize + 6;
+    });
+    if (settings?.taxNumber) {
+      const line = 'GST: ' + settings.taxNumber;
+      const lw = ctx.measureText(line).width;
+      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
+      y += smallSize + 6;
+    }
+    if (settings?.phone) {
+      const line = 'Ph: ' + settings.phone;
+      const lw = ctx.measureText(line).width;
+      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
+      y += smallSize + 6;
+    }
+
+    y += 8;
+    ctx.fillText('Date: ' + new Date(bill.createdAt).toLocaleString('en-IN', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    }), padding, y);
+    y += smallSize + 6;
+    ctx.fillText('Bill: ' + (bill.billNumber || '').slice(-5), padding, y);
+    y += smallSize + 6;
+
+    const btd = bill.businessTypeData || {};
+    if (btd.tableNumber) {
+      ctx.fillText('Table: ' + btd.tableNumber, padding, y);
+      y += smallSize + 6;
+    }
+
+    y += 4;
+    drawSep(y);
+    y += 10;
+
+    ctx.font = `700 ${bodySize}px ${fontFamily}`;
+    ctx.fillText('Name', xName, y);
+    drawRight('Qty', xQty, y, qtyW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Rate', xRate, y, rateW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Amount', xAmt, y, amtW, `700 ${bodySize}px ${fontFamily}`);
+    y += rowHeight;
+
+    drawSep(y);
+    y += 8;
+
+    ctx.font = `400 ${bodySize}px ${fontFamily}`;
+    items.forEach((item, i) => {
+      const nameLines = itemNameLines[i];
+      const qty = item.isLooseItem ? Number(item.quantity || 0).toFixed(2) : String(Math.round(item.quantity || 0));
+      const rate = Number(item.unitPrice || 0).toFixed(2);
+      const amount = Number(item.finalTotal ?? item.itemTotal ?? ((item.quantity || 0) * (item.unitPrice || 0))).toFixed(2);
+
+      const rowY = y;
+      nameLines.forEach((line, index) => {
+        ctx.fillText(line, xName, rowY + (index * rowHeight));
+      });
+
+      drawRight(qty, xQty, rowY, qtyW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight(rate, xRate, rowY, rateW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight(amount, xAmt, rowY, amtW, `400 ${bodySize}px ${fontFamily}`);
+
+      y += Math.max(1, nameLines.length) * rowHeight + 4;
+    });
+
+    drawSep(y);
+    y += 10;
+
+    const drawTotalLine = (label: string, value: string, bold = false) => {
+      ctx.font = `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`;
+      ctx.fillText(label, xName, y);
+      drawRight(value, xAmt, y, amtW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
+      y += rowHeight;
+    };
+
+    drawTotalLine('Subtotal', Number(bill.subtotal || 0).toFixed(2));
+    if (Number(bill.taxTotal || 0) > 0) {
+      const rate = settings?.taxRates?.[0]?.rate || 0;
+      drawTotalLine(`Tax (${rate}%)`, Number(bill.taxTotal || 0).toFixed(2));
+    }
+    if (Number(bill.discountTotal || 0) > 0) {
+      drawTotalLine('Discount', '-' + Number(bill.discountTotal || 0).toFixed(2));
+    }
+    drawTotalLine('Grand Total', Number(bill.grandTotal || 0).toFixed(2), true);
+
+    y += 2;
+    drawSep(y);
+    y += 10;
+
+    ctx.font = `400 ${smallSize}px ${fontFamily}`;
+    footerLines.forEach(line => {
+      const lw = ctx.measureText(line).width;
+      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
+      y += smallSize + 6;
+    });
+
+    const dataUrl = canvas.toDataURL('image/png');
+    return dataUrl.split(',')[1] || '';
   }
 
   private renderLinesToPngBase64(lines: string[], paperSize: PaperSize, isHindi: boolean): string {
