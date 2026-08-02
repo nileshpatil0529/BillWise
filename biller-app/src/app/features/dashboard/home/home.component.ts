@@ -1614,11 +1614,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const table = this.selectedTable();
+    const isDebt = this.paymentMethod() === 'debt';
+    const total = this.billService.cartTotal();
+    const paid = isDebt ? 0 : total;
+    const paymentStatus: 'pending' | 'paid' = isDebt ? 'pending' : 'paid';
     
     const billData = {
       billStatus: 'completed' as const,
       paymentMethod: this.paymentMethod(),
-      paymentStatus: (isDebt ? 'pending' : 'paid') as const,
+      paymentStatus,
       amountPaid: paid,
       billDiscount: this.billService.billDiscount(),
       customerName: this.customerName(),
@@ -1658,6 +1662,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const isDebt = this.paymentMethod() === 'debt';
     const total = this.billService.cartTotal();
     const paid = isDebt ? 0 : total;
+    const paymentStatus: 'pending' | 'paid' = isDebt ? 'pending' : 'paid';
 
     // Print the bill first
     this.billService.printBill(this.currentBillId()!).subscribe({
@@ -1666,7 +1671,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         const billData = {
           billStatus: 'completed' as const,
           paymentMethod: this.paymentMethod(),
-          paymentStatus: (isDebt ? 'pending' : 'paid') as const,
+          paymentStatus,
           amountPaid: paid,
           billDiscount: this.billService.billDiscount(),
           customerName: this.customerName(),
