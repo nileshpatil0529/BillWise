@@ -75,7 +75,12 @@ export const getAllBills = async (req, res) => {
 
     // Get items for each bill
     const billsWithItems = bills.map(bill => {
-      const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(bill.billId);
+      const items = db.prepare(`
+        SELECT bi.*, p.nameHi, p.isLooseItem
+        FROM bill_items bi
+        LEFT JOIN products p ON p.productId = bi.productId
+        WHERE bi.billId = ?
+      `).all(bill.billId);
       return {
         ...bill,
         items,
@@ -114,7 +119,12 @@ export const getBillById = async (req, res) => {
     }
 
     // Get items for this bill
-    const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+    const items = db.prepare(`
+      SELECT bi.*, p.nameHi, p.isLooseItem
+      FROM bill_items bi
+      LEFT JOIN products p ON p.productId = bi.productId
+      WHERE bi.billId = ?
+    `).all(id);
 
     res.json({
       success: true,
