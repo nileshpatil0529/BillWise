@@ -75,7 +75,6 @@ export class PrinterConfigComponent implements OnInit {
     this.checkingAgent.set(true);
     this.printerService.connectAgent()
       .then(() => {
-        this.snackBar.open('Print Agent connected', 'OK', { duration: 3000 });
       })
       .catch((_err: unknown) => {
         this.snackBar.open('Print Agent not detected. Install it and click Verify again.', 'OK', { duration: 4000 });
@@ -95,7 +94,6 @@ export class PrinterConfigComponent implements OnInit {
     this.testing.set(true);
     try {
       await this.printerService.printReceipt(this.buildTestBill(), this.buildTestSettings());
-      this.snackBar.open('Test print sent successfully!', 'OK', { duration: 3000 });
     } catch (err: any) {
       this.snackBar.open('Test print failed: ' + (err?.message || 'Unknown error'), 'OK', { duration: 5000 });
     } finally {
@@ -116,7 +114,6 @@ export class PrinterConfigComponent implements OnInit {
 
     this.printerService.saveConfig(cfg).subscribe({
       next: () => {
-        this.snackBar.open('Printer configuration saved', 'OK', { duration: 3000 });
         this.socketService.refreshPrinterRegistration();
       },
       error: () => {

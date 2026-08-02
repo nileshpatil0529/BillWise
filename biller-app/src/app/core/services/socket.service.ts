@@ -120,7 +120,6 @@ export class SocketService {
           await this.printerService.printReceipt(bill, settings);
         }
         this.socket?.emit('print-job-result', { requestId, success: true, type });
-        this.ngZone.run(() => this.snackBar.open('Print completed', 'OK', { duration: 3000 }));
       } catch (err: any) {
         this.socket?.emit('print-job-result', { requestId, success: false, error: err?.message, type });
         this.ngZone.run(() =>
@@ -132,10 +131,7 @@ export class SocketService {
     // Result of a print request we initiated via server routing
     this.socket.on('print-response', ({ success, error, type }: any) => {
       this.ngZone.run(() => {
-        if (success) {
-          const label = type === 'kot' ? 'KOT' : 'Bill';
-          this.snackBar.open(`${label} printed successfully`, 'OK', { duration: 3000 });
-        } else {
+        if (!success) {
           this.snackBar.open('Print failed: ' + (error || 'Unknown error'), 'OK', { duration: 5000 });
         }
       });

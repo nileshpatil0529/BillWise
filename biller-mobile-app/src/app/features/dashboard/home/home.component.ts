@@ -1802,7 +1802,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             }
           },
           error: () => {
-            this.snackBar.open('Bill printed but failed to complete', 'Close', { duration: 3000 });
+            this.snackBar.open('Failed to complete bill', 'Close', { duration: 3000 });
           }
         });
       },
