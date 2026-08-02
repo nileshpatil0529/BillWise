@@ -1,6 +1,6 @@
 {
   "name": "billwise-print-agent",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "description": "Local Windows print agent for BillWise",
   "main": "src/index.cjs",
   "bin": "src/index.cjs",

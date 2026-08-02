@@ -12,7 +12,7 @@ const STARTUP_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
 const STARTUP_APPROVED_RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run';
 const STARTUP_VALUE = 'BillWisePrintAgent';
 const LEGACY_STARTUP_VALUES = ['BillWiseStartup', 'BillWiseStartupAgent'];
-const AGENT_VERSION = '1.1.0';
+const AGENT_VERSION = '1.2.0';
 const STARTUP_SCRIPT_NAME = 'BillWisePrintAgent-startup.vbs';
 
 function getInstallContext() {
@@ -217,6 +217,78 @@ finally {
   }
 }
 
+function sendImageToPrinter(printerName, imageBase64, paperSize = '3inch') {
+  const escapedPrinter = escapeSingleQuotes(printerName);
+  const paperWidth = paperSize === '2inch' ? 200 : 300;
+  const tmpFile = path.join(os.tmpdir(), `billwise-print-${Date.now()}-${Math.random().toString(16).slice(2)}.b64`);
+  fs.writeFileSync(tmpFile, String(imageBase64), 'utf8');
+
+  const escapedTmpFile = escapeSingleQuotes(tmpFile);
+  const ps = `
+$ErrorActionPreference = 'Stop'
+$printerName = '${escapedPrinter}'
+$base64Path = '${escapedTmpFile}'
+$paperWidth = ${paperWidth}
+
+Add-Type -AssemblyName System.Drawing
+
+$base64 = Get-Content -Path $base64Path -Raw -Encoding UTF8
+$bytes = [System.Convert]::FromBase64String($base64)
+$ms = New-Object System.IO.MemoryStream(,$bytes)
+$image = [System.Drawing.Image]::FromStream($ms)
+
+$printDoc = New-Object System.Drawing.Printing.PrintDocument
+$printDoc.PrinterSettings.PrinterName = $printerName
+if (-not $printDoc.PrinterSettings.IsValid) {
+  throw "Invalid printer: $printerName"
+}
+
+$printDoc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
+$printDoc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
+
+$paperHeight = [Math]::Max(200, [int]([Math]::Ceiling(($image.Height / [double]$image.Width) * $paperWidth)))
+$paper = New-Object System.Drawing.Printing.PaperSize('BillWiseCustom', $paperWidth, $paperHeight)
+$printDoc.DefaultPageSettings.PaperSize = $paper
+
+$handler = [System.Drawing.Printing.PrintPageEventHandler]{
+  param($sender, $e)
+
+  $targetWidth = $e.MarginBounds.Width
+  if ($targetWidth -le 0) { $targetWidth = $e.PageBounds.Width }
+  $targetHeight = [int]([Math]::Round($image.Height * ($targetWidth / [double]$image.Width)))
+  $rect = New-Object System.Drawing.Rectangle(0, 0, $targetWidth, $targetHeight)
+
+  $e.Graphics.Clear([System.Drawing.Color]::White)
+  $e.Graphics.DrawImage($image, $rect)
+  $e.HasMorePages = $false
+}
+
+$printDoc.add_PrintPage($handler)
+try {
+  $printDoc.Print()
+}
+finally {
+  $printDoc.remove_PrintPage($handler)
+  $printDoc.Dispose()
+  $image.Dispose()
+  $ms.Dispose()
+}
+`;
+
+  try {
+    const result = runPowerShell(ps);
+    if (result.status !== 0) {
+      throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Image print failed');
+    }
+  } finally {
+    try {
+      fs.unlinkSync(tmpFile);
+    } catch {
+      // Best effort cleanup.
+    }
+  }
+}
+
 async function startService() {
   if (process.platform === 'win32') {
     const { installDir, targetExe, startupScript, startupCommand } = getInstallContext();
@@ -244,7 +316,7 @@ async function startService() {
 
   const app = express();
   app.use(cors({ origin: true }));
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '10mb' }));
 
   app.get('/health', (_req, res) => {
     res.json({
@@ -279,6 +351,24 @@ async function startService() {
       return res.json({ success: true, message: 'Print sent' });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message || 'Print failed' });
+    }
+  });
+
+  app.post('/print-image', (req, res) => {
+    const body = req.body || {};
+    const printerName = body.printerName;
+    const imageBase64 = body.imageBase64;
+    const paperSize = body.paperSize || '3inch';
+
+    if (!printerName || !imageBase64) {
+      return res.status(400).json({ success: false, message: 'printerName and imageBase64 are required' });
+    }
+
+    try {
+      sendImageToPrinter(printerName, imageBase64, paperSize);
+      return res.json({ success: true, message: 'Image print sent' });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message || 'Image print failed' });
     }
   });
 

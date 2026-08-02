@@ -93,6 +93,11 @@ export class PrinterService {
   async printReceipt(bill: any, settings: any): Promise<void> {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
+    if (this.shouldUseImagePipeline(settings)) {
+      const imageBase64 = this.buildReceiptImage(bill, settings, cfg.paperSize);
+      await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
+      return;
+    }
     const data = this.buildReceiptData(bill, settings, cfg.paperSize);
     await this.sendRaw(cfg.printerName, data);
   }
@@ -100,6 +105,11 @@ export class PrinterService {
   async printKOT(bill: any, settings: any): Promise<void> {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
+    if (this.shouldUseImagePipeline(settings)) {
+      const imageBase64 = this.buildKOTImage(bill, settings, cfg.paperSize);
+      await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
+      return;
+    }
     const data = this.buildKOTData(bill, settings, cfg.paperSize);
     await this.sendRaw(cfg.printerName, data);
   }
@@ -115,12 +125,27 @@ export class PrinterService {
     }
   }
 
+  private async sendImage(printerName: string, imageBase64: string, paperSize: PaperSize): Promise<void> {
+    const response = await this.fetchAgent('/print-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ printerName, imageBase64, paperSize })
+    });
+    if (!response?.success) {
+      throw new Error(response?.message || 'Image print failed');
+    }
+  }
+
   private async fetchAgent(path: string, init?: RequestInit): Promise<any> {
     const res = await fetch(`${this.AGENT_URL}${path}`, { ...init, cache: 'no-store' });
     if (!res.ok) {
       throw new Error(`Agent request failed (${res.status})`);
     }
     return res.json();
+  }
+
+  private shouldUseImagePipeline(settings: any): boolean {
+    return settings?.receiptLanguage === 'hi';
   }
 
   // ─── ESC/POS builders ──────────────────────────────────────────────────────
@@ -244,6 +269,190 @@ export class PrinterService {
     t += sep + '\n\n';
     t += GS + 'V\x41\x03';
     return t;
+  }
+
+  private buildReceiptImage(bill: any, settings: any, paperSize: PaperSize): string {
+    const lines: string[] = [];
+    const items: any[] = bill.items || [];
+    const isHindi = settings?.receiptLanguage === 'hi';
+
+    lines.push(settings?.businessName || 'My Business');
+    if (settings?.address) lines.push(String(settings.address));
+    if (settings?.taxNumber) lines.push('GST: ' + settings.taxNumber);
+    if (settings?.phone) lines.push('Ph: ' + settings.phone);
+    lines.push('');
+
+    lines.push('Date: ' + new Date(bill.createdAt).toLocaleString('en-IN', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    }));
+    lines.push('Bill: ' + (bill.billNumber || '').slice(-5));
+    const btd = bill.businessTypeData || {};
+    if (btd.tableNumber) lines.push('Table: ' + btd.tableNumber);
+    lines.push('-');
+
+    items.forEach(item => {
+      const name = this.pickItemName(item, isHindi);
+      const qty = item.isLooseItem ? Number(item.quantity || 0).toFixed(2) : String(Math.round(item.quantity || 0));
+      const price = Number(item.unitPrice || 0).toFixed(2);
+      const amount = Number(item.finalTotal ?? item.itemTotal ?? ((item.quantity || 0) * (item.unitPrice || 0))).toFixed(2);
+      lines.push(name);
+      lines.push(`Qty: ${qty}  Rate: ${price}  Amt: ${amount}`);
+    });
+
+    lines.push('-');
+    lines.push('Subtotal: Rs.' + Number(bill.subtotal || 0).toFixed(2));
+    if (Number(bill.taxTotal || 0) > 0) {
+      const rate = settings?.taxRates?.[0]?.rate || 0;
+      lines.push(`Tax (${rate}%): Rs.${Number(bill.taxTotal).toFixed(2)}`);
+    }
+    if (Number(bill.discountTotal || 0) > 0) {
+      lines.push('Discount: -Rs.' + Number(bill.discountTotal).toFixed(2));
+    }
+    lines.push('Grand Total: Rs.' + Number(bill.grandTotal || 0).toFixed(2));
+    lines.push('');
+    if (settings?.footerText) lines.push(String(settings.footerText));
+
+    return this.renderLinesToPngBase64(lines, paperSize, isHindi);
+  }
+
+  private buildKOTImage(bill: any, settings: any, paperSize: PaperSize): string {
+    const lines: string[] = [];
+    const isHindi = settings?.receiptLanguage === 'hi';
+    const newItems = (bill.items || []).filter((i: any) => i.quantity > (i.kotPrintedQuantity || 0));
+
+    lines.push('Kitchen Order');
+    lines.push('Date: ' + new Date().toLocaleString('en-IN', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    }));
+    lines.push('Bill: ' + (bill.billNumber || '').slice(-5));
+    const btd = bill.businessTypeData || {};
+    if (btd.tableNumber) {
+      const label = btd.tableType === 'parcel' ? 'Parcel' : 'Table';
+      lines.push(label + ': ' + btd.tableNumber);
+    }
+    lines.push('-');
+
+    newItems.forEach((item: any) => {
+      const name = this.pickItemName(item, isHindi);
+      const newQty = item.quantity - (item.kotPrintedQuantity || 0);
+      const qty = item.isLooseItem ? Number(newQty).toFixed(2) : String(Math.round(newQty));
+      const note = item.note ? ` [${item.note}]` : '';
+      lines.push(`${name}  x ${qty}${note}`);
+    });
+
+    return this.renderLinesToPngBase64(lines, paperSize, isHindi);
+  }
+
+  private renderLinesToPngBase64(lines: string[], paperSize: PaperSize, isHindi: boolean): string {
+    if (!this.isBrowser) {
+      throw new Error('Image print is available only in browser runtime');
+    }
+
+    const width = paperSize === '2inch' ? 384 : 576;
+    const padding = 16;
+    const maxTextWidth = width - (padding * 2);
+    const fontFamily = isHindi ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif' : '"Consolas", "Courier New", monospace';
+    const fontSize = 22;
+    const lineHeight = 30;
+
+    const measureCanvas = document.createElement('canvas');
+    const measureCtx = measureCanvas.getContext('2d');
+    if (!measureCtx) throw new Error('Unable to initialize print canvas');
+    measureCtx.font = `400 ${fontSize}px ${fontFamily}`;
+
+    const expanded: string[] = [];
+    for (const line of lines) {
+      if (line === '-') {
+        expanded.push('-');
+        continue;
+      }
+      const wrapped = this.wrapText(measureCtx, line, maxTextWidth);
+      expanded.push(...wrapped);
+    }
+
+    const height = Math.max(220, padding * 2 + expanded.length * lineHeight + 20);
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) throw new Error('Unable to initialize print canvas');
+
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, height);
+    ctx.fillStyle = '#000000';
+    ctx.font = `400 ${fontSize}px ${fontFamily}`;
+    ctx.textBaseline = 'top';
+
+    let y = padding;
+    expanded.forEach((line, idx) => {
+      if (line === '-') {
+        ctx.beginPath();
+        ctx.moveTo(padding, y + Math.floor(lineHeight / 2));
+        ctx.lineTo(width - padding, y + Math.floor(lineHeight / 2));
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = '#000000';
+        ctx.stroke();
+      } else {
+        const isTitle = idx === 0;
+        if (isTitle) {
+          ctx.font = `700 ${fontSize + 2}px ${fontFamily}`;
+          const titleWidth = ctx.measureText(line).width;
+          ctx.fillText(line, Math.max(padding, (width - titleWidth) / 2), y);
+          ctx.font = `400 ${fontSize}px ${fontFamily}`;
+        } else {
+          ctx.fillText(line, padding, y);
+        }
+      }
+      y += lineHeight;
+    });
+
+    const dataUrl = canvas.toDataURL('image/png');
+    return dataUrl.split(',')[1] || '';
+  }
+
+  private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+    const normalized = String(text ?? '').replace(/\s+/g, ' ').trim();
+    if (!normalized) return [''];
+
+    const words = normalized.split(' ');
+    const lines: string[] = [];
+    let current = '';
+
+    for (const word of words) {
+      const testLine = current ? `${current} ${word}` : word;
+      if (ctx.measureText(testLine).width <= maxWidth) {
+        current = testLine;
+        continue;
+      }
+
+      if (current) {
+        lines.push(current);
+        current = word;
+      } else {
+        let chunk = '';
+        for (const ch of word) {
+          const testChunk = chunk + ch;
+          if (ctx.measureText(testChunk).width <= maxWidth) {
+            chunk = testChunk;
+          } else {
+            if (chunk) lines.push(chunk);
+            chunk = ch;
+          }
+        }
+        current = chunk;
+      }
+    }
+
+    if (current) lines.push(current);
+    return lines;
+  }
+
+  private pickItemName(item: any, isHindi: boolean): string {
+    if (isHindi && item?.nameHi) return String(item.nameHi);
+    return String(item?.name || 'Unknown');
   }
 
   private rpad(label: string, value: string, width: number): string {
