@@ -94,7 +94,7 @@ export class PrinterService {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
     if (this.shouldUseImagePipeline(settings)) {
-      await this.sendHtmlJob(cfg.printerName, cfg.paperSize, this.buildReceiptHtml(bill, settings, cfg.paperSize));
+      await this.printHindiWithFallback(cfg.printerName, cfg.paperSize, 'receipt', bill, settings);
       return;
     }
     const data = this.buildReceiptData(bill, settings, cfg.paperSize);
@@ -105,7 +105,7 @@ export class PrinterService {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
     if (this.shouldUseImagePipeline(settings)) {
-      await this.sendHtmlJob(cfg.printerName, cfg.paperSize, this.buildKOTHtml(bill, settings, cfg.paperSize));
+      await this.printHindiWithFallback(cfg.printerName, cfg.paperSize, 'kot', bill, settings);
       return;
     }
     const data = this.buildKOTData(bill, settings, cfg.paperSize);
@@ -143,6 +143,53 @@ export class PrinterService {
     if (!response?.success) {
       throw new Error(response?.message || 'HTML print failed');
     }
+  }
+
+  private async sendUnicodeJob(
+    printerName: string,
+    paperSize: PaperSize,
+    type: 'receipt' | 'kot',
+    bill: any,
+    settings: any
+  ): Promise<void> {
+    const response = await this.fetchAgent('/print-unicode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ printerName, paperSize, type, bill, settings })
+    });
+    if (!response?.success) {
+      throw new Error(response?.message || 'Unicode print failed');
+    }
+  }
+
+  private async printHindiWithFallback(
+    printerName: string,
+    paperSize: PaperSize,
+    type: 'receipt' | 'kot',
+    bill: any,
+    settings: any
+  ): Promise<void> {
+    try {
+      const html = type === 'kot'
+        ? this.buildKOTHtml(bill, settings, paperSize)
+        : this.buildReceiptHtml(bill, settings, paperSize);
+      await this.sendHtmlJob(printerName, paperSize, html);
+      return;
+    } catch (htmlErr) {
+      console.warn('Hindi HTML print failed, trying unicode fallback:', htmlErr);
+    }
+
+    try {
+      await this.sendUnicodeJob(printerName, paperSize, type, bill, settings);
+      return;
+    } catch (unicodeErr) {
+      console.warn('Hindi unicode print failed, trying image fallback:', unicodeErr);
+    }
+
+    const imageBase64 = type === 'kot'
+      ? this.buildKOTImage(bill, settings, paperSize)
+      : this.buildReceiptImage(bill, settings, paperSize);
+    await this.sendImage(printerName, imageBase64, paperSize);
   }
 
   private async fetchAgent(path: string, init?: RequestInit): Promise<any> {
