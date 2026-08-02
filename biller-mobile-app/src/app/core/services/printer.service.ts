@@ -332,6 +332,9 @@ export class PrinterService {
     const addressLines = settings?.address ? this.wrapText(m, String(settings.address), width - (padding * 2)) : [];
     const footerLines = settings?.footerText ? this.wrapText(m, String(settings.footerText), width - (padding * 2)) : [];
 
+    const dashGap = 6;
+    const dashBlock = (dashGap * 2) + 1;
+
     let height = 0;
     height += padding;
     height += titleSize + 8;
@@ -343,18 +346,18 @@ export class PrinterService {
     if (bill.businessTypeData?.tableNumber) height += smallSize + 6;
     height += 8;
     height += rowHeight;
-    height += 6;
+    height += dashBlock;
 
     itemNameLines.forEach(lines => {
       height += Math.max(1, lines.length) * rowHeight + 3;
     });
 
-    height += 8;
+    height += dashBlock;
     height += rowHeight;
     if (Number(bill.taxTotal || 0) > 0) height += rowHeight;
     if (Number(bill.discountTotal || 0) > 0) height += rowHeight;
-    height += rowHeight + 4;
-    height += 8;
+    height += rowHeight;
+    height += dashBlock;
     height += footerLines.length * (smallSize + 6);
     height += padding;
 
@@ -381,6 +384,18 @@ export class PrinterService {
       ctx.font = font;
       const tw = ctx.measureText(text).width;
       ctx.fillText(text, Math.max(x, x + w - tw - rightTextInset), yPos);
+    };
+
+    const drawDashedSep = (yPos: number) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.setLineDash([6, 4]);
+      ctx.moveTo(padding, yPos);
+      ctx.lineTo(right, yPos);
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = '#000000';
+      ctx.stroke();
+      ctx.restore();
     };
 
     let y = padding;
@@ -432,7 +447,9 @@ export class PrinterService {
     drawRight('Qty X Rate', xCombo, y, comboW, `700 ${bodySize}px ${fontFamily}`);
     y += rowHeight;
 
-    y += 6;
+    y += dashGap;
+    drawDashedSep(y);
+    y += dashGap;
 
     ctx.font = `400 ${bodySize}px ${fontFamily}`;
     items.forEach((item, i) => {
@@ -451,7 +468,9 @@ export class PrinterService {
       y += Math.max(1, nameLines.length) * rowHeight + 3;
     });
 
-    y += 8;
+    y += dashGap;
+    drawDashedSep(y);
+    y += dashGap;
 
     const drawTotalLine = (label: string, value: string, bold = false) => {
       ctx.font = `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`;
@@ -470,7 +489,9 @@ export class PrinterService {
     }
     drawTotalLine('Grand Total', Number(bill.grandTotal || 0).toFixed(2), true);
 
-    y += 10;
+    y += dashGap;
+    drawDashedSep(y);
+    y += dashGap;
 
     ctx.font = `400 ${smallSize}px ${fontFamily}`;
     footerLines.forEach(line => {
