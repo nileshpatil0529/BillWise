@@ -721,8 +721,8 @@ export class PrinterService {
   <meta charset="UTF-8" />
   <style>
     @page { size: ${paperSize === '2inch' ? '58mm' : '80mm'} auto; margin: 0; }
-    body { margin: 0; padding: 4mm 3mm; font-family: "Nirmala UI", "Mangal", sans-serif; font-size: 12px; color: #000; }
-    .title { text-align: center; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    body { margin: 0; padding: 4mm 3mm; font-family: "Nirmala UI", "Mangal", sans-serif; font-size: 36px; color: #000; }
+    .title { text-align: center; font-size: 48px; font-weight: 700; margin-bottom: 12px; }
     .meta { margin-bottom: 4px; }
     .line { border-top: 1px dashed #000; margin: 4px 0; }
     table { width: 100%; border-collapse: collapse; }
@@ -731,7 +731,7 @@ export class PrinterService {
     .right { text-align: right; white-space: nowrap; }
     .name { width: 62%; word-break: break-word; }
     .totals td { padding-top: 2px; }
-    .grand td { font-weight: 700; font-size: 14px; }
+    .grand td { font-weight: 700; font-size: 42px; }
   </style>
 </head>
 <body>
@@ -776,8 +776,8 @@ export class PrinterService {
   <meta charset="UTF-8" />
   <style>
     @page { size: ${paperSize === '2inch' ? '58mm' : '80mm'} auto; margin: 0; }
-    body { margin: 0; padding: 4mm 3mm; font-family: "Nirmala UI", "Mangal", sans-serif; font-size: 12px; color: #000; }
-    .title { text-align: center; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    body { margin: 0; padding: 4mm 3mm; font-family: "Nirmala UI", "Mangal", sans-serif; font-size: 36px; color: #000; }
+    .title { text-align: center; font-size: 48px; font-weight: 700; margin-bottom: 12px; }
     .line { border-top: 1px dashed #000; margin: 4px 0; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 2px 0; }
