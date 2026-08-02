@@ -1721,10 +1721,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Get unique table types, keeping dine-in and parcel first for familiarity
   getTableTypes(): string[] {
-    const types = Array.from(new Set(this.hotelService.tables().map(t => t.tableType || 'dine-in')));
-    const ordered = ['dine-in', 'parcel'];
+    const typeSet = new Set<string>(this.hotelService.tables().map(t => t.tableType || 'dine-in'));
+    const types = Array.from(typeSet);
+    const ordered: string[] = ['dine-in', 'parcel'];
     const remaining = types.filter(t => !ordered.includes(t)).sort((a, b) => a.localeCompare(b));
-    return [...ordered.filter(t => types.includes(t)), ...remaining];
+    return [...ordered.filter(t => typeSet.has(t)), ...remaining];
   }
 
   // Get tables for a given type
