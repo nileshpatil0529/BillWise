@@ -94,8 +94,7 @@ export class PrinterService {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
     if (this.shouldUseImagePipeline(settings)) {
-      const imageBase64 = this.buildReceiptImage(bill, settings, cfg.paperSize);
-      await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
+      await this.sendUnicodeJob(cfg.printerName, cfg.paperSize, 'receipt', bill, settings);
       return;
     }
     const data = this.buildReceiptData(bill, settings, cfg.paperSize);
@@ -106,8 +105,7 @@ export class PrinterService {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
     if (this.shouldUseImagePipeline(settings)) {
-      const imageBase64 = this.buildKOTImage(bill, settings, cfg.paperSize);
-      await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
+      await this.sendUnicodeJob(cfg.printerName, cfg.paperSize, 'kot', bill, settings);
       return;
     }
     const data = this.buildKOTData(bill, settings, cfg.paperSize);
@@ -133,6 +131,23 @@ export class PrinterService {
     });
     if (!response?.success) {
       throw new Error(response?.message || 'Image print failed');
+    }
+  }
+
+  private async sendUnicodeJob(
+    printerName: string,
+    paperSize: PaperSize,
+    type: 'receipt' | 'kot',
+    bill: any,
+    settings: any
+  ): Promise<void> {
+    const response = await this.fetchAgent('/print-unicode', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ printerName, paperSize, type, bill, settings })
+    });
+    if (!response?.success) {
+      throw new Error(response?.message || 'Unicode print failed');
     }
   }
 

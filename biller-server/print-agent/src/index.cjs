@@ -256,7 +256,6 @@ $handler = [System.Drawing.Printing.PrintPageEventHandler]{
   $dpiX = $e.Graphics.DpiX
   if ($dpiX -le 0) { $dpiX = 203 }
 
-  # Convert paper width from hundredths of an inch to printer pixels.
   $targetWidthPx = [int]([Math]::Round(($paperWidth / 100.0) * $dpiX))
   if ($targetWidthPx -le 0) { $targetWidthPx = $image.Width }
   $targetHeightPx = [int]([Math]::Round($image.Height * ($targetWidthPx / [double]$image.Width)))
@@ -299,6 +298,205 @@ finally {
     } catch {
       // Best effort cleanup.
     }
+  }
+}
+
+function sendUnicodeToPrinter(printerName, paperSize = '3inch', type = 'receipt', bill = {}, settings = {}) {
+  const escapedPrinter = escapeSingleQuotes(printerName);
+  const payloadBase64 = Buffer.from(JSON.stringify({ paperSize, type, bill, settings }), 'utf8').toString('base64');
+
+  const ps = `
+$ErrorActionPreference = 'Stop'
+$printerName = '${escapedPrinter}'
+$base64 = '${payloadBase64}'
+
+Add-Type -AssemblyName System.Drawing
+
+$json = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($base64))
+$payload = $json | ConvertFrom-Json -Depth 20
+
+$paperSize = [string]$payload.paperSize
+$jobType = [string]$payload.type
+$bill = $payload.bill
+$settings = $payload.settings
+
+$paperWidth = if ($paperSize -eq '2inch') { 200 } else { 300 }
+$left = 10
+$right = $paperWidth - 10
+$lineGap = 3
+
+$titleSize = if ($paperSize -eq '2inch') { 10.0 } else { 11.0 }
+$bodySize = if ($paperSize -eq '2inch') { 8.0 } else { 9.0 }
+$smallSize = if ($paperSize -eq '2inch') { 7.0 } else { 8.0 }
+
+$fontFamily = 'Nirmala UI'
+$fontTitle = New-Object System.Drawing.Font($fontFamily, $titleSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Point)
+$fontBody = New-Object System.Drawing.Font($fontFamily, $bodySize, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Point)
+$fontBodyBold = New-Object System.Drawing.Font($fontFamily, $bodySize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Point)
+$fontSmall = New-Object System.Drawing.Font($fontFamily, $smallSize, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Point)
+$brush = [System.Drawing.Brushes]::Black
+
+$printDoc = New-Object System.Drawing.Printing.PrintDocument
+$printDoc.PrinterSettings.PrinterName = $printerName
+if (-not $printDoc.PrinterSettings.IsValid) {
+  throw "Invalid printer: $printerName"
+}
+
+$printDoc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
+$printDoc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
+$printDoc.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('BillWiseUnicode', $paperWidth, 2400)
+
+$fmtLeft = New-Object System.Drawing.StringFormat
+$fmtLeft.Alignment = [System.Drawing.StringAlignment]::Near
+$fmtLeft.LineAlignment = [System.Drawing.StringAlignment]::Near
+
+$fmtRight = New-Object System.Drawing.StringFormat
+$fmtRight.Alignment = [System.Drawing.StringAlignment]::Far
+$fmtRight.LineAlignment = [System.Drawing.StringAlignment]::Near
+
+$handler = [System.Drawing.Printing.PrintPageEventHandler]{
+  param($sender, $e)
+
+  $e.Graphics.PageUnit = [System.Drawing.GraphicsUnit]::Display
+  $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None
+  $e.Graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::SingleBitPerPixelGridFit
+
+  $y = 6
+
+  function Draw-CenterLine {
+    param([string]$text, [System.Drawing.Font]$font)
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    $size = $e.Graphics.MeasureString($text, $font)
+    $x = [Math]::Max($left, (($right - $left) - $size.Width) / 2 + $left)
+    $e.Graphics.DrawString($text, $font, $brush, $x, $y)
+    $script:y += [int][Math]::Ceiling($size.Height) + $lineGap
+  }
+
+  function Draw-LeftLine {
+    param([string]$text, [System.Drawing.Font]$font)
+    if ([string]::IsNullOrWhiteSpace($text)) { return }
+    $e.Graphics.DrawString($text, $font, $brush, $left, $y)
+    $size = $e.Graphics.MeasureString($text, $font)
+    $script:y += [int][Math]::Ceiling($size.Height) + $lineGap
+  }
+
+  function Draw-Sep {
+    $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::Black, 1)
+    $e.Graphics.DrawLine($pen, $left, $y, $right, $y)
+    $pen.Dispose()
+    $script:y += 6
+  }
+
+  $bizName = if ($settings.businessName) { [string]$settings.businessName } else { 'My Business' }
+  Draw-CenterLine $bizName $fontTitle
+  Draw-CenterLine ([string]$settings.address) $fontSmall
+  Draw-CenterLine ((if ($settings.taxNumber) { 'GST: ' + [string]$settings.taxNumber } else { '' })) $fontSmall
+  Draw-CenterLine ((if ($settings.phone) { 'Ph: ' + [string]$settings.phone } else { '' })) $fontSmall
+
+  if ($bill.createdAt) {
+    Draw-LeftLine ('Date: ' + [DateTime]::Parse([string]$bill.createdAt).ToString('dd/MM/yyyy, hh:mm tt')) $fontSmall
+  }
+  Draw-LeftLine ('Bill: ' + [string]$bill.billNumber) $fontSmall
+  if ($bill.businessTypeData -and $bill.businessTypeData.tableNumber) {
+    Draw-LeftLine ('Table: ' + [string]$bill.businessTypeData.tableNumber) $fontSmall
+  }
+
+  Draw-Sep
+
+  if ($jobType -eq 'kot') {
+    $e.Graphics.DrawString('Name', $fontBodyBold, $brush, $left, $y)
+    $e.Graphics.DrawString('Qty', $fontBodyBold, $brush, $right, $y, $fmtRight)
+    $y += 16
+    Draw-Sep
+
+    foreach ($item in $bill.items) {
+      $printedQty = 0
+      if ($item.kotPrintedQuantity) { $printedQty = [double]$item.kotPrintedQuantity }
+      $qtyRaw = [double]$item.quantity - $printedQty
+      if ($qtyRaw -le 0) { continue }
+
+      $name = if ($item.nameHi) { [string]$item.nameHi } else { [string]$item.name }
+      $qty = if ($item.isLooseItem) { '{0:0.##}' -f $qtyRaw } else { '{0:0}' -f [Math]::Round($qtyRaw) }
+
+      $nameColRight = $right - 64
+      $nameRect = New-Object System.Drawing.RectangleF($left, $y, ($nameColRight - $left), 200)
+      $nameSize = $e.Graphics.MeasureString($name, $fontBody, [int]($nameColRight - $left))
+      $e.Graphics.DrawString($name, $fontBody, $brush, $nameRect, $fmtLeft)
+      $e.Graphics.DrawString($qty, $fontBody, $brush, $right, $y, $fmtRight)
+
+      $y += [int][Math]::Ceiling($nameSize.Height) + 2
+    }
+  }
+  else {
+    $e.Graphics.DrawString('Name', $fontBodyBold, $brush, $left, $y)
+    $e.Graphics.DrawString('Qty X Rate', $fontBodyBold, $brush, $right, $y, $fmtRight)
+    $y += 16
+    Draw-Sep
+
+    foreach ($item in $bill.items) {
+      $name = if ($item.nameHi) { [string]$item.nameHi } else { [string]$item.name }
+      $qty = if ($item.isLooseItem) { '{0:0.##}' -f [double]$item.quantity } else { '{0:0}' -f [Math]::Round([double]$item.quantity) }
+      $rate = '{0:0.##}' -f [double]$item.unitPrice
+      $rightText = "$qty X $rate"
+
+      $nameColRight = $right - 92
+      $nameRect = New-Object System.Drawing.RectangleF($left, $y, ($nameColRight - $left), 200)
+      $nameSize = $e.Graphics.MeasureString($name, $fontBody, [int]($nameColRight - $left))
+      $e.Graphics.DrawString($name, $fontBody, $brush, $nameRect, $fmtLeft)
+      $e.Graphics.DrawString($rightText, $fontBody, $brush, $right, $y, $fmtRight)
+
+      $y += [int][Math]::Ceiling($nameSize.Height) + 2
+    }
+
+    Draw-Sep
+    $e.Graphics.DrawString('Subtotal', $fontBody, $brush, $left, $y)
+    $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.subtotal), $fontBody, $brush, $right, $y, $fmtRight)
+    $y += 16
+
+    if ([double]$bill.taxTotal -gt 0) {
+      $taxRate = 0
+      if ($settings.taxRates -and $settings.taxRates.Count -gt 0) { $taxRate = [double]$settings.taxRates[0].rate }
+      $e.Graphics.DrawString("Tax ($taxRate%)", $fontBody, $brush, $left, $y)
+      $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.taxTotal), $fontBody, $brush, $right, $y, $fmtRight)
+      $y += 16
+    }
+
+    if ([double]$bill.discountTotal -gt 0) {
+      $e.Graphics.DrawString('Discount', $fontBody, $brush, $left, $y)
+      $e.Graphics.DrawString(('-' + ('{0:0.##}' -f [double]$bill.discountTotal)), $fontBody, $brush, $right, $y, $fmtRight)
+      $y += 16
+    }
+
+    $e.Graphics.DrawString('Grand Total', $fontBodyBold, $brush, $left, $y)
+    $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.grandTotal), $fontBodyBold, $brush, $right, $y, $fmtRight)
+    $y += 18
+
+    Draw-Sep
+    Draw-CenterLine ([string]$settings.footerText) $fontSmall
+  }
+
+  $e.HasMorePages = $false
+}
+
+$printDoc.add_PrintPage($handler)
+try {
+  $printDoc.Print()
+}
+finally {
+  $printDoc.remove_PrintPage($handler)
+  $fontTitle.Dispose()
+  $fontBody.Dispose()
+  $fontBodyBold.Dispose()
+  $fontSmall.Dispose()
+  $fmtLeft.Dispose()
+  $fmtRight.Dispose()
+  $printDoc.Dispose()
+}
+`;
+
+  const result = runPowerShell(ps);
+  if (result.status !== 0) {
+    throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Unicode print failed');
   }
 }
 
@@ -382,6 +580,26 @@ async function startService() {
       return res.json({ success: true, message: 'Image print sent' });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message || 'Image print failed' });
+    }
+  });
+
+  app.post('/print-unicode', (req, res) => {
+    const body = req.body || {};
+    const printerName = body.printerName;
+    const paperSize = body.paperSize || '3inch';
+    const type = body.type || 'receipt';
+    const bill = body.bill || {};
+    const settings = body.settings || {};
+
+    if (!printerName) {
+      return res.status(400).json({ success: false, message: 'printerName is required' });
+    }
+
+    try {
+      sendUnicodeToPrinter(printerName, paperSize, type, bill, settings);
+      return res.json({ success: true, message: 'Unicode print sent' });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message || 'Unicode print failed' });
     }
   });
 
