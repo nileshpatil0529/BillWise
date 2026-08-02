@@ -319,10 +319,10 @@ export class PrinterService {
     const fontFamily = isHindi
       ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif'
       : '"Consolas", "Courier New", monospace';
-    const titleSize = paperSize === '2inch' ? 24 : 26;
-    const bodySize = paperSize === '2inch' ? 20 : 22;
-    const smallSize = paperSize === '2inch' ? 16 : 17;
-    const rowHeight = paperSize === '2inch' ? 28 : 31;
+    const titleSize = paperSize === '2inch' ? 18 : 20;
+    const bodySize = paperSize === '2inch' ? 14 : 16;
+    const smallSize = paperSize === '2inch' ? 12 : 13;
+    const rowHeight = paperSize === '2inch' ? 20 : 22;
 
     const measureCanvas = document.createElement('canvas');
     const m = measureCanvas.getContext('2d');
@@ -361,7 +361,7 @@ export class PrinterService {
     height += footerLines.length * (smallSize + 6);
     height += padding;
 
-    const scale = 3;
+    const scale = 2;
     const canvas = document.createElement('canvas');
     canvas.width = width * scale;
     canvas.height = Math.max(300, Math.ceil(height * scale));
@@ -508,7 +508,7 @@ export class PrinterService {
 
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     const data = imageData.data;
-    const threshold = 172;
+    const threshold = 160;
 
     for (let i = 0; i < data.length; i += 4) {
       const r = data[i];
@@ -533,11 +533,11 @@ export class PrinterService {
     }
 
     const width = paperSize === '2inch' ? 384 : 576;
-    const padding = 16;
+    const padding = 14;
     const maxTextWidth = width - (padding * 2);
     const fontFamily = isHindi ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif' : '"Consolas", "Courier New", monospace';
-    const fontSize = 22;
-    const lineHeight = 30;
+    const fontSize = paperSize === '2inch' ? 14 : 16;
+    const lineHeight = paperSize === '2inch' ? 20 : 22;
 
     const measureCanvas = document.createElement('canvas');
     const measureCtx = measureCanvas.getContext('2d');
@@ -554,14 +554,16 @@ export class PrinterService {
       expanded.push(...wrapped);
     }
 
-    const height = Math.max(220, padding * 2 + expanded.length * lineHeight + 20);
+    const height = Math.max(180, padding * 2 + expanded.length * lineHeight + 16);
     const canvas = document.createElement('canvas');
-    canvas.width = width;
-    canvas.height = height;
+    const scale = 2;
+    canvas.width = width * scale;
+    canvas.height = height * scale;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) throw new Error('Unable to initialize print canvas');
 
+    ctx.scale(scale, scale);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, height);
     ctx.fillStyle = '#000000';
@@ -580,7 +582,7 @@ export class PrinterService {
       } else {
         const isTitle = idx === 0;
         if (isTitle) {
-          ctx.font = `700 ${fontSize + 2}px ${fontFamily}`;
+          ctx.font = `700 ${fontSize + 1}px ${fontFamily}`;
           const titleWidth = ctx.measureText(line).width;
           ctx.fillText(line, Math.max(padding, (width - titleWidth) / 2), y);
           ctx.font = `400 ${fontSize}px ${fontFamily}`;
@@ -591,8 +593,7 @@ export class PrinterService {
       y += lineHeight;
     });
 
-    const dataUrl = canvas.toDataURL('image/png');
-    return dataUrl.split(',')[1] || '';
+    return this.toHighContrastPngBase64(canvas);
   }
 
   private wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
