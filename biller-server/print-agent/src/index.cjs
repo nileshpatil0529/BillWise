@@ -354,6 +354,14 @@ $handler = [System.Windows.Forms.WebBrowserDocumentCompletedEventHandler]{
   param($sender, $e)
   if ($sender.ReadyState -ne [System.Windows.Forms.WebBrowserReadyState]::Complete) { return }
   try {
+    if ($sender.Document -and $sender.Document.Body) {
+      $existing = $sender.Document.Body.Style
+      if ([string]::IsNullOrWhiteSpace($existing)) {
+        $sender.Document.Body.Style = "zoom: 300%;"
+      } else {
+        $sender.Document.Body.Style = $existing + "; zoom: 300%;"
+      }
+    }
     $sender.Print()
   } finally {
     $done.Set() | Out-Null
@@ -409,8 +417,8 @@ function sendUnicodeToPrinter(printerName, paperSize = '3inch', type = 'receipt'
   const html = `<!doctype html><html><head><meta charset="UTF-8" />
 <style>
 @page { size: ${paperSize === '2inch' ? '58mm' : '80mm'} auto; margin: 0; }
-body { margin:0; padding:1.2mm 1mm; font-family:"Nirmala UI","Mangal",sans-serif; font-size:14px; color:#000; }
-.title { text-align:center; font-size:18px; font-weight:700; margin-bottom:3px; }
+body { margin:0; padding:1mm 0.8mm; font-family:"Nirmala UI","Mangal",sans-serif; font-size:36px; color:#000; }
+.title { text-align:center; font-size:48px; font-weight:700; margin-bottom:6px; }
 .line { border-top:1px dashed #000; margin:4px 0; }
 table { width:100%; border-collapse:collapse; }
 th,td { padding:1px 0; vertical-align:top; }
