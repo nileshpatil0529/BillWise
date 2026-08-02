@@ -60,7 +60,32 @@ export const getTable = async (req, res) => {
 // Create tables in range
 export const createTables = async (req, res) => {
   try {
-    const { startNumber, endNumber, tableType = 'dine-in', capacity = 4 } = req.body;
+    const { startNumber, endNumber, tableType = 'dine-in', capacity = 4, customTableName } = req.body;
+
+    const type = ['dine-in', 'parcel', 'garden'].includes(tableType) ? tableType : 'dine-in';
+
+    if (customTableName && String(customTableName).trim()) {
+      const manualName = String(customTableName).trim();
+      const existing = db.prepare('SELECT id FROM restaurant_tables WHERE LOWER(tableNumber) = LOWER(?)').get(manualName);
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: 'Table name already exists'
+        });
+      }
+
+      db.prepare(`
+        INSERT INTO restaurant_tables (tableNumber, tableType, capacity, status)
+        VALUES (?, ?, ?, 'available')
+      `).run(manualName, type, capacity);
+
+      emitTablesRefresh();
+      return res.status(201).json({
+        success: true,
+        message: 'Table created successfully',
+        data: { created: [manualName], skipped: [] }
+      });
+    }
 
     if (!startNumber || !endNumber) {
       return res.status(400).json({
@@ -88,10 +113,10 @@ export const createTables = async (req, res) => {
     const skippedTables = [];
 
     for (let i = start; i <= end; i++) {
-      const tableNumber = tableType === 'parcel' ? `P${i}` : `T${i}`;
+      const tableNumber = type === 'parcel' ? `P${i}` : (type === 'garden' ? `G${i}` : `T${i}`);
       
       try {
-        insertTable.run(tableNumber, tableType, capacity);
+        insertTable.run(tableNumber, type, capacity);
         createdTables.push(tableNumber);
       } catch (e) {
         // Table already exists

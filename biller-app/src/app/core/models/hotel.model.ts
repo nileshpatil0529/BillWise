@@ -1,7 +1,7 @@
 export interface RestaurantTable {
   id: number;
   tableNumber: string;
-  tableType: 'dine-in' | 'parcel';
+  tableType: 'dine-in' | 'parcel' | 'garden';
   capacity: number;
   status: 'available' | 'occupied' | 'reserved' | 'cleaning';
   currentBillId?: string;
@@ -14,8 +14,9 @@ export interface RestaurantTable {
 export interface CreateTablesRequest {
   startNumber: number;
   endNumber: number;
-  tableType: 'dine-in' | 'parcel';
+  tableType: 'dine-in' | 'parcel' | 'garden';
   capacity?: number;
+  customTableName?: string;
 }
 
 export interface ItemNote {

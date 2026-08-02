@@ -298,6 +298,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                 const product = {
                   productId: item.productId,
                   name: item.name,
+                  nameHi: item.nameHi,
                   unitPrice: item.unitPrice,
                   category: item.category || 'General',
                   stockQuantity: 9999,
@@ -1131,6 +1132,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             const cartItems = bill.items.map((item: any) => ({
               productId: item.productId,
               name: item.name,
+                nameHi: item.nameHi,
               unitPrice: item.unitPrice,
               category: item.category || 'General',
               stockQuantity: 9999,
@@ -1398,6 +1400,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // Save current table state before switching
   private saveCurrentTableState(): void {
     const table = this.selectedTable();
+    const isDebt = this.paymentMethod() === 'debt';
+    const total = this.billService.cartTotal();
+    const paid = isDebt ? 0 : total;
     if (!table) return;
     
     const currentState: AttendedTableState = {
@@ -1439,6 +1444,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       const product = {
         productId: item.productId,
         name: item.name,
+        nameHi: item.nameHi,
         unitPrice: item.unitPrice,
         category: item.category || 'General',
         stockQuantity: 9999,
@@ -1542,6 +1548,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       items: this.billService.cartItems().map(item => ({
         productId: item.productId,
         name: item.name,
+        nameHi: item.nameHi,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         note: item.note
@@ -1555,6 +1562,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         items: this.billService.cartItems().map(item => ({
           productId: item.productId,
           name: item.name,
+          nameHi: item.nameHi,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           note: item.note
@@ -1626,6 +1634,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       items: this.billService.cartItems().map(item => ({
         productId: item.productId,
         name: item.name,
+        nameHi: item.nameHi,
         quantity: item.quantity,
         unitPrice: item.unitPrice,
         note: item.note
@@ -1639,6 +1648,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         items: this.billService.cartItems().map(item => ({
           productId: item.productId,
           name: item.name,
+          nameHi: item.nameHi,
           quantity: item.quantity,
           unitPrice: item.unitPrice,
           note: item.note
@@ -1723,8 +1733,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const billData = {
       billStatus: 'completed' as const,
       paymentMethod: this.paymentMethod(),
-      paymentStatus: 'paid' as const,
-      amountPaid: this.billService.cartTotal(),
+      paymentStatus: (isDebt ? 'pending' : 'paid') as const,
+      amountPaid: paid,
       billDiscount: this.billService.billDiscount(),
       customerName: this.customerName(),
       customerPhone: this.customerPhone()
@@ -1756,6 +1766,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     }
 
     const table = this.selectedTable();
+    const isDebt = this.paymentMethod() === 'debt';
+    const total = this.billService.cartTotal();
+    const paid = isDebt ? 0 : total;
 
     // Print the bill first
     this.billService.printBill(this.currentBillId()!).subscribe({
@@ -1764,8 +1777,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         const billData = {
           billStatus: 'completed' as const,
           paymentMethod: this.paymentMethod(),
-          paymentStatus: 'paid' as const,
-          amountPaid: this.billService.cartTotal(),
+          paymentStatus: (isDebt ? 'pending' : 'paid') as const,
+          amountPaid: paid,
           billDiscount: this.billService.billDiscount(),
           customerName: this.customerName(),
           customerPhone: this.customerPhone()
@@ -1922,6 +1935,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                       const cartItems = bill.items.map((item: any) => ({
                         productId: item.productId,
                         name: item.name,
+                        nameHi: item.nameHi,
                         unitPrice: item.unitPrice,
                         category: item.category || 'General',
                         stockQuantity: 9999,

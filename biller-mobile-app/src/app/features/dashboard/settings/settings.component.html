@@ -312,6 +312,7 @@
           <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
             <mat-option value="dine-in">{{ translateService.t('settings.dineInTables') }}</mat-option>
             <mat-option value="parcel">{{ translateService.t('settings.parcelTakeaway') }}</mat-option>
+            <mat-option value="garden">Garden Table</mat-option>
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" class="number-field">
@@ -328,6 +329,17 @@
       <button mat-flat-button color="primary" class="add-tables-btn" (click)="addTables()" [disabled]="saving()">
         <mat-icon>add</mat-icon>
         {{ translateService.t('common.add') }}
+      </button>
+
+      <div class="tables-add-row">
+        <mat-form-field appearance="outline" class="type-field">
+          <mat-label>Manual Table Name</mat-label>
+          <input matInput [value]="customTableName()" (input)="customTableName.set($any($event.target).value)" placeholder="e.g., Garden Table A1">
+        </mat-form-field>
+      </div>
+      <button mat-flat-button color="accent" class="add-tables-btn" (click)="addCustomTable()" [disabled]="saving()">
+        <mat-icon>playlist_add</mat-icon>
+        Add Manual
       </button>
 
       <!-- Dine-In Tables -->
@@ -356,6 +368,24 @@
         <div class="tables-chips">
           @for (table of getParcelTables(); track table.id) {
             <div class="table-chip parcel" [class.occupied]="table.status === 'occupied'">
+              <span>{{ table.tableNumber }}</span>
+              @if (table.status !== 'occupied') {
+                <button mat-icon-button (click)="deleteTable(table)">
+                  <mat-icon>close</mat-icon>
+                </button>
+              }
+            </div>
+          }
+        </div>
+      </div>
+      }
+
+      @if (getGardenTables().length > 0) {
+      <div class="tables-group">
+        <span class="group-label">Garden Tables ({{ getGardenTables().length }})</span>
+        <div class="tables-chips">
+          @for (table of getGardenTables(); track table.id) {
+            <div class="table-chip" [class.occupied]="table.status === 'occupied'">
               <span>{{ table.tableNumber }}</span>
               @if (table.status !== 'occupied') {
                 <button mat-icon-button (click)="deleteTable(table)">

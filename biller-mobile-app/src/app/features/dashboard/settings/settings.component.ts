@@ -75,7 +75,8 @@ export class SettingsComponent implements OnInit {
   // Hotel Management
   newTableStartNumber = signal<number>(1);
   newTableEndNumber = signal<number>(10);
-  newTableType = signal<'dine-in' | 'parcel'>('dine-in');
+  newTableType = signal<'dine-in' | 'parcel' | 'garden'>('dine-in');
+  customTableName = signal<string>('');
   newNoteLabel = signal<string>('');
   
   // Grocery Management - Units
@@ -629,6 +630,38 @@ export class SettingsComponent implements OnInit {
         this.saving.set(false);
       }
     });
+  }
+
+  addCustomTable(): void {
+    const tableType = this.newTableType();
+    const customName = this.customTableName().trim();
+
+    if (!customName) {
+      this.snackBar.open('Please enter a table name', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.saving.set(true);
+    this.hotelService.createTables({
+      startNumber: 1,
+      endNumber: 1,
+      tableType,
+      customTableName: customName
+    }).subscribe({
+      next: () => {
+        this.customTableName.set('');
+        this.saving.set(false);
+      },
+      error: (err) => {
+        const message = err?.error?.message || 'Failed to create table';
+        this.snackBar.open(message, 'Close', { duration: 3000 });
+        this.saving.set(false);
+      }
+    });
+  }
+
+  getGardenTables(): RestaurantTable[] {
+    return this.hotelService.tables().filter(t => t.tableType === 'garden');
   }
 
   deleteTable(table: RestaurantTable): void {

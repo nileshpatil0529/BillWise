@@ -27,6 +27,27 @@ const generateBillNumber = () => {
   return `${prefix}${dateStr}${nextNumber.toString().padStart(4, '0')}`;
 };
 
+const ensureDebtCustomer = (name, phone, now) => {
+  const customerName = String(name || '').trim();
+  const customerPhone = String(phone || '').trim();
+  if (!customerPhone) return;
+
+  const existing = db.prepare('SELECT * FROM customers WHERE phone = ?').get(customerPhone);
+  if (existing) {
+    if (customerName && customerName !== existing.name) {
+      db.prepare('UPDATE customers SET name = ?, updatedAt = ? WHERE customerId = ?')
+        .run(customerName, now, existing.customerId);
+    }
+    return;
+  }
+
+  const customerId = `CUST-${uuidv4().slice(0, 8).toUpperCase()}`;
+  db.prepare(`
+    INSERT INTO customers (customerId, name, phone, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(customerId, customerName || customerPhone, customerPhone, now, now);
+};
+
 export const getAllBills = async (req, res) => {
   try {
     const { 
@@ -197,6 +218,10 @@ export const createBill = async (req, res) => {
 
     // Use transaction for inserting bill and items
     const insertBillAndItems = db.transaction(() => {
+      if ((billData.paymentMethod || 'cash') === 'debt') {
+        ensureDebtCustomer(billData.customerName, billData.customerPhone, now);
+      }
+
       // Generate bill number inside transaction to prevent race conditions
       const billNumber = generateBillNumber();
       
@@ -308,6 +333,13 @@ export const updateBill = async (req, res) => {
     }
 
     const now = new Date().toISOString();
+    const finalPaymentMethod = updates.paymentMethod ?? bill.paymentMethod;
+    const finalCustomerName = updates.customerName ?? bill.customerName;
+    const finalCustomerPhone = updates.customerPhone ?? bill.customerPhone;
+
+    if (finalPaymentMethod === 'debt') {
+      ensureDebtCustomer(finalCustomerName, finalCustomerPhone, now);
+    }
 
     // Handle hotel mode updates
     if (updates.billStatus !== undefined || updates.kotItems !== undefined || updates.items !== undefined) {
