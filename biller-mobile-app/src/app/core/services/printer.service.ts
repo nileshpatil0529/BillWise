@@ -317,10 +317,10 @@ export class PrinterService {
     const fontFamily = isHindi
       ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif'
       : '"Consolas", "Courier New", monospace';
-    const titleSize = paperSize === '2inch' ? 30 : 34;
-    const bodySize = paperSize === '2inch' ? 22 : 26;
-    const smallSize = paperSize === '2inch' ? 18 : 21;
-    const rowHeight = paperSize === '2inch' ? 32 : 36;
+    const titleSize = paperSize === '2inch' ? 36 : 42;
+    const bodySize = paperSize === '2inch' ? 26 : 32;
+    const smallSize = paperSize === '2inch' ? 22 : 26;
+    const rowHeight = paperSize === '2inch' ? 38 : 46;
 
     const measureCanvas = document.createElement('canvas');
     const m = measureCanvas.getContext('2d');
@@ -534,8 +534,8 @@ export class PrinterService {
     const padding = 12;
     const maxTextWidth = width - (padding * 2);
     const fontFamily = isHindi ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif' : '"Consolas", "Courier New", monospace';
-    const fontSize = paperSize === '2inch' ? 22 : 26;
-    const lineHeight = paperSize === '2inch' ? 32 : 36;
+    const fontSize = paperSize === '2inch' ? 26 : 32;
+    const lineHeight = paperSize === '2inch' ? 38 : 46;
 
     const measureCanvas = document.createElement('canvas');
     const measureCtx = measureCanvas.getContext('2d');
