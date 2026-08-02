@@ -1719,6 +1719,42 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.hotelService.tables().filter(t => t.tableType === 'parcel');
   }
 
+  // Get unique table types, keeping dine-in and parcel first for familiarity
+  getTableTypes(): string[] {
+    const types = Array.from(new Set(this.hotelService.tables().map(t => t.tableType || 'dine-in')));
+    const ordered = ['dine-in', 'parcel'];
+    const remaining = types.filter(t => !ordered.includes(t)).sort((a, b) => a.localeCompare(b));
+    return [...ordered.filter(t => types.includes(t)), ...remaining];
+  }
+
+  // Get tables for a given type
+  getTablesByType(tableType: string): RestaurantTable[] {
+    return this.hotelService.tables().filter(t => (t.tableType || 'dine-in') === tableType);
+  }
+
+  // Human-readable title for each type section
+  getTableTypeLabel(tableType: string): string {
+    if (tableType === 'dine-in') return 'Dine-in Tables';
+    if (tableType === 'parcel') return 'Takeaway / Parcel';
+    if (tableType === 'garden') return 'Garden Tables';
+    return `${this.toTitleCase(tableType)} Tables`;
+  }
+
+  // Icon by type for consistent visual cues
+  getTableTypeIcon(tableType: string): string {
+    if (tableType === 'parcel') return 'takeout_dining';
+    if (tableType === 'garden') return 'deck';
+    return 'table_restaurant';
+  }
+
+  private toTitleCase(value: string): string {
+    return String(value || '')
+      .split(/[-_\s]+/)
+      .filter(Boolean)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   // ===== SOCKET EVENT HANDLERS FOR REAL-TIME UPDATES =====
 
   private setupSocketListeners(): void {
