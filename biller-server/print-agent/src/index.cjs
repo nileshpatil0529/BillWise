@@ -113,6 +113,13 @@ function runPowerShell(command) {
   });
 }
 
+function runPowerShellSta(command) {
+  return spawnSync('powershell.exe', ['-NoProfile', '-STA', '-ExecutionPolicy', 'Bypass', '-Command', command], {
+    encoding: 'utf8',
+    windowsHide: true
+  });
+}
+
 function listWindowsPrinters() {
   const ps = "$ErrorActionPreference = 'Stop'; $names = Get-Printer | Select-Object -ExpandProperty Name; $names | ConvertTo-Json -Compress";
   const result = runPowerShell(ps);
@@ -301,205 +308,120 @@ finally {
   }
 }
 
-function sendUnicodeToPrinter(printerName, paperSize = '3inch', type = 'receipt', bill = {}, settings = {}) {
+function sendHtmlToPrinter(printerName, html, paperSize = '3inch') {
   const escapedPrinter = escapeSingleQuotes(printerName);
-  const payloadBase64 = Buffer.from(JSON.stringify({ paperSize, type, bill, settings }), 'utf8').toString('base64');
+  const htmlBase64 = Buffer.from(String(html || ''), 'utf8').toString('base64');
+  const paperWidthMm = paperSize === '2inch' ? 58 : 80;
 
   const ps = `
 $ErrorActionPreference = 'Stop'
 $printerName = '${escapedPrinter}'
-$base64 = '${payloadBase64}'
+$htmlBase64 = '${htmlBase64}'
+$paperWidthMm = ${paperWidthMm}
 
-Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms
 
-$json = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($base64))
-$payload = $json | ConvertFrom-Json -Depth 20
+$html = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($htmlBase64))
+$htmlPath = Join-Path $env:TEMP ("billwise-print-" + [Guid]::NewGuid().ToString() + ".html")
 
-$paperSize = [string]$payload.paperSize
-$jobType = [string]$payload.type
-$bill = $payload.bill
-$settings = $payload.settings
-
-$paperWidth = if ($paperSize -eq '2inch') { 220 } else { 315 }
-$left = 10
-$right = $paperWidth - 24
-$lineGap = 3
-
-$titleSize = if ($paperSize -eq '2inch') { 14.0 } else { 15.0 }
-$bodySize = if ($paperSize -eq '2inch') { 11.0 } else { 12.0 }
-$smallSize = if ($paperSize -eq '2inch') { 10.0 } else { 10.5 }
-
-$fontFamily = 'Nirmala UI'
-$fontTitle = New-Object System.Drawing.Font($fontFamily, $titleSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Point)
-$fontBody = New-Object System.Drawing.Font($fontFamily, $bodySize, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Point)
-$fontBodyBold = New-Object System.Drawing.Font($fontFamily, $bodySize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Point)
-$fontSmall = New-Object System.Drawing.Font($fontFamily, $smallSize, [System.Drawing.FontStyle]::Regular, [System.Drawing.GraphicsUnit]::Point)
-$brush = [System.Drawing.Brushes]::Black
-
-$printDoc = New-Object System.Drawing.Printing.PrintDocument
-$printDoc.PrinterSettings.PrinterName = $printerName
-if (-not $printDoc.PrinterSettings.IsValid) {
-  throw "Invalid printer: $printerName"
+$style = "<style>@page { size: ${paperWidthMm}mm auto; margin: 0; } html,body { width: ${paperWidthMm}mm; margin:0; }</style>"
+if ($html -match "</head>") {
+  $html = $html -replace "</head>", ($style + "</head>")
+} else {
+  $html = "<html><head>" + $style + "</head><body>" + $html + "</body></html>"
 }
 
-$printDoc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
-$printDoc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
-$printDoc.DefaultPageSettings.PaperSize = New-Object System.Drawing.Printing.PaperSize('BillWiseUnicode', $paperWidth, 2400)
+[System.IO.File]::WriteAllText($htmlPath, $html, [System.Text.Encoding]::UTF8)
 
-$fmtLeft = New-Object System.Drawing.StringFormat
-$fmtLeft.Alignment = [System.Drawing.StringAlignment]::Near
-$fmtLeft.LineAlignment = [System.Drawing.StringAlignment]::Near
-
-$fmtRight = New-Object System.Drawing.StringFormat
-$fmtRight.Alignment = [System.Drawing.StringAlignment]::Far
-$fmtRight.LineAlignment = [System.Drawing.StringAlignment]::Near
-
-$handler = [System.Drawing.Printing.PrintPageEventHandler]{
-  param($sender, $e)
-
-  $e.Graphics.PageUnit = [System.Drawing.GraphicsUnit]::Display
-  $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None
-  $e.Graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::SingleBitPerPixelGridFit
-
-  $y = 6
-
-  function Draw-CenterLine {
-    param([string]$text, [System.Drawing.Font]$font)
-    if ([string]::IsNullOrWhiteSpace($text)) { return }
-    $size = $e.Graphics.MeasureString($text, $font)
-    $x = [Math]::Max($left, (($right - $left) - $size.Width) / 2 + $left)
-    $e.Graphics.DrawString($text, $font, $brush, $x, $y)
-    $script:y += [int][Math]::Ceiling($size.Height) + $lineGap
-  }
-
-  function Draw-LeftLine {
-    param([string]$text, [System.Drawing.Font]$font)
-    if ([string]::IsNullOrWhiteSpace($text)) { return }
-    $e.Graphics.DrawString($text, $font, $brush, $left, $y)
-    $size = $e.Graphics.MeasureString($text, $font)
-    $script:y += [int][Math]::Ceiling($size.Height) + $lineGap
-  }
-
-  function Draw-Sep {
-    $pen = New-Object System.Drawing.Pen([System.Drawing.Color]::Black, 1)
-    $e.Graphics.DrawLine($pen, $left, $y, $right, $y)
-    $pen.Dispose()
-    $script:y += 6
-  }
-
-  $bizName = if ($settings.businessName) { [string]$settings.businessName } else { 'My Business' }
-  Draw-CenterLine $bizName $fontTitle
-  Draw-CenterLine ([string]$settings.address) $fontSmall
-  Draw-CenterLine ((if ($settings.taxNumber) { 'GST: ' + [string]$settings.taxNumber } else { '' })) $fontSmall
-  Draw-CenterLine ((if ($settings.phone) { 'Ph: ' + [string]$settings.phone } else { '' })) $fontSmall
-
-  if ($bill.createdAt) {
-    Draw-LeftLine ('Date: ' + [DateTime]::Parse([string]$bill.createdAt).ToString('dd/MM/yyyy, hh:mm tt')) $fontSmall
-  }
-  Draw-LeftLine ('Bill: ' + [string]$bill.billNumber) $fontSmall
-  if ($bill.businessTypeData -and $bill.businessTypeData.tableNumber) {
-    Draw-LeftLine ('Table: ' + [string]$bill.businessTypeData.tableNumber) $fontSmall
-  }
-
-  Draw-Sep
-
-  if ($jobType -eq 'kot') {
-    $e.Graphics.DrawString('Kitchen Order', $fontTitle, $brush, $left, $y)
-    $y += 18
-    $e.Graphics.DrawString('Name', $fontBodyBold, $brush, $left, $y)
-    $e.Graphics.DrawString('Qty', $fontBodyBold, $brush, $right, $y, $fmtRight)
-    $y += 20
-    Draw-Sep
-
-    foreach ($item in $bill.items) {
-      $printedQty = 0
-      if ($item.kotPrintedQuantity) { $printedQty = [double]$item.kotPrintedQuantity }
-      $qtyRaw = [double]$item.quantity - $printedQty
-      if ($qtyRaw -le 0) { continue }
-
-      $name = if ($item.nameHi) { [string]$item.nameHi } else { [string]$item.name }
-      $qty = if ($item.isLooseItem) { '{0:0.##}' -f $qtyRaw } else { '{0:0}' -f [Math]::Round($qtyRaw) }
-
-      $nameColRight = $right - 56
-      $nameRect = New-Object System.Drawing.RectangleF($left, $y, ($nameColRight - $left), 200)
-      $nameSize = $e.Graphics.MeasureString($name, $fontBody, [int]($nameColRight - $left))
-      $e.Graphics.DrawString($name, $fontBody, $brush, $nameRect, $fmtLeft)
-      $e.Graphics.DrawString($qty, $fontBody, $brush, $right, $y, $fmtRight)
-
-      $y += [int][Math]::Ceiling($nameSize.Height) + 2
-    }
-  }
-  else {
-    $e.Graphics.DrawString('Name', $fontBodyBold, $brush, $left, $y)
-    $e.Graphics.DrawString('Qty X Rate', $fontBodyBold, $brush, $right, $y, $fmtRight)
-    $y += 20
-    Draw-Sep
-
-    foreach ($item in $bill.items) {
-      $name = if ($item.nameHi) { [string]$item.nameHi } else { [string]$item.name }
-      $qty = if ($item.isLooseItem) { '{0:0.##}' -f [double]$item.quantity } else { '{0:0}' -f [Math]::Round([double]$item.quantity) }
-      $rate = '{0:0.##}' -f [double]$item.unitPrice
-      $rightText = "$qty X $rate"
-
-      $nameColRight = $right - 88
-      $nameRect = New-Object System.Drawing.RectangleF($left, $y, ($nameColRight - $left), 200)
-      $nameSize = $e.Graphics.MeasureString($name, $fontBody, [int]($nameColRight - $left))
-      $e.Graphics.DrawString($name, $fontBody, $brush, $nameRect, $fmtLeft)
-      $e.Graphics.DrawString($rightText, $fontBody, $brush, $right, $y, $fmtRight)
-
-      $y += [int][Math]::Ceiling($nameSize.Height) + 2
-    }
-
-    Draw-Sep
-    $e.Graphics.DrawString('Subtotal', $fontBody, $brush, $left, $y)
-    $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.subtotal), $fontBody, $brush, $right, $y, $fmtRight)
-    $y += 20
-
-    if ([double]$bill.taxTotal -gt 0) {
-      $taxRate = 0
-      if ($settings.taxRates -and $settings.taxRates.Count -gt 0) { $taxRate = [double]$settings.taxRates[0].rate }
-      $e.Graphics.DrawString("Tax ($taxRate%)", $fontBody, $brush, $left, $y)
-      $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.taxTotal), $fontBody, $brush, $right, $y, $fmtRight)
-      $y += 20
-    }
-
-    if ([double]$bill.discountTotal -gt 0) {
-      $e.Graphics.DrawString('Discount', $fontBody, $brush, $left, $y)
-      $e.Graphics.DrawString(('-' + ('{0:0.##}' -f [double]$bill.discountTotal)), $fontBody, $brush, $right, $y, $fmtRight)
-      $y += 20
-    }
-
-    $e.Graphics.DrawString('Grand Total', $fontBodyBold, $brush, $left, $y)
-    $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.grandTotal), $fontBodyBold, $brush, $right, $y, $fmtRight)
-    $y += 22
-
-    Draw-Sep
-    Draw-CenterLine ([string]$settings.footerText) $fontSmall
-  }
-
-  $e.HasMorePages = $false
-}
-
-$printDoc.add_PrintPage($handler)
+$defaultPrinter = $null
 try {
-  $printDoc.Print()
+  $defaultPrinter = (Get-CimInstance Win32_Printer | Where-Object { $_.Default -eq $true } | Select-Object -First 1).Name
+} catch {}
+
+$target = Get-CimInstance Win32_Printer | Where-Object { $_.Name -eq $printerName } | Select-Object -First 1
+if (-not $target) {
+  throw "Printer not found: $printerName"
 }
-finally {
-  $printDoc.remove_PrintPage($handler)
-  $fontTitle.Dispose()
-  $fontBody.Dispose()
-  $fontBodyBold.Dispose()
-  $fontSmall.Dispose()
-  $fmtLeft.Dispose()
-  $fmtRight.Dispose()
-  $printDoc.Dispose()
+$null = $target.SetDefaultPrinter()
+
+$done = New-Object System.Threading.ManualResetEvent($false)
+$web = New-Object System.Windows.Forms.WebBrowser
+$web.ScriptErrorsSuppressed = $true
+$web.ScrollBarsEnabled = $false
+
+$handler = [System.Windows.Forms.WebBrowserDocumentCompletedEventHandler]{
+  param($sender, $e)
+  if ($sender.ReadyState -ne [System.Windows.Forms.WebBrowserReadyState]::Complete) { return }
+  try {
+    $sender.Print()
+  } finally {
+    $done.Set() | Out-Null
+  }
+}
+
+$web.add_DocumentCompleted($handler)
+try {
+  $uri = (New-Object System.Uri($htmlPath)).AbsoluteUri
+  $web.Navigate($uri)
+  while (-not $done.WaitOne(100)) {
+    [System.Windows.Forms.Application]::DoEvents()
+  }
+} finally {
+  $web.remove_DocumentCompleted($handler)
+  $web.Dispose()
+  if ($defaultPrinter) {
+    $restore = Get-CimInstance Win32_Printer | Where-Object { $_.Name -eq $defaultPrinter } | Select-Object -First 1
+    if ($restore) { $null = $restore.SetDefaultPrinter() }
+  }
+  Remove-Item -Path $htmlPath -ErrorAction SilentlyContinue
 }
 `;
 
-  const result = runPowerShell(ps);
+  const result = runPowerShellSta(ps);
   if (result.status !== 0) {
-    throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Unicode print failed');
+    throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'HTML print failed');
   }
+}
+
+function escapeHtmlForAgent(value) {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function sendUnicodeToPrinter(printerName, paperSize = '3inch', type = 'receipt', bill = {}, settings = {}) {
+  const items = Array.isArray(bill.items) ? bill.items : [];
+  const rowHtml = items.map(item => {
+    const name = escapeHtmlForAgent(item?.nameHi || item?.name || 'Unknown');
+    const qty = item?.isLooseItem ? Number(item?.quantity || 0).toFixed(2) : String(Math.round(Number(item?.quantity || 0)));
+    const rate = Number(item?.unitPrice || 0).toFixed(2);
+    if (type === 'kot') {
+      return `<tr><td class="name">${name}</td><td class="right">${escapeHtmlForAgent(qty)}</td></tr>`;
+    }
+    return `<tr><td class="name">${name}</td><td class="right">${escapeHtmlForAgent(qty)} X ${escapeHtmlForAgent(rate)}</td></tr>`;
+  }).join('');
+
+  const title = type === 'kot' ? 'Kitchen Order' : (settings?.businessName || 'My Business');
+  const html = `<!doctype html><html><head><meta charset="UTF-8" />
+<style>
+@page { size: ${paperSize === '2inch' ? '58mm' : '80mm'} auto; margin: 0; }
+body { margin:0; padding:4mm 3mm; font-family:"Nirmala UI","Mangal",sans-serif; font-size:12px; color:#000; }
+.title { text-align:center; font-size:16px; font-weight:700; margin-bottom:4px; }
+.line { border-top:1px dashed #000; margin:4px 0; }
+table { width:100%; border-collapse:collapse; }
+th,td { padding:2px 0; vertical-align:top; }
+.right { text-align:right; white-space:nowrap; }
+.name { width:68%; word-break:break-word; }
+</style></head><body>
+<div class="title">${escapeHtmlForAgent(title)}</div>
+<div class="line"></div>
+<table><thead><tr><th>Name</th><th class="right">${type === 'kot' ? 'Qty' : 'Qty X Rate'}</th></tr></thead><tbody>${rowHtml}</tbody></table>
+</body></html>`;
+
+  sendHtmlToPrinter(printerName, html, paperSize);
 }
 
 async function startService() {
@@ -602,6 +524,24 @@ async function startService() {
       return res.json({ success: true, message: 'Unicode print sent' });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message || 'Unicode print failed' });
+    }
+  });
+
+  app.post('/print-html', (req, res) => {
+    const body = req.body || {};
+    const printerName = body.printerName;
+    const paperSize = body.paperSize || '3inch';
+    const html = body.html;
+
+    if (!printerName || !html) {
+      return res.status(400).json({ success: false, message: 'printerName and html are required' });
+    }
+
+    try {
+      sendHtmlToPrinter(printerName, html, paperSize);
+      return res.json({ success: true, message: 'HTML print sent' });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message || 'HTML print failed' });
     }
   });
 

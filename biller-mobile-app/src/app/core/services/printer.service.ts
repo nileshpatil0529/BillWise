@@ -94,7 +94,7 @@ export class PrinterService {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
     if (this.shouldUseImagePipeline(settings)) {
-      await this.sendUnicodeJob(cfg.printerName, cfg.paperSize, 'receipt', bill, settings);
+      await this.sendHtmlJob(cfg.printerName, cfg.paperSize, this.buildReceiptHtml(bill, settings, cfg.paperSize));
       return;
     }
     const data = this.buildReceiptData(bill, settings, cfg.paperSize);
@@ -105,7 +105,7 @@ export class PrinterService {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
     if (this.shouldUseImagePipeline(settings)) {
-      await this.sendUnicodeJob(cfg.printerName, cfg.paperSize, 'kot', bill, settings);
+      await this.sendHtmlJob(cfg.printerName, cfg.paperSize, this.buildKOTHtml(bill, settings, cfg.paperSize));
       return;
     }
     const data = this.buildKOTData(bill, settings, cfg.paperSize);
@@ -134,20 +134,14 @@ export class PrinterService {
     }
   }
 
-  private async sendUnicodeJob(
-    printerName: string,
-    paperSize: PaperSize,
-    type: 'receipt' | 'kot',
-    bill: any,
-    settings: any
-  ): Promise<void> {
-    const response = await this.fetchAgent('/print-unicode', {
+  private async sendHtmlJob(printerName: string, paperSize: PaperSize, html: string): Promise<void> {
+    const response = await this.fetchAgent('/print-html', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ printerName, paperSize, type, bill, settings })
+      body: JSON.stringify({ printerName, paperSize, html })
     });
     if (!response?.success) {
-      throw new Error(response?.message || 'Unicode print failed');
+      throw new Error(response?.message || 'HTML print failed');
     }
   }
 
@@ -651,6 +645,120 @@ export class PrinterService {
   private pickItemName(item: any, isHindi: boolean): string {
     if (isHindi && item?.nameHi) return String(item.nameHi);
     return String(item?.name || 'Unknown');
+  }
+
+  private buildReceiptHtml(bill: any, settings: any, paperSize: PaperSize): string {
+    const items: any[] = bill.items || [];
+    const rows = items.map(item => {
+      const name = this.escapeHtml(this.pickItemName(item, true));
+      const qty = item.isLooseItem ? Number(item.quantity || 0).toFixed(2) : String(Math.round(item.quantity || 0));
+      const rate = Number(item.unitPrice || 0).toFixed(2);
+      return `<tr><td class="name">${name}</td><td class="right">${this.escapeHtml(qty)} X ${this.escapeHtml(rate)}</td></tr>`;
+    }).join('');
+
+    const taxLine = Number(bill.taxTotal || 0) > 0
+      ? `<tr><td>Tax (${this.escapeHtml(String(settings?.taxRates?.[0]?.rate || 0))}%)</td><td class="right">${Number(bill.taxTotal || 0).toFixed(2)}</td></tr>`
+      : '';
+    const discountLine = Number(bill.discountTotal || 0) > 0
+      ? `<tr><td>Discount</td><td class="right">-${Number(bill.discountTotal || 0).toFixed(2)}</td></tr>`
+      : '';
+
+    const dateText = new Date(bill.createdAt).toLocaleString('en-IN', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
+
+    return `<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @page { size: ${paperSize === '2inch' ? '58mm' : '80mm'} auto; margin: 0; }
+    body { margin: 0; padding: 4mm 3mm; font-family: "Nirmala UI", "Mangal", sans-serif; font-size: 12px; color: #000; }
+    .title { text-align: center; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .meta { margin-bottom: 4px; }
+    .line { border-top: 1px dashed #000; margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 2px 0; vertical-align: top; }
+    th { text-align: left; font-weight: 700; }
+    .right { text-align: right; white-space: nowrap; }
+    .name { width: 62%; word-break: break-word; }
+    .totals td { padding-top: 2px; }
+    .grand td { font-weight: 700; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <div class="title">${this.escapeHtml(settings?.businessName || 'My Business')}</div>
+  ${settings?.address ? `<div>${this.escapeHtml(settings.address)}</div>` : ''}
+  ${settings?.taxNumber ? `<div>GST: ${this.escapeHtml(settings.taxNumber)}</div>` : ''}
+  ${settings?.phone ? `<div>Ph: ${this.escapeHtml(settings.phone)}</div>` : ''}
+  <div class="meta">Date: ${this.escapeHtml(dateText)}<br/>Bill: ${this.escapeHtml(String(bill.billNumber || ''))}${bill?.businessTypeData?.tableNumber ? `<br/>Table: ${this.escapeHtml(String(bill.businessTypeData.tableNumber))}` : ''}</div>
+  <div class="line"></div>
+  <table>
+    <thead><tr><th>Name</th><th class="right">Qty X Rate</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+  <div class="line"></div>
+  <table class="totals">
+    <tr><td>Subtotal</td><td class="right">${Number(bill.subtotal || 0).toFixed(2)}</td></tr>
+    ${taxLine}
+    ${discountLine}
+    <tr class="grand"><td>Grand Total</td><td class="right">${Number(bill.grandTotal || 0).toFixed(2)}</td></tr>
+  </table>
+  ${settings?.footerText ? `<div style="text-align:center;margin-top:6px;">${this.escapeHtml(settings.footerText)}</div>` : ''}
+</body>
+</html>`;
+  }
+
+  private buildKOTHtml(bill: any, _settings: any, paperSize: PaperSize): string {
+    const dateText = new Date().toLocaleString('en-IN', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit', hour12: true
+    });
+    const newItems = (bill.items || []).filter((i: any) => i.quantity > (i.kotPrintedQuantity || 0));
+    const rows = newItems.map((item: any) => {
+      const name = this.escapeHtml(this.pickItemName(item, true));
+      const newQty = item.quantity - (item.kotPrintedQuantity || 0);
+      const qty = item.isLooseItem ? Number(newQty).toFixed(2) : String(Math.round(newQty));
+      return `<tr><td class="name">${name}</td><td class="right">${this.escapeHtml(qty)}</td></tr>`;
+    }).join('');
+
+    return `<!doctype html>
+<html>
+<head>
+  <meta charset="UTF-8" />
+  <style>
+    @page { size: ${paperSize === '2inch' ? '58mm' : '80mm'} auto; margin: 0; }
+    body { margin: 0; padding: 4mm 3mm; font-family: "Nirmala UI", "Mangal", sans-serif; font-size: 12px; color: #000; }
+    .title { text-align: center; font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+    .line { border-top: 1px dashed #000; margin: 4px 0; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 2px 0; }
+    .right { text-align: right; white-space: nowrap; }
+    .name { width: 70%; word-break: break-word; }
+  </style>
+</head>
+<body>
+  <div class="title">Kitchen Order</div>
+  <div>Date: ${this.escapeHtml(dateText)}</div>
+  <div>Bill: ${this.escapeHtml(String(bill.billNumber || ''))}</div>
+  ${bill?.businessTypeData?.tableNumber ? `<div>Table: ${this.escapeHtml(String(bill.businessTypeData.tableNumber))}</div>` : ''}
+  <div class="line"></div>
+  <table>
+    <thead><tr><th>Name</th><th class="right">Qty</th></tr></thead>
+    <tbody>${rows}</tbody>
+  </table>
+</body>
+</html>`;
+  }
+
+  private escapeHtml(value: string): string {
+    return String(value ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
   }
 
   private rpad(label: string, value: string, width: number): string {
