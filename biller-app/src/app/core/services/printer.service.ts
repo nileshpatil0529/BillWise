@@ -310,8 +310,8 @@ export class PrinterService {
 
     const width = paperSize === '2inch' ? 384 : 576;
     const padding = 8;
-    const gap = 10;
-    const comboW = paperSize === '2inch' ? 144 : 196;
+    const gap = 8;
+    const comboW = paperSize === '2inch' ? 136 : 186;
     const nameW = width - (padding * 2) - comboW - gap;
 
     const fontFamily = isHindi
@@ -375,7 +375,7 @@ export class PrinterService {
     const xName = padding;
     const xCombo = xName + nameW + gap;
     const right = width - padding;
-    const rightTextInset = 2;
+    const rightTextInset = 8;
 
     const drawRight = (text: string, x: number, yPos: number, w: number, font: string) => {
       ctx.font = font;

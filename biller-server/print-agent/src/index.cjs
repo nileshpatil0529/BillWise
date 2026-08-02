@@ -219,7 +219,7 @@ finally {
 
 function sendImageToPrinter(printerName, imageBase64, paperSize = '3inch') {
   const escapedPrinter = escapeSingleQuotes(printerName);
-  const paperWidth = paperSize === '2inch' ? 200 : 300;
+  const paperWidth = paperSize === '2inch' ? 190 : 286;
   const tmpFile = path.join(os.tmpdir(), `billwise-print-${Date.now()}-${Math.random().toString(16).slice(2)}.b64`);
   fs.writeFileSync(tmpFile, String(imageBase64), 'utf8');
 
