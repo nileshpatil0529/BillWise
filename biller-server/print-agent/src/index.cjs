@@ -320,14 +320,14 @@ $jobType = [string]$payload.type
 $bill = $payload.bill
 $settings = $payload.settings
 
-$paperWidth = if ($paperSize -eq '2inch') { 200 } else { 300 }
+$paperWidth = if ($paperSize -eq '2inch') { 220 } else { 315 }
 $left = 10
-$right = $paperWidth - 10
+$right = $paperWidth - 24
 $lineGap = 3
 
-$titleSize = if ($paperSize -eq '2inch') { 10.0 } else { 11.0 }
-$bodySize = if ($paperSize -eq '2inch') { 8.0 } else { 9.0 }
-$smallSize = if ($paperSize -eq '2inch') { 7.0 } else { 8.0 }
+$titleSize = if ($paperSize -eq '2inch') { 14.0 } else { 15.0 }
+$bodySize = if ($paperSize -eq '2inch') { 11.0 } else { 12.0 }
+$smallSize = if ($paperSize -eq '2inch') { 10.0 } else { 10.5 }
 
 $fontFamily = 'Nirmala UI'
 $fontTitle = New-Object System.Drawing.Font($fontFamily, $titleSize, [System.Drawing.FontStyle]::Bold, [System.Drawing.GraphicsUnit]::Point)
@@ -404,9 +404,11 @@ $handler = [System.Drawing.Printing.PrintPageEventHandler]{
   Draw-Sep
 
   if ($jobType -eq 'kot') {
+    $e.Graphics.DrawString('Kitchen Order', $fontTitle, $brush, $left, $y)
+    $y += 18
     $e.Graphics.DrawString('Name', $fontBodyBold, $brush, $left, $y)
     $e.Graphics.DrawString('Qty', $fontBodyBold, $brush, $right, $y, $fmtRight)
-    $y += 16
+    $y += 20
     Draw-Sep
 
     foreach ($item in $bill.items) {
@@ -418,7 +420,7 @@ $handler = [System.Drawing.Printing.PrintPageEventHandler]{
       $name = if ($item.nameHi) { [string]$item.nameHi } else { [string]$item.name }
       $qty = if ($item.isLooseItem) { '{0:0.##}' -f $qtyRaw } else { '{0:0}' -f [Math]::Round($qtyRaw) }
 
-      $nameColRight = $right - 64
+      $nameColRight = $right - 56
       $nameRect = New-Object System.Drawing.RectangleF($left, $y, ($nameColRight - $left), 200)
       $nameSize = $e.Graphics.MeasureString($name, $fontBody, [int]($nameColRight - $left))
       $e.Graphics.DrawString($name, $fontBody, $brush, $nameRect, $fmtLeft)
@@ -430,7 +432,7 @@ $handler = [System.Drawing.Printing.PrintPageEventHandler]{
   else {
     $e.Graphics.DrawString('Name', $fontBodyBold, $brush, $left, $y)
     $e.Graphics.DrawString('Qty X Rate', $fontBodyBold, $brush, $right, $y, $fmtRight)
-    $y += 16
+    $y += 20
     Draw-Sep
 
     foreach ($item in $bill.items) {
@@ -439,7 +441,7 @@ $handler = [System.Drawing.Printing.PrintPageEventHandler]{
       $rate = '{0:0.##}' -f [double]$item.unitPrice
       $rightText = "$qty X $rate"
 
-      $nameColRight = $right - 92
+      $nameColRight = $right - 88
       $nameRect = New-Object System.Drawing.RectangleF($left, $y, ($nameColRight - $left), 200)
       $nameSize = $e.Graphics.MeasureString($name, $fontBody, [int]($nameColRight - $left))
       $e.Graphics.DrawString($name, $fontBody, $brush, $nameRect, $fmtLeft)
@@ -451,25 +453,25 @@ $handler = [System.Drawing.Printing.PrintPageEventHandler]{
     Draw-Sep
     $e.Graphics.DrawString('Subtotal', $fontBody, $brush, $left, $y)
     $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.subtotal), $fontBody, $brush, $right, $y, $fmtRight)
-    $y += 16
+    $y += 20
 
     if ([double]$bill.taxTotal -gt 0) {
       $taxRate = 0
       if ($settings.taxRates -and $settings.taxRates.Count -gt 0) { $taxRate = [double]$settings.taxRates[0].rate }
       $e.Graphics.DrawString("Tax ($taxRate%)", $fontBody, $brush, $left, $y)
       $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.taxTotal), $fontBody, $brush, $right, $y, $fmtRight)
-      $y += 16
+      $y += 20
     }
 
     if ([double]$bill.discountTotal -gt 0) {
       $e.Graphics.DrawString('Discount', $fontBody, $brush, $left, $y)
       $e.Graphics.DrawString(('-' + ('{0:0.##}' -f [double]$bill.discountTotal)), $fontBody, $brush, $right, $y, $fmtRight)
-      $y += 16
+      $y += 20
     }
 
     $e.Graphics.DrawString('Grand Total', $fontBodyBold, $brush, $left, $y)
     $e.Graphics.DrawString(('{0:0.##}' -f [double]$bill.grandTotal), $fontBodyBold, $brush, $right, $y, $fmtRight)
-    $y += 18
+    $y += 22
 
     Draw-Sep
     Draw-CenterLine ([string]$settings.footerText) $fontSmall
