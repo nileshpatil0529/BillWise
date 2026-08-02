@@ -290,7 +290,7 @@ export class PrinterService {
       const label = btd.tableType === 'parcel' ? 'Parcel' : 'Table';
       lines.push(label + ': ' + btd.tableNumber);
     }
-    lines.push('-');
+    // No separator line in KOT as requested.
 
     newItems.forEach((item: any) => {
       const name = this.pickItemName(item, true);
@@ -309,9 +309,9 @@ export class PrinterService {
     }
 
     const width = paperSize === '2inch' ? 384 : 576;
-    const padding = 12;
+    const padding = 8;
     const gap = 10;
-    const comboW = paperSize === '2inch' ? 138 : 188;
+    const comboW = paperSize === '2inch' ? 144 : 196;
     const nameW = width - (padding * 2) - comboW - gap;
 
     const fontFamily = isHindi
@@ -341,21 +341,20 @@ export class PrinterService {
     height += 8;
     height += (smallSize + 6) * 2;
     if (bill.businessTypeData?.tableNumber) height += smallSize + 6;
-    height += 10;
-    height += 1 + 8;
+    height += 8;
     height += rowHeight;
-    height += 1 + 6;
+    height += 6;
 
     itemNameLines.forEach(lines => {
       height += Math.max(1, lines.length) * rowHeight + 3;
     });
 
-    height += 1 + 8;
+    height += 8;
     height += rowHeight;
     if (Number(bill.taxTotal || 0) > 0) height += rowHeight;
     if (Number(bill.discountTotal || 0) > 0) height += rowHeight;
     height += rowHeight + 4;
-    height += 1 + 8;
+    height += 8;
     height += footerLines.length * (smallSize + 6);
     height += padding;
 
@@ -376,20 +375,12 @@ export class PrinterService {
     const xName = padding;
     const xCombo = xName + nameW + gap;
     const right = width - padding;
-
-    const drawSep = (yPos: number) => {
-      ctx.beginPath();
-      ctx.moveTo(padding, yPos);
-      ctx.lineTo(right, yPos);
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = '#000000';
-      ctx.stroke();
-    };
+    const rightTextInset = 2;
 
     const drawRight = (text: string, x: number, yPos: number, w: number, font: string) => {
       ctx.font = font;
       const tw = ctx.measureText(text).width;
-      ctx.fillText(text, Math.max(x, x + w - tw), yPos);
+      ctx.fillText(text, Math.max(x, x + w - tw - rightTextInset), yPos);
     };
 
     let y = padding;
@@ -434,8 +425,6 @@ export class PrinterService {
       y += smallSize + 6;
     }
 
-    y += 4;
-    drawSep(y);
     y += 8;
 
     ctx.font = `700 ${bodySize}px ${fontFamily}`;
@@ -443,7 +432,6 @@ export class PrinterService {
     drawRight('Qty X Rate', xCombo, y, comboW, `700 ${bodySize}px ${fontFamily}`);
     y += rowHeight;
 
-    drawSep(y);
     y += 6;
 
     ctx.font = `400 ${bodySize}px ${fontFamily}`;
@@ -463,7 +451,6 @@ export class PrinterService {
       y += Math.max(1, nameLines.length) * rowHeight + 3;
     });
 
-    drawSep(y);
     y += 8;
 
     const drawTotalLine = (label: string, value: string, bold = false) => {
@@ -483,9 +470,7 @@ export class PrinterService {
     }
     drawTotalLine('Grand Total', Number(bill.grandTotal || 0).toFixed(2), true);
 
-    y += 2;
-    drawSep(y);
-    y += 8;
+    y += 10;
 
     ctx.font = `400 ${smallSize}px ${fontFamily}`;
     footerLines.forEach(line => {
@@ -544,10 +529,7 @@ export class PrinterService {
 
     const expanded: string[] = [];
     for (const line of lines) {
-      if (line === '-') {
-        expanded.push('-');
-        continue;
-      }
+      if (line === '-') continue;
       const wrapped = this.wrapText(measureCtx, line, maxTextWidth);
       expanded.push(...wrapped);
     }
@@ -570,23 +552,14 @@ export class PrinterService {
 
     let y = padding;
     expanded.forEach((line, idx) => {
-      if (line === '-') {
-        ctx.beginPath();
-        ctx.moveTo(padding, y + Math.floor(lineHeight / 2));
-        ctx.lineTo(width - padding, y + Math.floor(lineHeight / 2));
-        ctx.lineWidth = 1;
-        ctx.strokeStyle = '#000000';
-        ctx.stroke();
+      const isTitle = idx === 0;
+      if (isTitle) {
+        ctx.font = `700 ${fontSize + 2}px ${fontFamily}`;
+        const titleWidth = ctx.measureText(line).width;
+        ctx.fillText(line, Math.max(padding, (width - titleWidth) / 2), y);
+        ctx.font = `400 ${fontSize}px ${fontFamily}`;
       } else {
-        const isTitle = idx === 0;
-        if (isTitle) {
-          ctx.font = `700 ${fontSize + 2}px ${fontFamily}`;
-          const titleWidth = ctx.measureText(line).width;
-          ctx.fillText(line, Math.max(padding, (width - titleWidth) / 2), y);
-          ctx.font = `400 ${fontSize}px ${fontFamily}`;
-        } else {
-          ctx.fillText(line, padding, y);
-        }
+        ctx.fillText(line, padding, y);
       }
       y += lineHeight;
     });
