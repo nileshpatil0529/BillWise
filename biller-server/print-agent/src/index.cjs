@@ -253,10 +253,23 @@ $printDoc.DefaultPageSettings.PaperSize = $paper
 $handler = [System.Drawing.Printing.PrintPageEventHandler]{
   param($sender, $e)
 
-  $targetWidth = $e.MarginBounds.Width
-  if ($targetWidth -le 0) { $targetWidth = $e.PageBounds.Width }
-  $targetHeight = [int]([Math]::Round($image.Height * ($targetWidth / [double]$image.Width)))
-  $rect = New-Object System.Drawing.Rectangle(0, 0, $targetWidth, $targetHeight)
+  $dpiX = $e.Graphics.DpiX
+  if ($dpiX -le 0) { $dpiX = 203 }
+
+  # Convert paper width from hundredths of an inch to printer pixels.
+  $targetWidthPx = [int]([Math]::Round(($paperWidth / 100.0) * $dpiX))
+  if ($targetWidthPx -le 0) { $targetWidthPx = $image.Width }
+  $targetHeightPx = [int]([Math]::Round($image.Height * ($targetWidthPx / [double]$image.Width)))
+  if ($targetHeightPx -le 0) { $targetHeightPx = $image.Height }
+
+  $e.Graphics.PageUnit = [System.Drawing.GraphicsUnit]::Pixel
+  $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+  $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None
+  $e.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+  $e.Graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighSpeed
+  $e.Graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::SingleBitPerPixelGridFit
+
+  $rect = New-Object System.Drawing.Rectangle(0, 0, $targetWidthPx, $targetHeightPx)
 
   $e.Graphics.Clear([System.Drawing.Color]::White)
   $e.Graphics.DrawImage($image, $rect)
