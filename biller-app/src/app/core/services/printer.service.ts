@@ -332,8 +332,9 @@ export class PrinterService {
     const addressLines = settings?.address ? this.wrapText(m, String(settings.address), width - (padding * 2)) : [];
     const footerLines = settings?.footerText ? this.wrapText(m, String(settings.footerText), width - (padding * 2)) : [];
 
-    const dashGap = 6;
-    const dashBlock = (dashGap * 2) + 1;
+    const dashGapTop = 3;
+    const dashGapBottom = 7;
+    const dashBlock = dashGapTop + 1 + dashGapBottom;
 
     let height = 0;
     height += padding;
@@ -447,9 +448,9 @@ export class PrinterService {
     drawRight('Qty X Rate', xCombo, y, comboW, `700 ${bodySize}px ${fontFamily}`);
     y += rowHeight;
 
-    y += dashGap;
+    y += dashGapTop;
     drawDashedSep(y);
-    y += dashGap;
+    y += dashGapBottom;
 
     ctx.font = `400 ${bodySize}px ${fontFamily}`;
     items.forEach((item, i) => {
@@ -468,9 +469,9 @@ export class PrinterService {
       y += Math.max(1, nameLines.length) * rowHeight + 3;
     });
 
-    y += dashGap;
+    y += dashGapTop;
     drawDashedSep(y);
-    y += dashGap;
+    y += dashGapBottom;
 
     const drawTotalLine = (label: string, value: string, bold = false) => {
       ctx.font = `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`;
@@ -489,9 +490,9 @@ export class PrinterService {
     }
     drawTotalLine('Grand Total', Number(bill.grandTotal || 0).toFixed(2), true);
 
-    y += dashGap;
+    y += dashGapTop;
     drawDashedSep(y);
-    y += dashGap;
+    y += dashGapBottom;
 
     ctx.font = `400 ${smallSize}px ${fontFamily}`;
     footerLines.forEach(line => {
