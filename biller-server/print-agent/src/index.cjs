@@ -324,7 +324,8 @@ Add-Type -AssemblyName System.Windows.Forms
 $html = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($htmlBase64))
 $htmlPath = Join-Path $env:TEMP ("billwise-print-" + [Guid]::NewGuid().ToString() + ".html")
 
-$style = "<style>@page { size: ${paperWidthMm}mm auto; margin: 0; } html,body { width: ${paperWidthMm}mm; margin:0; }</style>"
+$contentWidthMm = [Math]::Max(50, $paperWidthMm - 2)
+$style = "<style>@page { size: ${paperWidthMm}mm auto !important; margin: 0 !important; } html, body { margin: 0 !important; padding: 0 !important; width: auto !important; min-width: 0 !important; max-width: ${contentWidthMm}mm !important; box-sizing: border-box !important; overflow: visible !important; } body * { box-sizing: border-box !important; }</style>"
 if ($html -match "</head>") {
   $html = $html -replace "</head>", ($style + "</head>")
 } else {
@@ -408,13 +409,13 @@ function sendUnicodeToPrinter(printerName, paperSize = '3inch', type = 'receipt'
   const html = `<!doctype html><html><head><meta charset="UTF-8" />
 <style>
 @page { size: ${paperSize === '2inch' ? '58mm' : '80mm'} auto; margin: 0; }
-body { margin:0; padding:4mm 3mm; font-family:"Nirmala UI","Mangal",sans-serif; font-size:12px; color:#000; }
-.title { text-align:center; font-size:16px; font-weight:700; margin-bottom:4px; }
+body { margin:0; padding:1.2mm 1mm; font-family:"Nirmala UI","Mangal",sans-serif; font-size:14px; color:#000; }
+.title { text-align:center; font-size:18px; font-weight:700; margin-bottom:3px; }
 .line { border-top:1px dashed #000; margin:4px 0; }
 table { width:100%; border-collapse:collapse; }
-th,td { padding:2px 0; vertical-align:top; }
+th,td { padding:1px 0; vertical-align:top; }
 .right { text-align:right; white-space:nowrap; }
-.name { width:68%; word-break:break-word; }
+.name { width:64%; word-break:break-word; }
 </style></head><body>
 <div class="title">${escapeHtmlForAgent(title)}</div>
 <div class="line"></div>
