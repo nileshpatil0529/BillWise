@@ -312,19 +312,17 @@ export class PrinterService {
 
     const width = paperSize === '2inch' ? 384 : 576;
     const padding = 14;
-    const gap = 8;
-    const qtyW = paperSize === '2inch' ? 58 : 72;
-    const rateW = paperSize === '2inch' ? 78 : 96;
-    const amtW = paperSize === '2inch' ? 86 : 106;
-    const nameW = width - (padding * 2) - qtyW - rateW - amtW - (gap * 3);
+    const gap = 12;
+    const comboW = paperSize === '2inch' ? 134 : 172;
+    const nameW = width - (padding * 2) - comboW - gap;
 
     const fontFamily = isHindi
       ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif'
       : '"Consolas", "Courier New", monospace';
-    const titleSize = paperSize === '2inch' ? 20 : 22;
-    const bodySize = paperSize === '2inch' ? 16 : 18;
-    const smallSize = paperSize === '2inch' ? 14 : 15;
-    const rowHeight = paperSize === '2inch' ? 22 : 24;
+    const titleSize = paperSize === '2inch' ? 24 : 26;
+    const bodySize = paperSize === '2inch' ? 20 : 22;
+    const smallSize = paperSize === '2inch' ? 16 : 17;
+    const rowHeight = paperSize === '2inch' ? 28 : 31;
 
     const measureCanvas = document.createElement('canvas');
     const m = measureCanvas.getContext('2d');
@@ -363,7 +361,7 @@ export class PrinterService {
     height += footerLines.length * (smallSize + 6);
     height += padding;
 
-    const scale = 2;
+    const scale = 3;
     const canvas = document.createElement('canvas');
     canvas.width = width * scale;
     canvas.height = Math.max(300, Math.ceil(height * scale));
@@ -378,9 +376,7 @@ export class PrinterService {
     ctx.textBaseline = 'top';
 
     const xName = padding;
-    const xQty = xName + nameW + gap;
-    const xRate = xQty + qtyW + gap;
-    const xAmt = xRate + rateW + gap;
+    const xCombo = xName + nameW + gap;
     const right = width - padding;
 
     const drawSep = (yPos: number) => {
@@ -446,9 +442,7 @@ export class PrinterService {
 
     ctx.font = `700 ${bodySize}px ${fontFamily}`;
     ctx.fillText('Name', xName, y);
-    drawRight('Qty', xQty, y, qtyW, `700 ${bodySize}px ${fontFamily}`);
-    drawRight('Rate', xRate, y, rateW, `700 ${bodySize}px ${fontFamily}`);
-    drawRight('Amount', xAmt, y, amtW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Qty X Rate', xCombo, y, comboW, `700 ${bodySize}px ${fontFamily}`);
     y += rowHeight;
 
     drawSep(y);
@@ -459,16 +453,14 @@ export class PrinterService {
       const nameLines = itemNameLines[i];
       const qty = item.isLooseItem ? Number(item.quantity || 0).toFixed(2) : String(Math.round(item.quantity || 0));
       const rate = Number(item.unitPrice || 0).toFixed(2);
-      const amount = Number(item.finalTotal ?? item.itemTotal ?? ((item.quantity || 0) * (item.unitPrice || 0))).toFixed(2);
+      const combo = `${qty} X ${rate}`;
 
       const rowY = y;
       nameLines.forEach((line, index) => {
         ctx.fillText(line, xName, rowY + (index * rowHeight));
       });
 
-      drawRight(qty, xQty, rowY, qtyW, `400 ${bodySize}px ${fontFamily}`);
-      drawRight(rate, xRate, rowY, rateW, `400 ${bodySize}px ${fontFamily}`);
-      drawRight(amount, xAmt, rowY, amtW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight(combo, xCombo, rowY, comboW, `400 ${bodySize}px ${fontFamily}`);
 
       y += Math.max(1, nameLines.length) * rowHeight + 4;
     });
@@ -479,7 +471,7 @@ export class PrinterService {
     const drawTotalLine = (label: string, value: string, bold = false) => {
       ctx.font = `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`;
       ctx.fillText(label, xName, y);
-      drawRight(value, xAmt, y, amtW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
+      drawRight(value, xCombo, y, comboW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
       y += rowHeight;
     };
 
@@ -504,6 +496,33 @@ export class PrinterService {
       y += smallSize + 6;
     });
 
+    return this.toHighContrastPngBase64(canvas);
+  }
+
+  private toHighContrastPngBase64(canvas: HTMLCanvasElement): string {
+    const ctx = canvas.getContext('2d');
+    if (!ctx) {
+      const fallback = canvas.toDataURL('image/png');
+      return fallback.split(',')[1] || '';
+    }
+
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const data = imageData.data;
+    const threshold = 172;
+
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i];
+      const g = data[i + 1];
+      const b = data[i + 2];
+      const lum = (0.299 * r) + (0.587 * g) + (0.114 * b);
+      const v = lum >= threshold ? 255 : 0;
+      data[i] = v;
+      data[i + 1] = v;
+      data[i + 2] = v;
+      data[i + 3] = 255;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
     const dataUrl = canvas.toDataURL('image/png');
     return dataUrl.split(',')[1] || '';
   }
