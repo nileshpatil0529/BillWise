@@ -12,6 +12,8 @@ export class SocketService {
   private socket: Socket | null = null;
   public connected = signal(false);
   private snackBar = inject(MatSnackBar);
+  private printerConfigLoadAttempted = false;
+  private printerRuntimeInitInFlight: Promise<void> | null = null;
 
   // Lazily injected to avoid circular dependency (PrinterService → SocketService → PrinterService)
   private get printerService(): PrinterService {
@@ -27,6 +29,7 @@ export class SocketService {
     effect(() => {
       const user = this.authService.currentUser();
       if (user) {
+        void this.ensurePrinterRuntimeReady();
         this.connect();
       } else {
         this.disconnect();
@@ -74,15 +77,10 @@ export class SocketService {
         const user = this.authService.currentUser();
         if (user?.uid) {
           this.socket?.emit('identify', { userId: user.uid });
-          // Register printer if enabled
-          const cfg = this.printerService.config();
-          if (cfg.enabled && cfg.printerName) {
-            this.socket?.emit('register-printer', { userId: user.uid });
-          }
         }
 
-        // Ensure server-side printer mapping is refreshed after reconnect/app reload.
-        this.refreshPrinterRegistration();
+        // Ensure config + agent are available, then refresh server printer mapping.
+        void this.ensurePrinterRuntimeReady();
       });
     });
 
@@ -110,6 +108,7 @@ export class SocketService {
     this.socket.on('print-job', async (payload: any) => {
       const { requestId, bill, settings, type } = payload;
       try {
+        await this.ensurePrinterRuntimeReady();
         if (!this.printerService.isReady()) {
           throw new Error('Local printer not ready');
         }
@@ -135,6 +134,45 @@ export class SocketService {
         }
       });
     });
+  }
+
+  private async ensurePrinterRuntimeReady(): Promise<void> {
+    if (this.printerRuntimeInitInFlight) {
+      await this.printerRuntimeInitInFlight;
+      return;
+    }
+
+    this.printerRuntimeInitInFlight = (async () => {
+      if (!this.printerConfigLoadAttempted) {
+        this.printerConfigLoadAttempted = true;
+        await new Promise<void>((resolve) => {
+          this.printerService.loadConfig().subscribe({
+            next: () => resolve(),
+            error: (err) => {
+              console.warn('Printer config load failed:', err);
+              resolve();
+            }
+          });
+        });
+      }
+
+      const cfg = this.printerService.config();
+      if (cfg.enabled && cfg.printerName && this.printerService.agentStatus() !== 'connected') {
+        try {
+          await this.printerService.connectAgent();
+        } catch (err) {
+          console.warn('Auto-connect to print agent failed:', err);
+        }
+      }
+
+      this.refreshPrinterRegistration();
+    })();
+
+    try {
+      await this.printerRuntimeInitInFlight;
+    } finally {
+      this.printerRuntimeInitInFlight = null;
+    }
   }
 
   /** Call after saving printer config to update server registration */

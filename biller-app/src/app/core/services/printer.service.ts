@@ -311,17 +311,16 @@ export class PrinterService {
     const width = paperSize === '2inch' ? 384 : 576;
     const padding = paperSize === '2inch' ? 8 : 10;
     const innerW = width - (padding * 2);
-    const colSizeW = Math.round(innerW * (paperSize === '2inch' ? 0.16 : 0.15));
-    const colQtyW = Math.round(innerW * 0.11);
-    const colRateW = Math.round(innerW * 0.14);
-    const colAmtW = Math.round(innerW * 0.16);
-    const colParticularW = innerW - colSizeW - colQtyW - colRateW - colAmtW;
+    const colQtyW = Math.round(innerW * 0.14);
+    const colRateW = Math.round(innerW * 0.19);
+    const colAmtW = Math.round(innerW * 0.21);
+    const colParticularW = innerW - colQtyW - colRateW - colAmtW;
 
     const fontFamily = isHindi
       ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif'
-      : '"Consolas", "Courier New", monospace';
+      : '"Tahoma", "Arial", sans-serif';
     const titleSize = paperSize === '2inch' ? 28 : 34;
-    const bodySize = paperSize === '2inch' ? 20 : 26;
+    const bodySize = paperSize === '2inch' ? 22 : 28;
     const smallSize = paperSize === '2inch' ? 18 : 22;
     const rowHeight = paperSize === '2inch' ? 30 : 38;
 
@@ -332,8 +331,6 @@ export class PrinterService {
 
     const items: any[] = bill.items || [];
     const itemNameLines = items.map(item => this.wrapText(m, this.pickItemName(item, isHindi), colParticularW - 10));
-    const addressLines = settings?.address ? this.wrapText(m, String(settings.address), width - (padding * 2)) : [];
-    const footerLines = settings?.footerText ? this.wrapText(m, String(settings.footerText), width - (padding * 2)) : [];
 
     let height = 0;
     height += padding;
@@ -364,6 +361,7 @@ export class PrinterService {
     if (!ctx) throw new Error('Unable to initialize print canvas');
 
     ctx.scale(scale, scale);
+    ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(0, 0, width, Math.ceil(height));
     ctx.fillStyle = '#000000';
@@ -371,23 +369,22 @@ export class PrinterService {
 
     const x0 = padding;
     const x1 = x0 + colParticularW;
-    const x2 = x1 + colSizeW;
-    const x3 = x2 + colQtyW;
-    const x4 = x3 + colRateW;
-    const x5 = x4 + colAmtW;
-    const right = x5;
+    const x2 = x1 + colQtyW;
+    const x3 = x2 + colRateW;
+    const x4 = x3 + colAmtW;
+    const right = x4;
     const rightTextInset = 6;
 
     const drawRight = (text: string, x: number, yPos: number, w: number, font: string) => {
       ctx.font = font;
       const tw = ctx.measureText(text).width;
-      ctx.fillText(text, Math.max(x, x + w - tw - rightTextInset), yPos);
+      ctx.fillText(text, Math.round(Math.max(x, x + w - tw - rightTextInset)), Math.round(yPos));
     };
 
     const drawH = (yPos: number, lw = 1) => {
       ctx.beginPath();
       ctx.moveTo(x0, yPos);
-      ctx.lineTo(x5, yPos);
+      ctx.lineTo(x4, yPos);
       ctx.lineWidth = lw;
       ctx.strokeStyle = '#000000';
       ctx.stroke();
@@ -425,26 +422,25 @@ export class PrinterService {
     const billNo = String((bill.billNumber || '').slice(-5) || '-');
 
     ctx.font = `700 ${smallSize}px ${fontFamily}`;
-    ctx.fillText(`TABLE NO :  ${tableNo}`, x0 + 6, y + 4);
-    drawRight(`TIME:  ${timeStr}`, x2, y + 4, x5 - x2, `700 ${smallSize}px ${fontFamily}`);
+    ctx.fillText(`TABLE NO :  ${tableNo}`, Math.round(x0 + 6), Math.round(y + 4));
+    drawRight(`TIME:  ${timeStr}`, x1, y + 4, x4 - x1, `700 ${smallSize}px ${fontFamily}`);
     y += rowHeight;
-    ctx.fillText(`NO :  ${billNo}`, x0 + 6, y + 4);
-    drawRight(`DATE:  ${dateStr}`, x2, y + 4, x5 - x2, `700 ${smallSize}px ${fontFamily}`);
+    ctx.fillText(`NO :  ${billNo}`, Math.round(x0 + 6), Math.round(y + 4));
+    drawRight(`DATE:  ${dateStr}`, x1, y + 4, x4 - x1, `700 ${smallSize}px ${fontFamily}`);
     y += rowHeight;
     drawH(y);
 
     // Column header row
     const tableStartY = y;
     ctx.font = `700 ${bodySize}px ${fontFamily}`;
-    ctx.fillText('Particular', x0 + 6, y + 4);
-    drawRight('Size', x1, y + 4, colSizeW, `700 ${bodySize}px ${fontFamily}`);
-    drawRight('Qty', x2, y + 4, colQtyW, `700 ${bodySize}px ${fontFamily}`);
-    drawRight('Rate', x3, y + 4, colRateW, `700 ${bodySize}px ${fontFamily}`);
-    drawRight('Amt.', x4, y + 4, colAmtW, `700 ${bodySize}px ${fontFamily}`);
+    ctx.fillText('Particular', Math.round(x0 + 6), Math.round(y + 4));
+    drawRight('Qty', x1, y + 4, colQtyW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Rate', x2, y + 4, colRateW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Amt.', x3, y + 4, colAmtW, `700 ${bodySize}px ${fontFamily}`);
     y += rowHeight;
     drawH(y);
 
-    ctx.font = `400 ${bodySize}px ${fontFamily}`;
+    ctx.font = `500 ${bodySize}px ${fontFamily}`;
     items.forEach((item, i) => {
       const nameLines = itemNameLines[i];
       const qty = item.isLooseItem ? Number(item.quantity || 0).toFixed(2) : String(Math.round(item.quantity || 0));
@@ -453,16 +449,17 @@ export class PrinterService {
 
       const rowY = y;
       nameLines.forEach((line, index) => {
-        ctx.fillText(line, x0 + 6, rowY + 4 + (index * rowHeight));
+        ctx.fillText(line, Math.round(x0 + 6), Math.round(rowY + 4 + (index * rowHeight)));
       });
 
-      drawRight('-', x1, rowY + 4, colSizeW, `400 ${bodySize}px ${fontFamily}`);
-      drawRight(qty, x2, rowY + 4, colQtyW, `400 ${bodySize}px ${fontFamily}`);
-      drawRight(rate, x3, rowY + 4, colRateW, `400 ${bodySize}px ${fontFamily}`);
-      drawRight(amt, x4, rowY + 4, colAmtW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight(qty, x1, rowY + 4, colQtyW, `500 ${bodySize}px ${fontFamily}`);
+      drawRight(rate, x2, rowY + 4, colRateW, `500 ${bodySize}px ${fontFamily}`);
+      drawRight(amt, x3, rowY + 4, colAmtW, `500 ${bodySize}px ${fontFamily}`);
 
       y += Math.max(1, nameLines.length) * rowHeight;
-      drawH(y);
+      if (i === items.length - 1) {
+        drawH(y);
+      }
     });
 
     // Vertical column lines across table section
@@ -471,12 +468,11 @@ export class PrinterService {
     drawV(x2, tableStartY, y);
     drawV(x3, tableStartY, y);
     drawV(x4, tableStartY, y);
-    drawV(x5, tableStartY, y);
 
     const drawTotalLine = (label: string, value: string, bold = false) => {
       ctx.font = `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`;
-      ctx.fillText(label, x0 + 6, y + 4);
-      drawRight(value, x4, y + 4, colAmtW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
+      ctx.fillText(label, Math.round(x0 + 6), Math.round(y + 4));
+      drawRight(value, x3, y + 4, colAmtW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
       y += rowHeight;
       drawH(y);
     };
@@ -493,17 +489,17 @@ export class PrinterService {
 
     ctx.font = `400 ${smallSize}px ${fontFamily}`;
     if (settings?.taxNumber) {
-      ctx.fillText('Fssai : ' + settings.taxNumber, x0 + 6, y + 2);
+      ctx.fillText('Fssai : ' + settings.taxNumber, Math.round(x0 + 6), Math.round(y + 2));
       y += smallSize + 4;
     }
     const thanks = (settings?.footerText || 'THANKS VISIT AGAIN').toUpperCase();
     const thanksW = ctx.measureText(thanks).width;
-    ctx.fillText(thanks, Math.max(x0 + 4, x0 + ((innerW - thanksW) / 2)), y + 2);
+    ctx.fillText(thanks, Math.round(Math.max(x0 + 4, x0 + ((innerW - thanksW) / 2))), Math.round(y + 2));
     y += smallSize + 4;
 
     // Close outer border
     drawV(x0, topY, y);
-    drawV(x5, topY, y);
+    drawV(x4, topY, y);
     drawH(y);
 
     return this.toHighContrastPngBase64(canvas);
