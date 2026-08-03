@@ -23,8 +23,6 @@ db.pragma('foreign_keys = ON');
 
 // Initialize database schema
 const initializeDatabase = () => {
-  console.log('📦 Initializing SQLite database...');
-
   // Users table
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -70,7 +68,6 @@ const initializeDatabase = () => {
     const hasNameHi = productColumns.some(col => col.name === 'nameHi');
     if (!hasNameHi) {
       db.exec('ALTER TABLE products ADD COLUMN nameHi TEXT');
-      console.log('✅ Migration: Added nameHi column to products');
     }
   } catch (e) {
     // Column might already exist
@@ -126,9 +123,7 @@ const initializeDatabase = () => {
     const ftsCount = db.prepare('SELECT COUNT(*) as count FROM products_fts').get();
     const productsCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
     if (ftsCount.count !== productsCount.count) {
-      console.log('🔄 Rebuilding FTS index...');
       db.exec(`INSERT INTO products_fts(products_fts) VALUES('rebuild')`);
-      console.log('✅ FTS index rebuilt');
     }
   } catch (e) {
     // FTS table might be new, rebuild it

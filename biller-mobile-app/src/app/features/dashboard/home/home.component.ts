@@ -225,7 +225,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
     // Load tables if hotel mode
     if (this.isHotelMode()) {
-      console.log('🏨 Hotel mode detected');
       this.hotelService.loadTables().subscribe({
         next: () => {
           // Restore last selected table if any
@@ -236,24 +235,19 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
       // Setup socket listeners after socket connects
       this.trySetupSocketListeners();
-    } else {
-      console.log('⚠️ Not in hotel mode, socket listeners NOT set up');
     }
   }
 
   // Try to setup socket listeners, will retry when socket connects
   private trySetupSocketListeners(): void {
     if (this.socketListenersSetup) {
-      console.log('⚠️ Socket listeners already set up, skipping');
       return;
     }
 
     if (this.socketService.connected()) {
-      console.log('✅ Socket is connected, setting up listeners now...');
       this.setupSocketListeners();
       this.socketListenersSetup = true;
     } else {
-      console.log('⏳ Socket not connected yet, will retry in 1 second...');
       setTimeout(() => this.trySetupSocketListeners(), 1000);
     }
   }
@@ -773,14 +767,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   clearCart(): void {
     const billId = this.currentBillId();
     
-    console.log('🧹 clearCart called, currentBillId:', billId);
-    
     // Delete bill from database if it exists (for pending/draft bills)
     if (billId) {
-      console.log('📤 Calling deleteBill API for billId:', billId);
       this.billService.deleteBill(billId).subscribe({
         next: (response) => {
-          console.log('✅ Bill deleted from database successfully:', response);
           // Success snack bar removed
         },
         error: (err) => {
@@ -791,10 +781,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           });
         }
       });
-    } else {
-      console.log('ℹ️ No bill to delete (currentBillId is null)');
     }
-
     // Mark table as available if in hotel mode
     if (this.isHotelMode() && this.selectedTable()) {
       const currentTable = this.selectedTable();
@@ -1103,7 +1090,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       // Mark table as occupied immediately (billId will be assigned when bill is saved)
       this.hotelService.updateTableStatus(table.id, 'occupied', undefined).subscribe({
         next: () => {
-          console.log(`✅ Table ${table.tableNumber} marked as occupied`);
         },
         error: (err) => {
           console.error('Failed to mark table as occupied:', err);
@@ -1586,9 +1572,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.billService.createBill({ ...billData, items: billData.items } as any).subscribe({
         next: (response) => {
           if (response.success) {
-            console.log('✅ saveOrder: Bill created with billId:', response.data.billId);
             this.currentBillId.set(response.data.billId);
-            console.log('✅ saveOrder: currentBillId set to:', this.currentBillId());
             this.updateCartSnapshot(); // Update snapshot after successful save
             // Success snack bar removed
             
@@ -1609,8 +1593,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Print KOT (Kitchen Order Ticket) - Save and Print
   printKOT(): void {
-    console.log('📝 printKOT called, currentBillId:', this.currentBillId());
-    
     if (this.billService.cartItems().length === 0) {
       this.snackBar.open('No items to print', 'Close', { duration: 3000 });
       return;
@@ -1686,9 +1668,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.billService.createBill({ ...billData, items: billData.items } as any).subscribe({
         next: (response) => {
           if (response.success) {
-            console.log('✅ printKOT: Bill created with billId:', response.data.billId);
             this.currentBillId.set(response.data.billId);
-            console.log('✅ printKOT: currentBillId set to:', this.currentBillId());
             // Data saved successfully - update snapshot, table status, and reload tables
             this.updateCartSnapshot();
             
@@ -1872,41 +1852,29 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // ===== SOCKET EVENT HANDLERS FOR REAL-TIME UPDATES =====
 
   private setupSocketListeners(): void {
-    console.log('🔌 Setting up socket listeners for real-time updates');
-    console.log('🔌 Socket connected status:', this.socketService.connected());
-    
     // Listen for table updates from other clients
     this.socketService.on('table-updated', (data: any) => {
-      console.log('📡 WebSocket: table-updated received', data);
       this.handleTableUpdate(data);
     });
 
     this.socketService.on('tables-refresh-needed', () => {
-      console.log('📡 WebSocket: tables-refresh-needed received');
       this.handleTablesRefresh();
     });
 
     this.socketService.on('bill-created', (data: any) => {
-      console.log('📡 WebSocket: bill-created received', data);
       this.handleBillUpdate(data);
     });
 
     this.socketService.on('bill-updated', (data: any) => {
-      console.log('📡 WebSocket: bill-updated received', data);
       this.handleBillUpdate(data);
     });
 
     this.socketService.on('kot-printed', (data: any) => {
-      console.log('📡 WebSocket: kot-printed received', data);
       this.handleKOTPrinted(data);
     });
-    
-    console.log('✅ Socket listeners registered for 5 events');
   }
 
   private handleTableUpdate(data: any): void {
-    console.log('✅ Handling table update, reloading tables...', data);
-    
     // Check if this is a bill completion event for the current table
     const currentTable = this.selectedTable();
     const shouldClearCart = currentTable && 
@@ -1914,7 +1882,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                            (data.status === 'available' || data.billStatus === 'completed');
     
     if (shouldClearCart) {
-      console.log('🧹 Bill completed in another browser, clearing local cart and resetting state');
       // Clear local cart and reset state
       this.billService.clearCart();
       this.billService.billDiscount.set(0);
@@ -1932,38 +1899,29 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Reload tables to get latest status and grand totals
     this.hotelService.loadTables().subscribe({
       next: () => {
-        console.log('✅ Tables reloaded after table-updated event');
       }
     });
   }
 
   private handleTablesRefresh(): void {
-    console.log('✅ Handling tables refresh, reloading all tables...');
     // Reload all tables
     this.hotelService.loadTables().subscribe({
       next: () => {
-        console.log('✅ All tables reloaded after tables-refresh-needed event');
-      }
     });
   }
 
   private handleBillUpdate(data: any): void {
-    console.log('✅ Handling bill update, reloading tables to reflect changes...', data);
     // Reload tables to reflect bill changes (grand totals, status, etc.)
     this.hotelService.loadTables().subscribe({
       next: () => {
-        console.log('✅ Tables reloaded after bill-created/updated event');
         // If this bill belongs to currently selected table, update selected table
         const currentTable = this.selectedTable();
         if (currentTable && data.tableId === currentTable.id) {
           const refreshedTable = this.hotelService.tables().find(t => t.id === currentTable.id);
           if (refreshedTable) {
             this.selectedTable.set(refreshedTable);
-            console.log('✅ Updated selected table reference after bill update');
-            
             // If we're viewing this bill, reload it to get updated items
             if (this.currentBillId() && data.billId && this.currentBillId() === data.billId) {
-              console.log('🔄 Loading updated bill items from another browser...');
               this.billService.getBillById(data.billId).subscribe({
                 next: (response) => {
                   if (response.success && response.data) {
@@ -1992,7 +1950,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                     }
                     // Update snapshot
                     this.updateCartSnapshot();
-                    console.log('✅ Cart items updated from another browser');
                   }
                 },
                 error: (err) => {
@@ -2007,17 +1964,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleKOTPrinted(data: any): void {
-    console.log('✅ Handling KOT printed event, reloading tables...');
     // Reload tables to show KOT printed status
     this.hotelService.loadTables().subscribe({
       next: () => {
-        console.log('✅ Tables reloaded after kot-printed event');
         // Show notification if this is the currently selected table
         const currentTable = this.selectedTable();
         if (currentTable && data.tableId === currentTable.id && data.billId === this.currentBillId()) {
           const message = data.printError ? 'KOT print failed for this table' : 'KOT printed for this table';
-          // Info snack bar removed
-          console.log('✅ Showed KOT notification for current table');
         }
       }
     });

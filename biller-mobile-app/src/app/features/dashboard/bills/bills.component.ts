@@ -128,16 +128,13 @@ export class BillsComponent implements OnInit, OnDestroy {
   // Try to setup socket listeners, will retry when socket connects
   private trySetupSocketListeners(): void {
     if (this.socketListenersSetup) {
-      console.log('⚠️ Bills: Socket listeners already set up, skipping');
       return;
     }
 
     if (this.socketService.connected()) {
-      console.log('✅ Bills: Socket is connected, setting up listeners now...');
       this.setupSocketListeners();
       this.socketListenersSetup = true;
     } else {
-      console.log('⏳ Bills: Socket not connected yet, will retry in 1 second...');
       setTimeout(() => this.trySetupSocketListeners(), 1000);
     }
   }
@@ -153,47 +150,35 @@ export class BillsComponent implements OnInit, OnDestroy {
   }
 
   private setupSocketListeners(): void {
-    console.log('🔌 Bills: Setting up socket listeners for real-time updates');
-    
     this.socketService.on('bill-created', (data: any) => {
-      console.log('📡 Bills: bill-created received', data);
       this.handleBillCreated(data);
     });
 
     this.socketService.on('bill-updated', (data: any) => {
-      console.log('📡 Bills: bill-updated received', data);
       this.handleBillUpdated(data);
     });
 
     this.socketService.on('bill-deleted', (data: any) => {
-      console.log('📡 Bills: bill-deleted received', data);
       this.handleBillDeleted(data);
     });
-    
-    console.log('✅ Bills: Socket listeners registered');
   }
 
   private handleBillCreated(billData: any): void {
-    console.log('✅ Bills: Handling bill created, reloading data...');
     // Reload bills and report to show new bill
     this.loadBills(true);
     this.loadReport();
   }
 
   private handleBillUpdated(billData: any): void {
-    console.log('✅ Bills: Handling bill updated, reloading data...');
     // Reload bills and report to show updated bill
     this.loadBills(true);
     this.loadReport();
   }
 
   private handleBillDeleted(data: any): void {
-    console.log('✅ Bills: Handling bill deleted event, billId:', data.billId);
-    console.log('📊 Bills: Current bills count before reload:', this.allBills().length);
     // Reload bills and report to reflect deletion
     this.loadBills(true);
     this.loadReport();
-    console.log('🔄 Bills: Triggered reload after bill deletion');
   }
 
   ngAfterViewInit(): void {

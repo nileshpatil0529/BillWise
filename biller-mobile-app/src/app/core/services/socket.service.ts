@@ -36,7 +36,6 @@ export class SocketService {
     // PWA: Reconnect when app comes to foreground
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !this.socket?.connected && this.authService.currentUser()) {
-        console.log('📱 App resumed, reconnecting socket...');
         this.connect();
       }
     });
@@ -44,7 +43,6 @@ export class SocketService {
     // PWA: Handle network changes
     window.addEventListener('online', () => {
       if (this.authService.currentUser()) {
-        console.log('🌐 Network online, reconnecting socket...');
         this.connect();
       }
     });
@@ -68,8 +66,6 @@ export class SocketService {
     this.socket.on('connect', () => {
       this.ngZone.run(() => {
         this.connected.set(true);
-        console.log('✅ Socket connected:', this.socket?.id);
-        
         this.socket?.emit('join-tables-room');
         this.socket?.emit('join-bills-room');
         this.socket?.emit('join-products-room');
