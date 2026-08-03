@@ -1907,6 +1907,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Reload all tables
     this.hotelService.loadTables().subscribe({
       next: () => {
+      }
     });
   }
 
