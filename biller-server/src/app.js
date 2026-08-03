@@ -89,6 +89,21 @@ app.use('/desktop', express.static(desktopPath));
 app.use('/mobile',  express.static(mobilePath));
 app.use('/downloads', express.static(downloadsPath));
 
+// Handle first-hit root route before desktop static middleware.
+// Without this, '/' can be served directly from desktop index.html,
+// bypassing device detection for mobile users.
+app.get('/', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  const override = req.query.app; // ?app=desktop or ?app=mobile
+  const serveMobile = override === 'mobile' || (override !== 'desktop' && isMobileDevice(ua));
+
+  if (serveMobile) {
+    return res.redirect(302, '/mobile/');
+  }
+
+  return res.sendFile(path.join(desktopPath, 'index.html'));
+});
+
 // Root static - desktop assets only at root; mobile assets are scoped to /mobile/
 // (avoids SW scope collision: desktop SW registers at /, mobile SW at /mobile/)
 app.use(express.static(desktopPath));
