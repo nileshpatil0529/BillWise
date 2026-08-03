@@ -4,6 +4,7 @@ set -euo pipefail
 
 APP_NAME="billwise-server"
 DEFAULT_PORT="3000"
+DEFAULT_HOST_NAME="billwise.online"
 
 usage() {
   cat <<'EOF'
@@ -142,9 +143,10 @@ EOF
 }
 
 write_nginx_http_only() {
-  local host="$1"
-  local port="$2"
-  local conf_file="$3"
+  local root_host="$1"
+  local server_names="$2"
+  local port="$3"
+  local conf_file="$4"
 
   sudo tee "$conf_file" >/dev/null <<EOF
 map \$http_upgrade \$connection_upgrade {
@@ -154,7 +156,11 @@ map \$http_upgrade \$connection_upgrade {
 
 server {
     listen 80;
-    server_name $host;
+  server_name $server_names;
+
+  if (\$host = www.$root_host) {
+    return 301 https://$root_host\$request_uri;
+  }
 
     location / {
         proxy_pass http://127.0.0.1:$port;
@@ -262,11 +268,21 @@ main() {
     exit 1
   fi
 
-  maybe_prompt HOST_NAME "Domain or VPS IP for access (example: app.example.com or 1.2.3.4)"
+  maybe_prompt HOST_NAME "Domain or VPS IP for access (example: app.example.com or 1.2.3.4)" "$DEFAULT_HOST_NAME"
   maybe_prompt SERVER_PORT "Backend port" "$DEFAULT_PORT"
   maybe_prompt NODE_MAJOR "Node.js major version" "20"
 
-  local default_admin_email="admin@$HOST_NAME"
+  local ROOT_DOMAIN="$HOST_NAME"
+  local WWW_DOMAIN=""
+  local SERVER_NAMES="$HOST_NAME"
+
+  if ! is_ip "$HOST_NAME"; then
+    ROOT_DOMAIN="${HOST_NAME#www.}"
+    WWW_DOMAIN="www.$ROOT_DOMAIN"
+    SERVER_NAMES="$ROOT_DOMAIN $WWW_DOMAIN"
+  fi
+
+  local default_admin_email="admin@$ROOT_DOMAIN"
   maybe_prompt ADMIN_EMAIL "Admin email" "$default_admin_email"
   maybe_prompt ADMIN_PASSWORD "Admin password" "Admin@123" true
 
@@ -313,7 +329,7 @@ main() {
   if is_ip "$HOST_NAME"; then
     cors_origin="https://$HOST_NAME"
   else
-    cors_origin="https://$HOST_NAME"
+    cors_origin="https://$ROOT_DOMAIN"
   fi
 
   log "Creating server environment file"
@@ -335,7 +351,7 @@ main() {
   if is_ip "$HOST_NAME"; then
     write_nginx_https_ip_self_signed "$HOST_NAME" "$SERVER_PORT" "$conf_file"
   else
-    write_nginx_http_only "$HOST_NAME" "$SERVER_PORT" "$conf_file"
+    write_nginx_http_only "$ROOT_DOMAIN" "$SERVER_NAMES" "$SERVER_PORT" "$conf_file"
   fi
 
   sudo ln -sf "$conf_file" /etc/nginx/sites-enabled/billwise
@@ -348,7 +364,7 @@ main() {
 
   if [ "$USE_DOMAIN_SSL" = "true" ]; then
     log "Issuing Let's Encrypt certificate"
-    sudo certbot --nginx -d "$HOST_NAME" -m "$LETSENCRYPT_EMAIL" --agree-tos --non-interactive --redirect
+    sudo certbot --nginx -d "$ROOT_DOMAIN" -d "$WWW_DOMAIN" -m "$LETSENCRYPT_EMAIL" --agree-tos --non-interactive --redirect
     sudo systemctl reload nginx
   fi
 
@@ -358,21 +374,27 @@ main() {
   sudo ufw --force enable || true
 
   local health_url
+  local app_url
   if is_ip "$HOST_NAME"; then
     health_url="https://$HOST_NAME/api/health"
+    app_url="https://$HOST_NAME"
     log "Checking health endpoint (self-signed cert expected)"
     curl -k -I "$health_url" || true
   else
-    health_url="https://$HOST_NAME/api/health"
+    health_url="https://$ROOT_DOMAIN/api/health"
+    app_url="https://$ROOT_DOMAIN"
     log "Checking health endpoint"
     curl -I "$health_url" || true
   fi
 
   log "Setup complete"
   echo
-  echo "Open: https://$HOST_NAME"
+  echo "Open: $app_url"
   echo "API health: $health_url"
   echo "PM2 logs: pm2 logs $APP_NAME"
+  if [ "$USE_DOMAIN_SSL" = "true" ]; then
+    echo "Also works on: https://$WWW_DOMAIN (redirects to $app_url)"
+  fi
   if is_ip "$HOST_NAME"; then
     echo "Note: IP HTTPS uses self-signed certificate by default."
   fi
