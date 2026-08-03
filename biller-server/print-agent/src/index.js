@@ -130,18 +130,15 @@ finally {
 }
 
 function preventSystemSleep() {
-  // ES_CONTINUOUS (0x80000000) | ES_SYSTEM_REQUIRED (0x00000001) — stops Windows sleep timer
-  const ps = [
-    '$code = @"',
-    'using System.Runtime.InteropServices;',
-    'public class PowerMgmt {',
-    '  [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint esFlags);',
-    '}',
-    '"@',
-    'Add-Type -TypeDefinition $code',
-    'while ($true) { [PowerMgmt]::SetThreadExecutionState(0x80000001) | Out-Null; Start-Sleep -Seconds 30 }'
-  ].join('\n');
-  const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], {
+  // write to a temp file — here-strings and double-quotes break under -Command tokenization
+  const tmpScript = path.join(os.tmpdir(), 'bw_nosleep.ps1');
+  const script = [
+    '$sig = \'[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);\'',
+    'Add-Type -MemberDefinition $sig -Name PM -Namespace BW -ErrorAction SilentlyContinue',
+    'while ($true) { [BW.PM]::SetThreadExecutionState(0x80000001) | Out-Null; Start-Sleep -Seconds 30 }'
+  ].join('\r\n');
+  try { fs.writeFileSync(tmpScript, script, 'utf8'); } catch { return; }
+  const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tmpScript], {
     windowsHide: true,
     stdio: 'ignore'
   });

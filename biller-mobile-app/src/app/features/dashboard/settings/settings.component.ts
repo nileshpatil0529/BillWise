@@ -21,7 +21,6 @@ import { TranslateService } from '../../../core/services/translate.service';
 import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit, ViewMode, LanguageType } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
-import { PrinterConfigComponent } from './printer-config/printer-config.component';
 
 @Component({
   selector: 'app-settings',
@@ -40,8 +39,7 @@ import { PrinterConfigComponent } from './printer-config/printer-config.componen
     MatCheckboxModule,
     MatTooltipModule,
     MatDialogModule,
-    MatExpansionModule,
-    PrinterConfigComponent
+    MatExpansionModule
   ],
   templateUrl: './settings.component.html',
   styleUrls: ['./settings.component.scss']

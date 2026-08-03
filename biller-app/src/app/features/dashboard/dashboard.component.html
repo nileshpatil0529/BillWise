@@ -58,14 +58,6 @@
 
       <span class="spacer"></span>
 
-      <!-- Printer Status -->
-      @if (printerService.agentStatus() !== 'unchecked') {
-        <a class="printer-status-chip status-{{ printerService.agentStatus() }}" routerLink="/dashboard/settings" matTooltip="Printer Agent">
-          <mat-icon>{{ printerService.agentStatus() === 'connected' ? 'print' : 'print_disabled' }}</mat-icon>
-          <span>{{ printerService.agentStatus() === 'connected' ? 'Online' : (printerService.agentStatus() === 'loading' ? 'Checking...' : 'Offline') }}</span>
-        </a>
-      }
-
       <!-- Theme Toggle -->
       <button mat-icon-button (click)="toggleTheme()" [matTooltip]="settingsService.currentTheme() === 'light' ? 'Dark Mode' : 'Light Mode'">
         <mat-icon>{{ settingsService.currentTheme() === 'light' ? 'dark_mode' : 'light_mode' }}</mat-icon>

@@ -12,13 +12,6 @@
       </div>
       
       <div class="header-actions">
-        <!-- Printer Status -->
-        @if (printerService.agentStatus() !== 'unchecked') {
-          <a class="printer-status-chip status-{{ printerService.agentStatus() }}" routerLink="/dashboard/settings">
-            <mat-icon>{{ printerService.agentStatus() === 'connected' ? 'print' : 'print_disabled' }}</mat-icon>
-          </a>
-        }
-
         <!-- Theme Toggle -->
         <button mat-icon-button (click)="toggleTheme()" class="header-btn">
           <mat-icon>{{ settingsService.currentTheme() === 'light' ? 'dark_mode' : 'light_mode' }}</mat-icon>

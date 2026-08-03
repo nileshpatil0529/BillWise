@@ -1,26 +1,6 @@
 @use '../../../styles/variables' as v;
 @use '../../../styles/mixins' as m;
 
-.printer-status-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  text-decoration: none;
-  cursor: pointer;
-  transition: opacity 0.2s;
-
-  mat-icon { font-size: 18px; width: 18px; height: 18px; }
-
-  &.status-connected    { background: rgba(76,175,80,0.15);  color: #388e3c; }
-  &.status-disconnected { background: rgba(244,67,54,0.15);  color: #d32f2f; }
-  &.status-loading      { background: rgba(158,158,158,0.15); color: #616161; }
-
-  &:hover { opacity: 0.8; }
-}
-
 // ============================================
 // MOBILE APP CONTAINER
 // ============================================

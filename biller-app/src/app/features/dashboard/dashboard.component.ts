@@ -13,7 +13,6 @@ import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { AuthService } from '../../core/services/auth.service';
 import { SettingsService } from '../../core/services/settings.service';
 import { TranslateService } from '../../core/services/translate.service';
-import { PrinterService } from '../../core/services/printer.service';
 
 interface MenuItem {
   icon: string;
@@ -47,7 +46,6 @@ export class DashboardComponent implements OnInit {
   isMobile = signal(false);
   
   translateService = inject(TranslateService);
-  printerService = inject(PrinterService);
 
   menuItems = computed(() => {
     const user = this.authService.currentUser();
