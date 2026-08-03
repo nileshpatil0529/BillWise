@@ -110,8 +110,13 @@ export const initializeSocketIO = (httpServer) => {
     socket.on('disconnect', (reason) => {
       const userId = socket.data.userId;
       if (userId) {
-        userSockets.delete(userId);
-        printerUsers.delete(userId);
+        // Avoid reconnect race: only clear mappings if they still point to this socket.
+        if (userSockets.get(userId) === socket.id) {
+          userSockets.delete(userId);
+        }
+        if (printerUsers.get(userId) === socket.id) {
+          printerUsers.delete(userId);
+        }
       }
       console.log('❌ Socket client disconnected:', socket.id, reason);
     });

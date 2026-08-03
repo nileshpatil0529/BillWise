@@ -309,18 +309,21 @@ export class PrinterService {
     }
 
     const width = paperSize === '2inch' ? 384 : 576;
-    const padding = 8;
-    const gap = 8;
-    const comboW = paperSize === '2inch' ? 136 : 186;
-    const nameW = width - (padding * 2) - comboW - gap;
+    const padding = paperSize === '2inch' ? 8 : 10;
+    const innerW = width - (padding * 2);
+    const colSizeW = Math.round(innerW * (paperSize === '2inch' ? 0.16 : 0.15));
+    const colQtyW = Math.round(innerW * 0.11);
+    const colRateW = Math.round(innerW * 0.14);
+    const colAmtW = Math.round(innerW * 0.16);
+    const colParticularW = innerW - colSizeW - colQtyW - colRateW - colAmtW;
 
     const fontFamily = isHindi
       ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif'
       : '"Consolas", "Courier New", monospace';
-    const titleSize = paperSize === '2inch' ? 36 : 42;
-    const bodySize = paperSize === '2inch' ? 26 : 32;
-    const smallSize = paperSize === '2inch' ? 22 : 26;
-    const rowHeight = paperSize === '2inch' ? 38 : 46;
+    const titleSize = paperSize === '2inch' ? 28 : 34;
+    const bodySize = paperSize === '2inch' ? 20 : 26;
+    const smallSize = paperSize === '2inch' ? 18 : 22;
+    const rowHeight = paperSize === '2inch' ? 30 : 38;
 
     const measureCanvas = document.createElement('canvas');
     const m = measureCanvas.getContext('2d');
@@ -328,39 +331,29 @@ export class PrinterService {
     m.font = `400 ${bodySize}px ${fontFamily}`;
 
     const items: any[] = bill.items || [];
-    const itemNameLines = items.map(item => this.wrapText(m, this.pickItemName(item, isHindi), nameW));
+    const itemNameLines = items.map(item => this.wrapText(m, this.pickItemName(item, isHindi), colParticularW - 10));
     const addressLines = settings?.address ? this.wrapText(m, String(settings.address), width - (padding * 2)) : [];
     const footerLines = settings?.footerText ? this.wrapText(m, String(settings.footerText), width - (padding * 2)) : [];
 
-    const dashGapTop = 3;
-    const dashGapBottom = 7;
-    const dashBlock = dashGapTop + 1 + dashGapBottom;
-
     let height = 0;
     height += padding;
-    height += titleSize + 8;
-    height += addressLines.length * (smallSize + 6);
-    if (settings?.taxNumber) height += smallSize + 6;
-    if (settings?.phone) height += smallSize + 6;
-    height += 8;
-    height += (smallSize + 6) * 2;
-    if (bill.businessTypeData?.tableNumber) height += smallSize + 6;
-    height += 8;
+    height += titleSize + 6;
+    height += (smallSize + 4) * 2;
+    height += rowHeight + 4;
     height += rowHeight;
-    height += dashBlock;
+    height += rowHeight;
 
     itemNameLines.forEach(lines => {
-      height += Math.max(1, lines.length) * rowHeight + 3;
+      height += Math.max(1, lines.length) * rowHeight;
     });
 
-    height += dashBlock;
     height += rowHeight;
     if (Number(bill.taxTotal || 0) > 0) height += rowHeight;
     if (Number(bill.discountTotal || 0) > 0) height += rowHeight;
-    height += rowHeight;
-    height += dashBlock;
-    height += footerLines.length * (smallSize + 6);
-    height += padding;
+    height += rowHeight + 6;
+    if (settings?.taxNumber) height += smallSize + 4;
+    height += smallSize + 4;
+    height += padding + 4;
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -376,10 +369,14 @@ export class PrinterService {
     ctx.fillStyle = '#000000';
     ctx.textBaseline = 'top';
 
-    const xName = padding;
-    const xCombo = xName + nameW + gap;
-    const right = width - padding;
-    const rightTextInset = 8;
+    const x0 = padding;
+    const x1 = x0 + colParticularW;
+    const x2 = x1 + colSizeW;
+    const x3 = x2 + colQtyW;
+    const x4 = x3 + colRateW;
+    const x5 = x4 + colAmtW;
+    const right = x5;
+    const rightTextInset = 6;
 
     const drawRight = (text: string, x: number, yPos: number, w: number, font: string) => {
       ctx.font = font;
@@ -387,119 +384,127 @@ export class PrinterService {
       ctx.fillText(text, Math.max(x, x + w - tw - rightTextInset), yPos);
     };
 
-    const drawDashedSep = (yPos: number) => {
-      ctx.save();
+    const drawH = (yPos: number, lw = 1) => {
       ctx.beginPath();
-      ctx.setLineDash([6, 4]);
-      ctx.moveTo(padding, yPos);
-      ctx.lineTo(right, yPos);
-      ctx.lineWidth = 1;
+      ctx.moveTo(x0, yPos);
+      ctx.lineTo(x5, yPos);
+      ctx.lineWidth = lw;
       ctx.strokeStyle = '#000000';
       ctx.stroke();
-      ctx.restore();
+    };
+
+    const drawV = (xPos: number, yStart: number, yEnd: number, lw = 1) => {
+      ctx.beginPath();
+      ctx.moveTo(xPos, yStart);
+      ctx.lineTo(xPos, yEnd);
+      ctx.lineWidth = lw;
+      ctx.strokeStyle = '#000000';
+      ctx.stroke();
     };
 
     let y = padding;
 
     ctx.font = `700 ${titleSize}px ${fontFamily}`;
-    const businessName = String(settings?.businessName || 'My Business');
-    const titleW = ctx.measureText(businessName).width;
-    ctx.fillText(businessName, Math.max(padding, (width - titleW) / 2), y);
-    y += titleSize + 8;
+    // Outer border
+    const topY = y;
+    drawH(topY);
 
-    ctx.font = `400 ${smallSize}px ${fontFamily}`;
-    addressLines.forEach(line => {
-      const lw = ctx.measureText(line).width;
-      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
-      y += smallSize + 6;
-    });
-    if (settings?.taxNumber) {
-      const line = 'GST: ' + settings.taxNumber;
-      const lw = ctx.measureText(line).width;
-      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
-      y += smallSize + 6;
-    }
-    if (settings?.phone) {
-      const line = 'Ph: ' + settings.phone;
-      const lw = ctx.measureText(line).width;
-      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
-      y += smallSize + 6;
-    }
+    // Business heading block
+    ctx.font = `700 ${titleSize}px ${fontFamily}`;
+    const heading = String(settings?.businessName || 'RESTAURANT').toUpperCase();
+    const titleW = ctx.measureText(heading).width;
+    ctx.fillText(heading, Math.max(x0 + 4, x0 + ((innerW - titleW) / 2)), y + 4);
+    y += titleSize + 6;
+    drawH(y);
 
-    y += 8;
-    ctx.fillText('Date: ' + new Date(bill.createdAt).toLocaleString('en-IN', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: true
-    }), padding, y);
-    y += smallSize + 6;
-    ctx.fillText('Bill: ' + (bill.billNumber || '').slice(-5), padding, y);
-    y += smallSize + 6;
-
+    const dt = new Date(bill.createdAt || Date.now());
+    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    const dateStr = dt.toLocaleDateString('en-GB').replace(/\//g, '/');
     const btd = bill.businessTypeData || {};
-    if (btd.tableNumber) {
-      ctx.fillText('Table: ' + btd.tableNumber, padding, y);
-      y += smallSize + 6;
-    }
+    const tableNo = String(btd.tableNumber || '-');
+    const billNo = String((bill.billNumber || '').slice(-5) || '-');
 
-    y += 8;
-
-    ctx.font = `700 ${bodySize}px ${fontFamily}`;
-    ctx.fillText('Name', xName, y);
-    drawRight('Qty X Rate', xCombo, y, comboW, `700 ${bodySize}px ${fontFamily}`);
+    ctx.font = `700 ${smallSize}px ${fontFamily}`;
+    ctx.fillText(`TABLE NO :  ${tableNo}`, x0 + 6, y + 4);
+    drawRight(`TIME:  ${timeStr}`, x2, y + 4, x5 - x2, `700 ${smallSize}px ${fontFamily}`);
     y += rowHeight;
+    ctx.fillText(`NO :  ${billNo}`, x0 + 6, y + 4);
+    drawRight(`DATE:  ${dateStr}`, x2, y + 4, x5 - x2, `700 ${smallSize}px ${fontFamily}`);
+    y += rowHeight;
+    drawH(y);
 
-    y += dashGapTop;
-    drawDashedSep(y);
-    y += dashGapBottom;
+    // Column header row
+    const tableStartY = y;
+    ctx.font = `700 ${bodySize}px ${fontFamily}`;
+    ctx.fillText('Particular', x0 + 6, y + 4);
+    drawRight('Size', x1, y + 4, colSizeW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Qty', x2, y + 4, colQtyW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Rate', x3, y + 4, colRateW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Amt.', x4, y + 4, colAmtW, `700 ${bodySize}px ${fontFamily}`);
+    y += rowHeight;
+    drawH(y);
 
     ctx.font = `400 ${bodySize}px ${fontFamily}`;
     items.forEach((item, i) => {
       const nameLines = itemNameLines[i];
       const qty = item.isLooseItem ? Number(item.quantity || 0).toFixed(2) : String(Math.round(item.quantity || 0));
-      const rate = Number(item.unitPrice || 0).toFixed(2);
-      const combo = `${qty} X ${rate}`;
+      const rate = Number(item.unitPrice || 0).toFixed(0);
+      const amt = Number((item.itemTotal ?? (Number(item.quantity || 0) * Number(item.unitPrice || 0))) || 0).toFixed(0);
 
       const rowY = y;
       nameLines.forEach((line, index) => {
-        ctx.fillText(line, xName, rowY + (index * rowHeight));
+        ctx.fillText(line, x0 + 6, rowY + 4 + (index * rowHeight));
       });
 
-      drawRight(combo, xCombo, rowY, comboW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight('-', x1, rowY + 4, colSizeW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight(qty, x2, rowY + 4, colQtyW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight(rate, x3, rowY + 4, colRateW, `400 ${bodySize}px ${fontFamily}`);
+      drawRight(amt, x4, rowY + 4, colAmtW, `400 ${bodySize}px ${fontFamily}`);
 
-      y += Math.max(1, nameLines.length) * rowHeight + 3;
+      y += Math.max(1, nameLines.length) * rowHeight;
+      drawH(y);
     });
 
-    y += dashGapTop;
-    drawDashedSep(y);
-    y += dashGapBottom;
+    // Vertical column lines across table section
+    drawV(x0, tableStartY, y);
+    drawV(x1, tableStartY, y);
+    drawV(x2, tableStartY, y);
+    drawV(x3, tableStartY, y);
+    drawV(x4, tableStartY, y);
+    drawV(x5, tableStartY, y);
 
     const drawTotalLine = (label: string, value: string, bold = false) => {
       ctx.font = `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`;
-      ctx.fillText(label, xName, y);
-      drawRight(value, xCombo, y, comboW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
+      ctx.fillText(label, x0 + 6, y + 4);
+      drawRight(value, x4, y + 4, colAmtW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
       y += rowHeight;
+      drawH(y);
     };
 
-    drawTotalLine('Subtotal', Number(bill.subtotal || 0).toFixed(2));
+    drawTotalLine('TOTAL', Number(bill.subtotal || 0).toFixed(0));
     if (Number(bill.taxTotal || 0) > 0) {
       const rate = settings?.taxRates?.[0]?.rate || 0;
-      drawTotalLine(`Tax (${rate}%)`, Number(bill.taxTotal || 0).toFixed(2));
+      drawTotalLine(`Tax (${rate}%)`, Number(bill.taxTotal || 0).toFixed(0));
     }
     if (Number(bill.discountTotal || 0) > 0) {
-      drawTotalLine('Discount', '-' + Number(bill.discountTotal || 0).toFixed(2));
+      drawTotalLine('Discount', '-' + Number(bill.discountTotal || 0).toFixed(0));
     }
-    drawTotalLine('Grand Total', Number(bill.grandTotal || 0).toFixed(2), true);
-
-    y += dashGapTop;
-    drawDashedSep(y);
-    y += dashGapBottom;
+    drawTotalLine('NET AMT', Number(bill.grandTotal || 0).toFixed(0), true);
 
     ctx.font = `400 ${smallSize}px ${fontFamily}`;
-    footerLines.forEach(line => {
-      const lw = ctx.measureText(line).width;
-      ctx.fillText(line, Math.max(padding, (width - lw) / 2), y);
-      y += smallSize + 6;
-    });
+    if (settings?.taxNumber) {
+      ctx.fillText('Fssai : ' + settings.taxNumber, x0 + 6, y + 2);
+      y += smallSize + 4;
+    }
+    const thanks = (settings?.footerText || 'THANKS VISIT AGAIN').toUpperCase();
+    const thanksW = ctx.measureText(thanks).width;
+    ctx.fillText(thanks, Math.max(x0 + 4, x0 + ((innerW - thanksW) / 2)), y + 2);
+    y += smallSize + 4;
+
+    // Close outer border
+    drawV(x0, topY, y);
+    drawV(x5, topY, y);
+    drawH(y);
 
     return this.toHighContrastPngBase64(canvas);
   }

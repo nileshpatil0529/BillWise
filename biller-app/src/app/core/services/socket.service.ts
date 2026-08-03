@@ -80,6 +80,9 @@ export class SocketService {
             this.socket?.emit('register-printer', { userId: user.uid });
           }
         }
+
+        // Ensure server-side printer mapping is refreshed after reconnect/app reload.
+        this.refreshPrinterRegistration();
       });
     });
 
