@@ -300,6 +300,25 @@ finally {
   }
 }
 
+function preventSystemSleep() {
+  // ES_CONTINUOUS (0x80000000) | ES_SYSTEM_REQUIRED (0x00000001) — stops Windows sleep timer
+  const ps = [
+    '$code = @"',
+    'using System.Runtime.InteropServices;',
+    'public class PowerMgmt {',
+    '  [DllImport(\"kernel32.dll\")] public static extern uint SetThreadExecutionState(uint esFlags);',
+    '}',
+    '"@',
+    'Add-Type -TypeDefinition $code',
+    'while ($true) { [PowerMgmt]::SetThreadExecutionState(0x80000001) | Out-Null; Start-Sleep -Seconds 30 }'
+  ].join('\n');
+  const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], {
+    windowsHide: true,
+    stdio: 'ignore'
+  });
+  proc.unref();
+}
+
 async function startService() {
   if (process.platform === 'win32') {
     const { installDir, targetExe, startupScript, startupCommand } = getInstallContext();
@@ -385,6 +404,7 @@ async function startService() {
 
   app.listen(AGENT_PORT, AGENT_HOST, () => {
     console.log(`BillWise Print Agent listening on http://${AGENT_HOST}:${AGENT_PORT}`);
+    if (process.platform === 'win32') preventSystemSleep();
   });
 }
 

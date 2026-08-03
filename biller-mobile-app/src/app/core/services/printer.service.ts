@@ -19,6 +19,7 @@ export class PrinterService {
   config = signal<PrinterConfig>({ printerName: null, paperSize: '3inch', enabled: false });
   agentStatus = signal<'unchecked' | 'connected' | 'disconnected' | 'loading'>('unchecked');
   availablePrinters = signal<string[]>([]);
+  private healthCheckInterval: ReturnType<typeof setInterval> | null = null;
 
   // ─── Config API ────────────────────────────────────────────────────────────
 
@@ -55,6 +56,7 @@ export class PrinterService {
       await this.fetchAgent('/health');
       this.agentStatus.set('connected');
       await this.refreshPrinters();
+      this.startHealthCheck();
     } catch (err: any) {
       this.agentStatus.set('disconnected');
       throw new Error(err?.message || 'BillWise Print Agent is not running');
@@ -62,7 +64,28 @@ export class PrinterService {
   }
 
   disconnectAgent(): void {
+    this.stopHealthCheck();
     this.agentStatus.set('disconnected');
+  }
+
+  private startHealthCheck(): void {
+    this.stopHealthCheck();
+    this.healthCheckInterval = setInterval(async () => {
+      if (this.agentStatus() !== 'connected') { this.stopHealthCheck(); return; }
+      try {
+        await fetch(`${this.AGENT_URL}/health`, { cache: 'no-store' });
+      } catch {
+        this.agentStatus.set('disconnected');
+        this.stopHealthCheck();
+      }
+    }, 30_000);
+  }
+
+  private stopHealthCheck(): void {
+    if (this.healthCheckInterval !== null) {
+      clearInterval(this.healthCheckInterval);
+      this.healthCheckInterval = null;
+    }
   }
 
   async refreshPrinters(): Promise<string[]> {
@@ -137,11 +160,16 @@ export class PrinterService {
   }
 
   private async fetchAgent(path: string, init?: RequestInit): Promise<any> {
-    const res = await fetch(`${this.AGENT_URL}${path}`, { ...init, cache: 'no-store' });
-    if (!res.ok) {
-      throw new Error(`Agent request failed (${res.status})`);
+    try {
+      const res = await fetch(`${this.AGENT_URL}${path}`, { ...init, cache: 'no-store' });
+      if (!res.ok) {
+        throw new Error(`Agent request failed (${res.status})`);
+      }
+      return res.json();
+    } catch (err) {
+      this.agentStatus.set('disconnected');
+      throw err;
     }
-    return res.json();
   }
 
   private shouldUseImagePipeline(settings: any): boolean {

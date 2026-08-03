@@ -129,7 +129,28 @@ finally {
   }
 }
 
+function preventSystemSleep() {
+  // ES_CONTINUOUS (0x80000000) | ES_SYSTEM_REQUIRED (0x00000001) — stops Windows sleep timer
+  const ps = [
+    '$code = @"',
+    'using System.Runtime.InteropServices;',
+    'public class PowerMgmt {',
+    '  [DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint esFlags);',
+    '}',
+    '"@',
+    'Add-Type -TypeDefinition $code',
+    'while ($true) { [PowerMgmt]::SetThreadExecutionState(0x80000001) | Out-Null; Start-Sleep -Seconds 30 }'
+  ].join('\n');
+  const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', ps], {
+    windowsHide: true,
+    stdio: 'ignore'
+  });
+  proc.unref();
+}
+
 function startService() {
+  if (process.platform === 'win32') preventSystemSleep();
+
   const app = express();
   app.use(cors({ origin: true }));
   app.use(express.json({ limit: '2mb' }));
