@@ -431,6 +431,8 @@ export class PrinterService {
 
     return this.toHighContrastPngBase64(canvas);
   }
+
+  private renderReceiptTableToPngBase64(bill: any, settings: any, paperSize: PaperSize, isHindi: boolean): string {
     if (!this.isBrowser) {
       throw new Error('Image print is available only in browser runtime');
     }
