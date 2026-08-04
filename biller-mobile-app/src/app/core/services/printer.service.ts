@@ -4,6 +4,7 @@ import { isPlatformBrowser } from '@angular/common';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import { PrinterConfig, PaperSize } from '../models/settings.model';
+import * as QRCode from 'qrcode';
 
 // Paper widths in characters
 const WIDTH: Record<PaperSize, number> = { '2inch': 32, '3inch': 48 };
@@ -265,7 +266,6 @@ export class PrinterService {
     const ESC = '\x1B', GS = '\x1D';
     const sep = '-'.repeat(W);
     const isHindi = settings?.receiptLanguage === 'hi';
-    // Only new (unprinted) items
     const newItems = (bill.items || []).filter((i: any) => i.quantity > (i.kotPrintedQuantity || 0));
     let t = '';
 
@@ -286,12 +286,23 @@ export class PrinterService {
     }
     t += sep + '\n';
 
+    // 3-column table: Items | Qty | Tip (item note)
+    const itemW = W === 32 ? 16 : 22;
+    const qtyW  = W === 32 ? 4  : 6;
+    const tipW  = W - itemW - qtyW;
+    t += 'Items'.padEnd(itemW) + 'Qty'.padStart(qtyW) + ' ' + 'Tip'.padEnd(tipW - 1) + '\n';
+    t += sep + '\n';
+
     newItems.forEach((item: any) => {
       const name = ((isHindi && item.nameHi) ? item.nameHi : item.name) || 'Unknown';
       const newQty = item.quantity - (item.kotPrintedQuantity || 0);
       const qty = item.isLooseItem ? Number(newQty).toFixed(2) : String(Math.round(newQty));
-      const note = item.note ? ' [' + item.note + ']' : '';
-      t += name + ' X ' + qty + note + '\n';
+      const tip = (item.note || '').substring(0, tipW - 1);
+      const nameLine = name.length > itemW ? name.substring(0, itemW) : name.padEnd(itemW);
+      t += nameLine + qty.padStart(qtyW) + ' ' + tip + '\n';
+      if (name.length > itemW) {
+        t += name.substring(itemW).padEnd(itemW) + '\n';
+      }
     });
 
     t += sep + '\n\n';
@@ -304,31 +315,108 @@ export class PrinterService {
   }
 
   private buildKOTImage(bill: any, settings: any, paperSize: PaperSize): string {
-    const lines: string[] = [];
-    const newItems = (bill.items || []).filter((i: any) => i.quantity > (i.kotPrintedQuantity || 0));
+    return this.renderKOTTableToPngBase64(bill, paperSize, settings?.receiptLanguage === 'hi');
+  }
 
-    lines.push('Kitchen Order');
-    lines.push('Date: ' + new Date().toLocaleString('en-IN', {
-      day: '2-digit', month: '2-digit', year: 'numeric',
-      hour: '2-digit', minute: '2-digit', hour12: true
-    }));
-    lines.push('Bill: ' + (bill.billNumber || '').slice(-5));
+  private renderKOTTableToPngBase64(bill: any, paperSize: PaperSize, isHindi: boolean): string {
+    if (!this.isBrowser) throw new Error('Image print is available only in browser runtime');
+
+    const newItems = (bill.items || []).filter((i: any) => i.quantity > (i.kotPrintedQuantity || 0));
+    const width = paperSize === '2inch' ? 384 : 576;
+    const padding = paperSize === '2inch' ? 8 : 10;
+    const innerW = width - (padding * 2);
+    const fontFamily = isHindi
+      ? '"Nirmala UI", "Mangal", "Arial Unicode MS", sans-serif'
+      : '"Tahoma", "Arial", sans-serif';
+    const titleSize = paperSize === '2inch' ? 28 : 34;
+    const bodySize = paperSize === '2inch' ? 22 : 28;
+    const smallSize = paperSize === '2inch' ? 18 : 22;
+    const rowHeight = paperSize === '2inch' ? 30 : 38;
+
+    // Column proportions: Items 50% | Qty 15% | Tip 35%
+    const colQtyW  = Math.round(innerW * 0.15);
+    const colTipW  = Math.round(innerW * 0.35);
+    const colItemW = innerW - colQtyW - colTipW;
+
+    const measureCanvas = document.createElement('canvas');
+    const m = measureCanvas.getContext('2d')!;
+    m.font = `400 ${bodySize}px ${fontFamily}`;
+    const itemNameLines = newItems.map((item: any) => this.wrapText(m, this.pickItemName(item, isHindi), colItemW - 6));
+
+    let height = padding + titleSize + 6 + (smallSize + 4) * 2 + rowHeight * 2;
+    itemNameLines.forEach((lines: string[]) => { height += Math.max(1, lines.length) * rowHeight; });
+    height += rowHeight + padding;
+
+    const scale = 2;
+    const canvas = document.createElement('canvas');
+    canvas.width = width * scale;
+    canvas.height = Math.max(200, Math.ceil(height * scale));
+    const ctx = canvas.getContext('2d')!;
+    ctx.scale(scale, scale);
+    ctx.imageSmoothingEnabled = false;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, width, Math.ceil(height));
+    ctx.fillStyle = '#000000';
+    ctx.textBaseline = 'top';
+
+    const x0 = padding, x1 = x0 + colItemW, x2 = x1 + colQtyW, x3 = x2 + colTipW;
+    const drawH = (yPos: number) => {
+      ctx.beginPath(); ctx.moveTo(x0, yPos); ctx.lineTo(x3, yPos);
+      ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke();
+    };
+    const drawV = (xPos: number, y1: number, y2: number) => {
+      ctx.beginPath(); ctx.moveTo(xPos, y1); ctx.lineTo(xPos, y2);
+      ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke();
+    };
+
+    let y = padding;
+    drawH(y);
+    ctx.font = `700 ${titleSize}px ${fontFamily}`;
+    const titleW = ctx.measureText('Kitchen Order').width;
+    ctx.fillText('Kitchen Order', Math.max(x0 + 4, x0 + (innerW - titleW) / 2), y + 4);
+    y += titleSize + 6;
+    drawH(y);
+
     const btd = bill.businessTypeData || {};
+    ctx.font = `700 ${smallSize}px ${fontFamily}`;
+    ctx.fillText(`Bill: ${(bill.billNumber || '').slice(-5)}`, x0 + 4, y + 4);
     if (btd.tableNumber) {
       const label = btd.tableType === 'parcel' ? 'Parcel' : 'Table';
-      lines.push(label + ': ' + btd.tableNumber);
+      ctx.fillText(`${label}: ${btd.tableNumber}`, Math.round(x3 / 2), y + 4);
     }
-    // No separator line in KOT as requested.
+    y += smallSize + 4;
+    const dateStr = new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
+    ctx.fillText(dateStr, x0 + 4, y + 4);
+    y += smallSize + 4;
+    drawH(y);
 
-    newItems.forEach((item: any) => {
-      const name = this.pickItemName(item, true);
+    const tableStartY = y;
+    ctx.font = `700 ${bodySize}px ${fontFamily}`;
+    ctx.fillText('Items', x0 + 4, y + 4);
+    ctx.fillText('Qty', x1 + 4, y + 4);
+    ctx.fillText('Tip', x2 + 4, y + 4);
+    y += rowHeight;
+    drawH(y);
+
+    ctx.font = `500 ${bodySize}px ${fontFamily}`;
+    newItems.forEach((item: any, i: number) => {
+      const nameLines: string[] = itemNameLines[i];
       const newQty = item.quantity - (item.kotPrintedQuantity || 0);
       const qty = item.isLooseItem ? Number(newQty).toFixed(2) : String(Math.round(newQty));
-      const note = item.note ? ` [${item.note}]` : '';
-      lines.push(`${name}  x ${qty}${note}`);
+      const rowY = y;
+      nameLines.forEach((line: string, li: number) => ctx.fillText(line, x0 + 4, rowY + 4 + li * rowHeight));
+      ctx.fillText(qty, x1 + 4, rowY + 4);
+      if (item.note) ctx.fillText(String(item.note), x2 + 4, rowY + 4);
+      y += Math.max(1, nameLines.length) * rowHeight;
     });
+    drawH(y);
 
-    return this.renderLinesToPngBase64(lines, paperSize, true);
+    drawV(x0, tableStartY, y); drawV(x1, tableStartY, y);
+    drawV(x2, tableStartY, y); drawV(x3, tableStartY, y);
+    drawV(x0, padding, y); drawV(x3, padding, y);
+    drawH(padding);
+
+    return this.toHighContrastPngBase64(canvas);
   }
 
   private renderReceiptTableToPngBase64(bill: any, settings: any, paperSize: PaperSize, isHindi: boolean): string {
@@ -377,6 +465,10 @@ export class PrinterService {
     if (Number(bill.discountTotal || 0) > 0) height += rowHeight;
     height += rowHeight + 6;
     if (settings?.taxNumber) height += smallSize + 4;
+    // Reserve space for QR code when online payment + UPI configured
+    const showQr = bill.paymentMethod === 'online' && !!settings?.upiId;
+    const qrDisplaySize = paperSize === '2inch' ? 120 : 160;
+    if (showQr) height += qrDisplaySize + smallSize + 18;
     height += smallSize + 4;
     height += padding + 4;
 
@@ -520,6 +612,36 @@ export class PrinterService {
       ctx.fillText('Fssai : ' + settings.taxNumber, Math.round(x0 + 6), Math.round(y + 2));
       y += smallSize + 4;
     }
+
+    // QR code before footer when online payment + UPI ID set
+    if (showQr) {
+      try {
+        const upiStr = `upi://pay?pa=${settings.upiId}&pn=${encodeURIComponent(settings.businessName || '')}&am=${Number(bill.grandTotal).toFixed(2)}&cu=INR`;
+        const qr = QRCode.create(upiStr, { errorCorrectionLevel: 'M' });
+        const qrSize = qr.modules.size;
+        const cellSize = Math.floor(qrDisplaySize / qrSize);
+        const actualSz = cellSize * qrSize;
+        const qrLeft = Math.floor((innerW - actualSz) / 2) + padding;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(qrLeft - 4, y + 2, actualSz + 8, actualSz + 8);
+        ctx.fillStyle = '#000000';
+        for (let row = 0; row < qrSize; row++) {
+          for (let col = 0; col < qrSize; col++) {
+            if (qr.modules.get(row, col)) {
+              ctx.fillRect(qrLeft + col * cellSize, y + 4 + row * cellSize, cellSize, cellSize);
+            }
+          }
+        }
+        y += actualSz + 8;
+        ctx.font = `700 ${smallSize}px ${fontFamily}`;
+        const amtText = `Scan to Pay  Rs.${Number(bill.grandTotal).toFixed(2)}`;
+        const amtW = ctx.measureText(amtText).width;
+        ctx.fillText(amtText, Math.round(Math.max(x0 + 4, x0 + (innerW - amtW) / 2)), Math.round(y + 2));
+        y += smallSize + 6;
+        ctx.font = `400 ${smallSize}px ${fontFamily}`;
+      } catch { /* skip if QR generation fails */ }
+    }
+
     const thanks = (settings?.footerText || 'THANKS VISIT AGAIN').toUpperCase();
     const thanksW = ctx.measureText(thanks).width;
     ctx.fillText(thanks, Math.round(Math.max(x0 + 4, x0 + ((innerW - thanksW) / 2))), Math.round(y + 2));
