@@ -3,7 +3,7 @@ export interface RestaurantTable {
   tableNumber: string;
   tableType: 'dine-in' | 'parcel' | 'garden';
   capacity: number;
-  status: 'available' | 'occupied' | 'reserved' | 'cleaning';
+  status: 'available' | 'occupied' | 'unsettled' | 'reserved' | 'cleaning';
   currentBillId?: string;
   billNumber?: string;
   grandTotal?: number;

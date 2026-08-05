@@ -19,21 +19,50 @@
                 <h3>{{ getTableTypeLabel(tableType) }}</h3>
                 <div class="table-grid">
                   @for (table of getTablesByType(tableType); track table.id) {
-                    <button mat-raised-button 
-                            class="table-btn"
-                            [class.parcel]="tableType === 'parcel'"
-                            [class.occupied]="table.status === 'occupied'"
-                            [class.available]="table.status === 'available'"
-                            [disabled]="table.status === 'occupied'"
-                            (click)="selectTable(table)">
-                      <div class="table-content">
-                        <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
-                        <span class="table-number">{{ table.tableNumber }}</span>
-                        @if (table.status === 'occupied') {
-                          <span class="table-status">Open Order</span>
-                        }
-                      </div>
-                    </button>
+                    <div class="table-card-wrap">
+                      <button mat-raised-button 
+                              class="table-btn"
+                              [class.parcel]="tableType === 'parcel'"
+                              [class.occupied]="table.status === 'occupied'"
+                              [class.available]="table.status === 'available'"
+                              [class.unsettled]="table.status === 'unsettled'"
+                              [disabled]="table.status === 'occupied' || table.status === 'unsettled'"
+                              (click)="selectTable(table)">
+                        <div class="table-content">
+                          <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
+                          <span class="table-number">{{ table.tableNumber }}</span>
+                          @if (table.status === 'occupied') {
+                            <span class="table-status">Open Order</span>
+                          }
+                          @if (table.status === 'unsettled') {
+                            <span class="table-status">Billed</span>
+                          }
+                        </div>
+                      </button>
+                      @if (authService.isAdmin() && (table.status === 'occupied' || table.status === 'unsettled')) {
+                        <div class="admin-table-actions">
+                          @if (table.grandTotal) {
+                            <span class="table-bill-amt">{{ formatCurrency(table.grandTotal) }}</span>
+                          }
+                          <div class="btn-group">
+                            @if (table.status === 'occupied' && table.currentBillId) {
+                              <button mat-icon-button class="print-bill-btn"
+                                      (click)="$event.stopPropagation(); printAndCompleteTableBill(table)"
+                                      matTooltip="Print & Complete Bill">
+                                <mat-icon>print</mat-icon>
+                              </button>
+                            }
+                            @if (table.status === 'unsettled') {
+                              <button mat-icon-button class="settle-btn"
+                                      (click)="$event.stopPropagation(); settleTable(table.id)"
+                                      matTooltip="Settle Table">
+                                <mat-icon>check_circle</mat-icon>
+                              </button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
                   }
                 </div>
               </div>
@@ -124,28 +153,56 @@
                       (tableMode() === 'attend-new') ||
                       (tableMode() === 'switch-table' && (table.status === 'available' || table.id === selectedTable()?.id))
                     ) {
-                      <button mat-raised-button 
-                              class="table-btn"
-                              [class.parcel]="tableType === 'parcel'"
-                              [class.available]="table.status === 'available'"
-                              [class.current]="table.id === selectedTable()?.id"
-                              [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
-                              [disabled]="
-                                (tableMode() === 'change-table' && table.id === selectedTable()?.id) ||
-                                (tableMode() === 'attend-new' && table.status === 'occupied') ||
-                                (tableMode() === 'switch-table' && table.id === selectedTable()?.id)
-                              "
-                              (click)="handleTableClick(table)">
-                        <div class="table-content">
-                          <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
-                          <span class="table-number">{{ table.tableNumber }}</span>
-                          @if (table.id === selectedTable()?.id) {
-                            <span class="table-status">Current</span>
-                          } @else if (table.status === 'occupied') {
-                            <span class="table-status">Open Order</span>
-                          }
-                        </div>
-                      </button>
+                      <div class="table-card-wrap">
+                        <button mat-raised-button 
+                                class="table-btn"
+                                [class.parcel]="tableType === 'parcel'"
+                                [class.available]="table.status === 'available'"
+                                [class.current]="table.id === selectedTable()?.id"
+                                [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                                [class.unsettled]="table.status === 'unsettled'"
+                                [disabled]="
+                                  (tableMode() === 'change-table' && table.id === selectedTable()?.id) ||
+                                  (tableMode() === 'attend-new' && (table.status === 'occupied' || table.status === 'unsettled')) ||
+                                  (tableMode() === 'switch-table' && table.id === selectedTable()?.id)
+                                "
+                                (click)="handleTableClick(table)">
+                          <div class="table-content">
+                            <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
+                            <span class="table-number">{{ table.tableNumber }}</span>
+                            @if (table.id === selectedTable()?.id) {
+                              <span class="table-status">Current</span>
+                            } @else if (table.status === 'occupied') {
+                              <span class="table-status">Open Order</span>
+                            } @else if (table.status === 'unsettled') {
+                              <span class="table-status">Billed</span>
+                            }
+                          </div>
+                        </button>
+                        @if (authService.isAdmin() && (table.status === 'occupied' || table.status === 'unsettled' || table.id === selectedTable()?.id)) {
+                          <div class="admin-table-actions">
+                            @if (table.grandTotal) {
+                              <span class="table-bill-amt">{{ formatCurrency(table.grandTotal) }}</span>
+                            }
+                            <div class="btn-group">
+                              @if ((table.status === 'occupied' || table.id === selectedTable()?.id) && table.currentBillId) {
+                                <button mat-icon-button class="print-bill-btn"
+                                        (click)="$event.stopPropagation(); printAndCompleteTableBill(table)"
+                                        matTooltip="Print & Complete Bill">
+                                  <mat-icon>print</mat-icon>
+                                </button>
+                              }
+                              @if (table.status === 'unsettled') {
+                                <button mat-icon-button class="settle-btn"
+                                        (click)="$event.stopPropagation(); settleTable(table.id)"
+                                        matTooltip="Settle Table">
+                                  <mat-icon>check_circle</mat-icon>
+                                </button>
+                              }
+                            </div>
+                          </div>
+                        }
+                      </div>
                     }
                   }
                 </div>
@@ -380,16 +437,10 @@
               <div class="item-extras" 
                    (pointerdown)="$event.stopPropagation()">
                 @if (isHotelMode()) {
-                  <mat-form-field appearance="outline" class="note-field">
-                    <mat-select [value]="item.note || ''" 
-                                (selectionChange)="updateItemNote(item, $event.value)"
-                                placeholder="Note">
-                      <mat-option value="">None</mat-option>
-                      @for (note of hotelService.itemNotes(); track note.id) {
-                        <mat-option [value]="note.label">{{ note.label }}</mat-option>
-                      }
-                    </mat-select>
-                  </mat-form-field>
+                  <input class="note-text-input" [value]="item.note || ''"
+                         (change)="updateItemNote(item, $any($event.target).value)"
+                         placeholder="Add note"
+                         (pointerdown)="$event.stopPropagation()">
                 }
                 @if (item.warrantyMonths && item.warrantyMonths > 0) {
                   <span class="warranty-tag">
@@ -418,7 +469,7 @@
           @if (isHotelMode()) {
             <div class="action-buttons">
               <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                      [disabled]="billService.cartItems().length === 0" class="kot-btn">
+                      [disabled]="billService.cartItems().length === 0 || kotPrinting()" class="kot-btn">
                 <mat-icon>restaurant</mat-icon>
                 <span>KOT</span>
               </button>
@@ -553,18 +604,25 @@
           <!-- Action Buttons -->
           <div class="footer-actions">
             @if (isHotelMode()) {
-              <button mat-raised-button color="accent" (click)="completeBillAndPrint(); $event.stopPropagation()" 
-                      [disabled]="!currentBillId() || isPayButtonDisabled()"
-                      class="pay-print-btn">
-                <mat-icon>print</mat-icon>
-                Print Bill
-              </button>
-              <button mat-raised-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
-                      [disabled]="!currentBillId() || isPayButtonDisabled()"
-                      class="pay-btn">
-                <mat-icon>payment</mat-icon>
-                Save Bill
-              </button>
+              @if (authService.isAdmin()) {
+                <button mat-raised-button color="accent" (click)="completeBillAndPrint(); $event.stopPropagation()" 
+                        [disabled]="!currentBillId() || isPayButtonDisabled()"
+                        class="pay-print-btn">
+                  <mat-icon>print</mat-icon>
+                  Print Bill
+                </button>
+                <button mat-raised-button color="primary" (click)="completeBill(); $event.stopPropagation()" 
+                        [disabled]="!currentBillId() || isPayButtonDisabled()"
+                        class="pay-btn">
+                  <mat-icon>payment</mat-icon>
+                  Save Bill
+                </button>
+              } @else {
+                <button mat-raised-button disabled class="pay-btn" matTooltip="Only Admin can print/save bill">
+                  <mat-icon>lock</mat-icon>
+                  Bill
+                </button>
+              }
             } @else {
               <button mat-raised-button color="accent" (click)="saveBillAndPrint(); $event.stopPropagation()" 
                       [disabled]="isSaveBillDisabled()" class="pay-print-btn">

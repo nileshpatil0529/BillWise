@@ -96,6 +96,12 @@
           <mat-icon>print</mat-icon>
           Print Bill
         </button>
+        @if (authService.isAdmin() && isTableUnsettled(selectedBill()!)) {
+          <button mat-flat-button color="accent" (click)="settleTableFromBill(selectedBill()!)">
+            <mat-icon>check_circle</mat-icon>
+            Settle Table
+          </button>
+        }
       </div>
     </div>
   } @else {
@@ -353,6 +359,13 @@
             <button mat-icon-button (click)="printBill(bill); $event.stopPropagation()" matTooltip="Print">
               <mat-icon>print</mat-icon>
             </button>
+            @if (authService.isAdmin() && isTableUnsettled(bill)) {
+              <button mat-icon-button color="accent" 
+                      (click)="settleTableFromBill(bill); $event.stopPropagation()"
+                      matTooltip="Settle Table">
+                <mat-icon>check_circle</mat-icon>
+              </button>
+            }
           </td>
         </ng-container>
 

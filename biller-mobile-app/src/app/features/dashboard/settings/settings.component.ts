@@ -75,7 +75,7 @@ export class SettingsComponent implements OnInit {
   newTableEndNumber = signal<number>(10);
   newTableType = signal<'dine-in' | 'parcel' | 'garden'>('dine-in');
   customTableName = signal<string>('');
-  newNoteLabel = signal<string>('');
+  newNoteLabel = signal<string>(''); // Kept for backward compatibility
   
   // Grocery Management - Units
   units = signal<Unit[]>([]);
@@ -154,9 +154,8 @@ export class SettingsComponent implements OnInit {
   }
 
   private loadHotelData(): void {
-    // Load hotel-specific data (tables and notes)
+    // Load hotel-specific data (tables only)
     this.hotelService.loadTables().subscribe();
-    this.hotelService.loadItemNotes().subscribe();
   }
 
   // Check if current application type is hotel
@@ -686,41 +685,6 @@ export class SettingsComponent implements OnInit {
 
   getParcelTables(): RestaurantTable[] {
     return this.hotelService.tables().filter(t => t.tableType === 'parcel');
-  }
-
-  // Item Notes Management
-  addItemNote(): void {
-    const label = this.newNoteLabel().trim();
-    if (!label) {
-      this.snackBar.open('Please enter a note label', 'Close', { duration: 3000 });
-      return;
-    }
-
-    this.saving.set(true);
-    this.hotelService.createItemNote({ label }).subscribe({
-      next: () => {
-        this.newNoteLabel.set('');
-        this.saving.set(false);
-      },
-      error: (err) => {
-        const message = err.error?.message || 'Failed to add note';
-        this.snackBar.open(message, 'Close', { duration: 3000 });
-        this.saving.set(false);
-      }
-    });
-  }
-
-  deleteItemNote(note: ItemNote): void {
-    if (confirm(`Are you sure you want to delete "${note.label}"?`)) {
-      this.hotelService.deleteItemNote(note.id).subscribe({
-        next: () => {
-          // Note deleted successfully
-        },
-        error: () => {
-          this.snackBar.open('Failed to delete note', 'Close', { duration: 3000 });
-        }
-      });
-    }
   }
 
   // ==================== GROCERY UNIT MANAGEMENT ====================

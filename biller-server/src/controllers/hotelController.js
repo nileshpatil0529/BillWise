@@ -9,8 +9,8 @@ export const getTables = async (req, res) => {
     const tables = db.prepare(`
       SELECT rt.*, b.billNumber, b.grandTotal
       FROM restaurant_tables rt
-      LEFT JOIN bills b ON rt.currentBillId = b.billId AND b.billStatus != 'completed'
-      ORDER BY rt.tableType, CAST(SUBSTR(rt.tableNumber, 2) AS INTEGER)
+      LEFT JOIN bills b ON rt.currentBillId = b.billId
+      ORDER BY rt.id ASC
     `).all();
     
     res.json({
@@ -254,6 +254,35 @@ export const updateTableStatus = async (req, res) => {
       success: false,
       message: 'Failed to update table status'
     });
+  }
+};
+
+// Settle table (Admin only) — marks an unsettled table as available
+export const settleTable = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const table = db.prepare('SELECT * FROM restaurant_tables WHERE id = ?').get(id);
+    if (!table) {
+      return res.status(404).json({ success: false, message: 'Table not found' });
+    }
+
+    if (table.status !== 'unsettled') {
+      return res.status(400).json({ success: false, message: 'Table is not in unsettled state' });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL, updatedAt = ? WHERE id = ?')
+      .run('available', now, id);
+
+    console.log('✅ Table settled by admin:', id);
+    emitTableUpdate({ tableId: parseInt(id), status: 'available', currentBillId: null });
+    emitTablesRefresh();
+
+    res.json({ success: true, message: 'Table settled successfully' });
+  } catch (error) {
+    console.error('Settle table error:', error);
+    res.status(500).json({ success: false, message: 'Failed to settle table' });
   }
 };
 

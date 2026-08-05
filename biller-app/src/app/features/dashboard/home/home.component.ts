@@ -22,6 +22,7 @@ import { debounceTime, Subject, Subscription } from 'rxjs';
 import { ProductService } from '../../../core/services/product.service';
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
+import { AuthService } from '../../../core/services/auth.service';
 import { BeepService } from '../../../core/services/beep.service';
 import { CustomerService } from '../../../core/services/customer.service';
 import { HotelService } from '../../../core/services/hotel.service';
@@ -88,6 +89,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   hotelModeInitialized = signal(false); // Flag to track if hotel mode has finished initializing
   savedCartSnapshot = signal<string>(''); // JSON snapshot of last saved cart state
   tableSelectionDismissed = signal(false); // Flag to track if user dismissed table selection popup
+  kotPrinting = signal(false); // Guard against double KOT print
   private socketListenersSetup = false; // Flag to prevent duplicate listener registration
   
   // Multi-table attendance state
@@ -133,6 +135,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     public settingsService: SettingsService,
     public hotelService: HotelService,
     public translateService: TranslateService,
+    public authService: AuthService,
     private productService: ProductService,
     private snackBar: MatSnackBar,
     private dialog: MatDialog,
@@ -206,7 +209,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           this.restoreLastSelectedTable();
         }
       });
-      this.hotelService.loadItemNotes().subscribe();
 
       // Setup socket listeners after socket connects
       this.trySetupSocketListeners();
@@ -1471,13 +1473,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   // Print KOT (Kitchen Order Ticket) - Save and Print
   printKOT(): void {
+    if (this.kotPrinting()) return; // Guard against double-tap
     if (this.billService.cartItems().length === 0) {
       this.snackBar.open('No items to print', 'Close', { duration: 3000 });
       return;
     }
 
+    this.kotPrinting.set(true);
     const table = this.selectedTable();
-    if (!table) return;
+    if (!table) { this.kotPrinting.set(false); return; }
 
     // Save/update bill first
     const billData = {
@@ -1524,19 +1528,24 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             // Now try to print KOT via thermal printer
             this.billService.printKOT(this.currentBillId()!).subscribe({
               next: (printResponse) => {
+                this.kotPrinting.set(false);
                 if (printResponse.success) {
                   this.billStatus.set('kot-printed');
                 }
               },
               error: (err) => {
+                this.kotPrinting.set(false);
                 const message = err.error?.message || 'Failed to print KOT';
                 this.snackBar.open(message, 'Close', { duration: 5000 });
                 // Bill is saved, just print failed - user can retry
               }
             });
+          } else {
+            this.kotPrinting.set(false);
           }
         },
         error: () => {
+          this.kotPrinting.set(false);
           this.snackBar.open('Failed to save order', 'Close', { duration: 3000 });
         }
       });
@@ -1559,26 +1568,30 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             // Now try to print KOT via thermal printer
             this.billService.printKOT(response.data.billId).subscribe({
               next: (printResponse) => {
+                this.kotPrinting.set(false);
                 if (printResponse.success) {
                   this.billStatus.set('kot-printed');
                 }
               },
               error: (err) => {
+                this.kotPrinting.set(false);
                 const message = err.error?.message || 'Failed to print KOT';
                 this.snackBar.open(message, 'Close', { duration: 5000 });
                 // Bill is saved, just print failed - user can retry
               }
             });
+          } else {
+            this.kotPrinting.set(false);
           }
         },
         error: () => {
+          this.kotPrinting.set(false);
           this.snackBar.open('Failed to save order', 'Close', { duration: 3000 });
         }
       });
     }
   }
 
-  // Complete bill and pay
   completeBill(): void {
     if (!this.currentBillId()) {
       this.snackBar.open('Please print KOT first', 'Close', { duration: 3000 });
@@ -1604,15 +1617,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.billService.updateBill(this.currentBillId()!, billData).subscribe({
       next: (response) => {
         if (response.success) {
-          // Remove from attended tables if applicable
           if (table) {
             this.removeFromAttendedTables(table.id);
           }
-          
-          // Reset state - table status will be updated via WebSocket
-          this.cancelTableSelection();
-          
-          // Reload tables to reflect changes
+          // Clear UI state — table is now 'unsettled' on the server (socket will refresh)
+          this.clearCartAndResetState();
           this.hotelService.loadTables().subscribe();
         }
       },
@@ -1653,7 +1662,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
               if (table) {
                 this.removeFromAttendedTables(table.id);
               }
-              this.cancelTableSelection();
+              // Clear UI state — table is now 'unsettled' on the server (socket will refresh)
+              this.clearCartAndResetState();
               this.hotelService.loadTables().subscribe();
             }
           },
@@ -1668,14 +1678,71 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  // Settle an unsettled table (Admin only)
+  settleTable(tableId: number): void {
+    if (confirm('Mark this table as settled? This will make the table available for new orders.')) {
+      this.hotelService.settleTable(tableId).subscribe({
+        next: () => {
+          this.snackBar.open('Table settled successfully', 'Close', { duration: 2000 });
+          this.hotelService.loadTables().subscribe();
+        },
+        error: (err) => {
+          const message = err.error?.message || 'Failed to settle table';
+          this.snackBar.open(message, 'Close', { duration: 3000 });
+        }
+      });
+    }
+  }
+
+  // Print bill and complete it for any occupied table (Admin overlay)
+  printAndCompleteTableBill(table: RestaurantTable): void {
+    if (!table.currentBillId) return;
+    this.billService.printBill(table.currentBillId).subscribe({
+      next: () => {
+        this.billService.updateBill(table.currentBillId!, {
+          billStatus: 'completed',
+          paymentMethod: 'cash',
+          paymentStatus: 'paid',
+          amountPaid: table.grandTotal || 0
+        }).subscribe({
+          next: () => {
+            this.snackBar.open('Bill printed & completed', 'Close', { duration: 2000 });
+            // If this was the selected table, reset local state
+            if (this.selectedTable()?.id === table.id) {
+              this.clearCartAndResetState();
+            }
+            this.hotelService.loadTables().subscribe();
+          },
+          error: () => this.snackBar.open('Bill printed but failed to complete', 'Close', { duration: 3000 })
+        });
+      },
+      error: () => this.snackBar.open('Failed to print bill', 'Close', { duration: 3000 })
+    });
+  }
+
+  // Clear cart and reset local UI state (without touching table status)
+  private clearCartAndResetState(): void {
+    this.billService.clearCart();
+    this.billService.billDiscount.set(0);
+    this.customerName.set('');
+    this.customerPhone.set('');
+    this.selectedTable.set(null);
+    this.saveSelectedTable(null);
+    this.currentBillId.set(null);
+    this.billStatus.set('new');
+    this.savedCartSnapshot.set('');
+    this.tableSelectionDismissed.set(false);
+    this.changingTable.set(false);
+  }
+
   // Get available tables for selection
   getAvailableTables(): RestaurantTable[] {
     return this.hotelService.tables().filter(t => t.status === 'available');
   }
 
-  // Get occupied tables
+  // Get occupied tables (active orders)
   getOccupiedTables(): RestaurantTable[] {
-    return this.hotelService.tables().filter(t => t.status === 'occupied');
+    return this.hotelService.tables().filter(t => t.status === 'occupied' || t.status === 'unsettled');
   }
 
   // Get dine-in tables
@@ -1751,7 +1818,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleTableUpdate(data: any): void {
-    // Check if this is a bill completion event for the current table
+    // Check if a table relevant to the current session was settled
     const currentTable = this.selectedTable();
     const shouldClearCart = currentTable && 
                            data.tableId === currentTable.id && 
@@ -1767,14 +1834,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.currentBillId.set(null);
       this.billStatus.set('new');
       this.savedCartSnapshot.set('');
-      
     }
     
     // Reload tables to get latest status and grand totals
-    this.hotelService.loadTables().subscribe({
-      next: () => {
-      }
-    });
+    this.hotelService.loadTables().subscribe();
   }
 
   private handleTablesRefresh(): void {

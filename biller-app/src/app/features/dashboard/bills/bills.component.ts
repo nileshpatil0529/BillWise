@@ -24,6 +24,7 @@ import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { SocketService } from '../../../core/services/socket.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
@@ -126,7 +127,8 @@ export class BillsComponent implements OnInit, OnDestroy {
     public authService: AuthService,
     public translateService: TranslateService,
     private snackBar: MatSnackBar,
-    private socketService: SocketService
+    private socketService: SocketService,
+    public hotelService: HotelService
   ) {
     // Update displayedColumns based on settings
     effect(() => {
@@ -148,6 +150,11 @@ export class BillsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // setDatePreset already calls loadBills() and loadReport() internally
     this.setDatePreset('today');
+    
+    // Load tables for hotel mode (for settle table functionality)
+    if (this.settingsService.settings().applicationType === 'hotel') {
+      this.hotelService.loadTables().subscribe();
+    }
     
     // Setup socket listeners for real-time updates (after socket connects)
     this.trySetupSocketListeners();
@@ -376,6 +383,30 @@ export class BillsComponent implements OnInit, OnDestroy {
         this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
+  }
+
+  // Settle table from bills page (Admin only)
+  isTableUnsettled(bill: Bill): boolean {
+    if (!bill.tableId) return false;
+    const table = this.hotelService.tables().find(t => t.id === bill.tableId);
+    return table?.status === 'unsettled';
+  }
+
+  settleTableFromBill(bill: Bill): void {
+    if (!bill.tableId) return;
+    if (confirm('Mark this table as settled? It will become available for new orders.')) {
+      this.hotelService.settleTable(bill.tableId).subscribe({
+        next: () => {
+          this.snackBar.open('Table settled successfully', 'Close', { duration: 2000 });
+          this.hotelService.loadTables().subscribe();
+          this.loadBills(true);
+        },
+        error: (err: any) => {
+          const message = err.error?.message || 'Failed to settle table';
+          this.snackBar.open(message, 'Close', { duration: 3000 });
+        }
+      });
+    }
   }
 
   downloadReport(): void {

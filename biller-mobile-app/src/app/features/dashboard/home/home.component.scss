@@ -135,10 +135,11 @@
 
   .table-btn {
     aspect-ratio: 1;
-    border-radius: v.$radius-sm;
+    border-radius: v.$radius-sm !important;
     min-height: 70px;
     width: 80px;
     overflow: hidden;
+    transition: all 0.2s ease;
 
     .table-content {
       display: flex;
@@ -153,36 +154,110 @@
       .table-number { font-weight: 600; font-size: 14px; }
       .table-status { 
         font-size: 9px; 
-        opacity: 0.8; 
+        opacity: 0.9; 
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
         max-width: 100%;
+        background: rgba(255,255,255,0.2);
+        padding: 1px 4px;
+        border-radius: 3px;
       }
     }
 
     &.available {
-      background: rgba(76, 175, 80, 0.15);
-      color: #4caf50;
-      border: 1px solid #4caf50;
+      background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%) !important;
+      color: white !important;
     }
 
     &.occupied {
-      background: rgba(255, 152, 0, 0.15);
-      color: #ff9800;
-      border: 1px solid #ff9800;
+      background: linear-gradient(135deg, #f44336 0%, #c62828 100%) !important;
+      color: white !important;
+    }
+
+    &.unsettled {
+      background: linear-gradient(135deg, #ff9800 0%, #e65100 100%) !important;
+      color: white !important;
+      cursor: not-allowed;
     }
 
     &.parcel.available {
-      background: rgba(33, 150, 243, 0.15);
-      color: #2196f3;
-      border: 1px solid #2196f3;
+      background: linear-gradient(135deg, #66bb6a 0%, #388e3c 100%) !important;
+      color: white !important;
+    }
+
+    &.parcel.occupied {
+      background: linear-gradient(135deg, #f44336 0%, #c62828 100%) !important;
+      color: white !important;
+    }
+
+    &.parcel.unsettled {
+      background: linear-gradient(135deg, #ff9800 0%, #e65100 100%) !important;
+      color: white !important;
     }
 
     &.current {
-      background: v.$light-primary;
-      color: white;
-      border: 1px solid v.$light-primary;
+      background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
+      color: white !important;
+      border: 2px solid white !important;
+    }
+  }
+
+  // Admin action bar overlays the bottom of the table card
+  .table-card-wrap {
+    position: relative;
+    display: inline-block;
+
+    .admin-table-actions {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(0, 0, 0, 0.62);
+      padding: 2px 4px 2px 5px;
+      border-radius: 0 0 4px 4px;
+      pointer-events: auto;
+      z-index: 2;
+      min-height: 20px;
+
+      .table-bill-amt {
+        font-size: 9px;
+        font-weight: 700;
+        color: #fff;
+        line-height: 1;
+      }
+
+      .btn-group {
+        display: flex;
+        align-items: center;
+      }
+
+      .settle-btn {
+        width: 20px;
+        height: 20px;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #69f0ae;
+        --mdc-icon-button-state-layer-size: 20px;
+        mat-icon { font-size: 14px; width: 14px; height: 14px; line-height: 14px; }
+      }
+
+      .print-bill-btn {
+        width: 20px;
+        height: 20px;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #fff;
+        --mdc-icon-button-state-layer-size: 20px;
+        mat-icon { font-size: 14px; width: 14px; height: 14px; line-height: 14px; }
+      }
     }
   }
 
@@ -882,43 +957,28 @@
     align-items: center;
     gap: v.$spacing-sm;
     margin-top: v.$spacing-sm;
-    margin-left: 48px; // Align with item details (badge width + gap)
-    touch-action: auto; // Allow normal interactions on extras
+    margin-left: 48px;
+    touch-action: auto;
     cursor: default;
 
-    .note-field {
-      flex: 0 0 auto;
-      min-width: 90px;
+    .note-text-input {
+      flex: 1;
+      min-width: 0;
+      padding: 6px 12px;
+      font-size: 12px;
+      background: rgba(255, 255, 255, 0.07);
+      color: inherit;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 20px;
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
 
-      ::ng-deep {
-        .mat-mdc-form-field-subscript-wrapper { display: none; }
-        
-        .mat-mdc-text-field-wrapper {
-          padding: 0 8px;
-          background: v.$light-background;
-          
-          @include m.dark-theme {
-            background: v.$dark-surface-light;
-          }
-        }
-        
-        .mat-mdc-form-field-infix { 
-          padding: 6px 0; 
-          min-height: 32px; 
-        }
-        
-        .mat-mdc-select-trigger { 
-          font-size: 12px; 
-        }
-        
-        .mat-mdc-select-value-text {
-          @include m.dark-theme { color: white; }
-        }
-        
-        .mat-mdc-select-arrow {
-          @include m.dark-theme { color: v.$dark-text-secondary; }
-        }
+      &:hover { border-color: rgba(255, 255, 255, 0.3); }
+      &:focus {
+        border-color: #42a5f5;
+        background: rgba(66, 165, 245, 0.08);
       }
+      &::placeholder { color: rgba(255, 255, 255, 0.35); font-style: italic; }
     }
 
     .warranty-tag {

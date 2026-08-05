@@ -400,43 +400,6 @@
     </div>
   </mat-expansion-panel>
 
-  <!-- Item Notes Section (Hotel Only) -->
-  <mat-expansion-panel>
-    <mat-expansion-panel-header>
-      <mat-panel-title>
-        <mat-icon>note_add</mat-icon>
-        <span>{{ translateService.t('settings.itemNotes') }}</span>
-      </mat-panel-title>
-    </mat-expansion-panel-header>
-
-    <div class="settings-card">
-      <div class="notes-add-row">
-        <mat-form-field appearance="outline" class="note-field">
-          <mat-label>{{ translateService.t('settings.noteLabel') }}</mat-label>
-          <input matInput [value]="newNoteLabel()" 
-                 (input)="newNoteLabel.set($any($event.target).value)"
-                 (keyup.enter)="addItemNote()"
-                 placeholder="e.g., Spicy, No salt">
-        </mat-form-field>
-        <button mat-flat-button color="primary" (click)="addItemNote()" [disabled]="saving()">
-          <mat-icon>add</mat-icon>
-        </button>
-      </div>
-
-      @if (hotelService.itemNotes().length > 0) {
-      <div class="notes-chips">
-        @for (note of hotelService.itemNotes(); track note.id) {
-          <div class="note-chip">
-            <span>{{ note.label }}</span>
-            <button mat-icon-button (click)="deleteItemNote(note)">
-              <mat-icon>close</mat-icon>
-            </button>
-          </div>
-        }
-      </div>
-      }
-    </div>
-  </mat-expansion-panel>
   }
 
   <!-- Tax Settings Section (Admin Only) -->

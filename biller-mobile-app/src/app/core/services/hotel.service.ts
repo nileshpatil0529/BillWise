@@ -81,6 +81,16 @@ export class HotelService {
     });
   }
 
+  settleTable(id: number): Observable<ApiResponse<any>> {
+    return this.http.patch<ApiResponse<any>>(`${this.API_URL}/tables/${id}/settle`, {}).pipe(
+      tap((response) => {
+        if (response.success) {
+          this.loadTables().subscribe();
+        }
+      })
+    );
+  }
+
   // Get tables by type
   getTablesByType(type: 'dine-in' | 'parcel'): RestaurantTable[] {
     return this.tables().filter(t => t.tableType === type);
