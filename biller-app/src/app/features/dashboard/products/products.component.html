@@ -32,7 +32,7 @@
         <mat-label>{{ translateService.t('products.searchProducts') }}</mat-label>
         <input matInput 
                (keyup)="applyFilter($event)" 
-               placeholder="Search by name, ID, or category"
+           placeholder="Search by name or ID"
                #searchInput>
         <mat-icon matPrefix>search</mat-icon>
         @if (searchInput.value) {
@@ -86,14 +86,6 @@
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('products.barcode') }}</th>
           <td mat-cell *matCellDef="let product">
             <span class="barcode-cell">{{ product.barcode || '-' }}</span>
-          </td>
-        </ng-container>
-
-        <!-- Category Column -->
-        <ng-container matColumnDef="category">
-          <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('common.category') }}</th>
-          <td mat-cell *matCellDef="let product">
-            <mat-chip>{{ product.category }}</mat-chip>
           </td>
         </ng-container>
 

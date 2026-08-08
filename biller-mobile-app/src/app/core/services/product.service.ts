@@ -13,12 +13,10 @@ export class ProductService {
   // Signals
   products = signal<Product[]>([]);
   loading = signal<boolean>(false);
-  categories = signal<string[]>([]);
 
   constructor(private http: HttpClient) {}
 
   getProducts(params?: {
-    category?: string;
     status?: string;
     stockFilter?: 'tracked' | 'untracked';
     search?: string;
@@ -68,17 +66,6 @@ export class ProductService {
 
   deleteProduct(id: string): Observable<any> {
     return this.http.delete(`${this.API_URL}/${id}`);
-  }
-
-  getCategories(): Observable<any> {
-    return this.http.get(`${this.API_URL}/categories`)
-      .pipe(
-        tap((response: any) => {
-          if (response.success) {
-            this.categories.set(response.data);
-          }
-        })
-      );
   }
 
   importProducts(file: File): Observable<any> {

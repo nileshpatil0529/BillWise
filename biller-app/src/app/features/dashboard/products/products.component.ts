@@ -61,7 +61,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
   // All available columns
-  private allColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'warranty', 'status', 'actions'];
+  private allColumns = ['productId', 'name', 'barcode', 'unitPrice', 'stockQuantity', 'warranty', 'status', 'actions'];
   displayedColumns: string[] = [];
   
   dataSource = new MatTableDataSource<Product>([]);

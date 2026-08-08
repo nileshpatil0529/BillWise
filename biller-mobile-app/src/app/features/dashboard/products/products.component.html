@@ -81,9 +81,6 @@
             <div class="product-info">
               <span class="product-name">{{ getDisplayName(product) }}</span>
               <div class="product-meta">
-                @if (product.category) {
-                  <span class="category-tag">{{ product.category }}</span>
-                }
                 @if (product.barcode && !isHotelMode()) {
                   <span class="barcode">{{ product.barcode }}</span>
                 }

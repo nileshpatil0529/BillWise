@@ -253,9 +253,11 @@
               <span class="status-badge" [class]="getPaymentStatusClass(bill.paymentStatus)">
                 {{ bill.paymentStatus | titlecase }}
               </span>
-              <button mat-icon-button class="print-btn" (click)="printBill(bill); $event.stopPropagation()">
-                <mat-icon>local_printshop</mat-icon>
-              </button>
+              @if (authService.isAdmin()) {
+                <button mat-icon-button class="print-btn" (click)="printBill(bill); $event.stopPropagation()">
+                  <mat-icon>local_printshop</mat-icon>
+                </button>
+              }
             </div>
           </div>
         </div>

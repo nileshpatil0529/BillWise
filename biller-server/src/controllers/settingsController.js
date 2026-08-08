@@ -49,7 +49,6 @@ export const getSettings = async (req, res) => {
     const parsedSettings = {
       ...settings,
       taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
-      categories: settings.categories ? JSON.parse(settings.categories) : [{ name: 'General', enabled: true }],
       tableColumns: settings.tableColumns ? JSON.parse(settings.tableColumns) : null,
       units: settings.units ? JSON.parse(settings.units) : [
         { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },
@@ -86,7 +85,7 @@ export const updateSettings = async (req, res) => {
     const allowedFields = [
       'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber', 'upiId',
       'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
-      'taxEnabled', 'taxRates', 'categories', 'tableColumns', 'units', 'viewMode', 'language', 'receiptLanguage', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
+      'taxEnabled', 'taxRates', 'tableColumns', 'units', 'viewMode', 'language', 'receiptLanguage', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
       'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
     ];
 
@@ -98,7 +97,7 @@ export const updateSettings = async (req, res) => {
         setClauses.push(`${field} = ?`);
         
         // Handle special conversions
-        if (field === 'taxRates' || field === 'categories' || field === 'tableColumns' || field === 'units') {
+        if (field === 'taxRates' || field === 'tableColumns' || field === 'units') {
           values.push(JSON.stringify(updates[field]));
         } else if (field === 'taxEnabled' || field === 'discountEnabled' || field === 'debtEnabled' || field === 'lowStockAlertEnabled') {
           values.push(updates[field] ? 1 : 0);
@@ -123,7 +122,6 @@ export const updateSettings = async (req, res) => {
     const parsedSettings = {
       ...settings,
       taxRates: settings.taxRates ? JSON.parse(settings.taxRates) : [],
-      categories: settings.categories ? JSON.parse(settings.categories) : [{ name: 'General', enabled: true }],
       tableColumns: settings.tableColumns ? JSON.parse(settings.tableColumns) : null,
       units: settings.units ? JSON.parse(settings.units) : [
         { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },

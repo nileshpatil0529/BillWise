@@ -138,11 +138,14 @@ export class BillsComponent implements OnInit, OnDestroy {
     effect(() => {
       const settings = this.settingsService.settings();
       const isHotelMode = settings.applicationType === 'hotel';
+      const isAdmin = this.authService.isAdmin();
       
       // Start with all columns, but filter out 'table' if not hotel mode
-      this.displayedColumns = isHotelMode 
-        ? [...this.allColumns] 
-        : this.allColumns.filter(col => col !== 'table');
+      this.displayedColumns = this.allColumns.filter(col => {
+        if (!isHotelMode && col === 'table') return false;
+        if (!isAdmin && col === 'actions') return false;
+        return true;
+      });
     });
   }
 

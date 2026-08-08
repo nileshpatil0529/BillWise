@@ -492,19 +492,8 @@ export const importProducts = async (req, res) => {
 
     console.log(`Excel import: Found ${data.length} rows in file`);
 
-    // Get enabled categories from settings for validation
-    const settings = db.prepare('SELECT categories, applicationType FROM settings WHERE id = 1').get();
+    const settings = db.prepare('SELECT applicationType FROM settings WHERE id = 1').get();
     const isHotelMode = settings && settings.applicationType === 'hotel';
-    let validCategories = ['General'];
-    if (settings && settings.categories) {
-      const allCategories = JSON.parse(settings.categories);
-      validCategories = allCategories
-        .filter(cat => cat.enabled)
-        .map(cat => cat.name);
-      if (validCategories.length === 0) {
-        validCategories = ['General'];
-      }
-    }
 
     let imported = 0;
     let updated = 0;
@@ -542,7 +531,7 @@ export const importProducts = async (req, res) => {
           }
           const productBarcode = barcodeValue.toString().trim();
           
-          let productCategory = (row.category || row.Category || 'General').toString().trim();
+          const productCategory = 'General';
           
           const isStockTracked = parseYesNoBoolean(
             row.isStockTracked || row.IsStockTracked || row['Is Stock Tracked'] || row['Track Stock'] || row['Stock Tracked'],
@@ -574,34 +563,7 @@ export const importProducts = async (req, res) => {
             continue;
           }
 
-          console.log(`Row ${i + 2}: Processing ${productName}, Category: ${productCategory}, Status: ${productStatus}`);
-
-          // Validation: Check if category is valid
-          if (!validCategories.includes(productCategory)) {
-            // For hotel mode, be more lenient - just log a warning but allow the import
-            if (isHotelMode) {
-              console.log(`Row ${i + 2}: Category '${productCategory}' not enabled. Using 'General' instead for product: ${productName}`);
-              // Use General category as fallback
-              errors.push({ 
-                row: i + 2,
-                productName,
-                category: productCategory,
-                warning: `Category '${productCategory}' not enabled. Using 'General' instead.`
-              });
-              // Override category
-              productCategory = 'General';
-            } else {
-              console.log(`Row ${i + 2}: Invalid category '${productCategory}' for ${productName}. Valid: ${validCategories.join(', ')}. Defaulting to 'General'.`);
-              errors.push({ 
-                row: i + 2,
-                productName,
-                category: productCategory,
-                warning: `Invalid category '${productCategory}'. Using 'General'. Valid categories are: ${validCategories.join(', ')}` 
-              });
-              // Use General as fallback instead of rejecting
-              productCategory = 'General';
-            }
-          }
+          console.log(`Row ${i + 2}: Processing ${productName}, Status: ${productStatus}`);
 
           // Validation: Check if status is valid
           if (productStatus !== 'active' && productStatus !== 'inactive') {
@@ -747,18 +709,7 @@ export const exportProducts = async (req, res) => {
   try {
     const products = db.prepare('SELECT * FROM products').all();
     
-    // Get enabled categories from settings
-    const settings = db.prepare('SELECT categories, units, applicationType FROM settings WHERE id = 1').get();
-    let categories = ['General'];
-    if (settings && settings.categories) {
-      const allCategories = JSON.parse(settings.categories);
-      categories = allCategories
-        .filter(cat => cat.enabled)
-        .map(cat => cat.name);
-      if (categories.length === 0) {
-        categories = ['General'];
-      }
-    }
+    const settings = db.prepare('SELECT units, applicationType FROM settings WHERE id = 1').get();
 
     // Get units for grocery mode
     let units = ['pcs', 'kg', 'g', 'ltr', 'ml'];
@@ -787,7 +738,6 @@ export const exportProducts = async (req, res) => {
     }
     
     columns.push(
-      { header: 'Category *', key: 'category', width: 20 },
       { header: 'Description', key: 'description', width: 40 },
       { header: isHotelMode ? 'Unit Price' : 'Unit Price *', key: 'unitPrice', width: 12 },
       { header: 'Is Stock Tracked', key: 'isStockTracked', width: 16 }
@@ -835,7 +785,6 @@ export const exportProducts = async (req, res) => {
       const row = {
         name: p.name,
         nameHi: p.nameHi || '',
-        category: p.category,
         description: p.description,
         unitPrice: p.unitPrice,
         isStockTracked: p.isStockTracked ? 'Yes' : 'No',
@@ -879,21 +828,6 @@ export const exportProducts = async (req, res) => {
         }
       });
     }
-
-    // Add data validation for Category column (column C now, since Product ID removed)
-    worksheet.getColumn('category').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
-      if (rowNumber > headerRowNum) { // Skip instruction and header rows
-        cell.dataValidation = {
-          type: 'list',
-          allowBlank: true,
-          formulae: [`"${categories.join(',')}"`],
-          showErrorMessage: true,
-          errorStyle: 'error',
-          errorTitle: 'Invalid Category',
-          error: `Please select a category from the list: ${categories.join(', ')}`
-        };
-      }
-    });
 
     // Add data validation for Status column (column I - last column)
     worksheet.getColumn('status').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
@@ -969,18 +903,6 @@ export const exportProducts = async (req, res) => {
         cell.alignment = { horizontal: 'left' };
       }
       
-      // Category dropdown validation - use dynamic column reference
-      const categoryCell = worksheet.getColumn('category').letter + i;
-      worksheet.getCell(categoryCell).dataValidation = {
-        type: 'list',
-        allowBlank: true,
-        formulae: [`"${categories.join(',')}"`],
-        showErrorMessage: true,
-        errorStyle: 'error',
-        errorTitle: 'Invalid Category',
-        error: `Please select a category from the list: ${categories.join(', ')}`
-      };
-      
       // Status dropdown validation - use dynamic column reference
       const statusCell = worksheet.getColumn('status').letter + i;
       worksheet.getCell(statusCell).dataValidation = {
@@ -994,9 +916,6 @@ export const exportProducts = async (req, res) => {
       };
       worksheet.getCell(statusCell).value = 'active'; // Default value
       
-      // Default category
-      worksheet.getCell(categoryCell).value = 'General';
-
       // Default stock tracking mode based on application type
       const trackedCell = worksheet.getColumn('isStockTracked').letter + i;
       worksheet.getCell(trackedCell).dataValidation = {
@@ -1074,37 +993,6 @@ export const exportProducts = async (req, res) => {
     });
   }
 };
-
-export const getCategories = async (req, res) => {
-  try {
-    // Get categories from settings (only enabled ones)
-    const settings = db.prepare('SELECT categories FROM settings WHERE id = 1').get();
-    
-    let categories = [];
-    if (settings && settings.categories) {
-      const allCategories = JSON.parse(settings.categories);
-      categories = allCategories
-        .filter(cat => cat.enabled)
-        .map(cat => cat.name);
-    }
-    
-    // Fallback to 'General' if no categories found
-    if (categories.length === 0) {
-      categories = ['General'];
-    }
-    
-    res.json({
-      success: true,
-      data: categories
-    });
-  } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Failed to fetch categories'
-    });
-  }
-};
-
 
 export const printBarcode = async (req, res) => {
   try {
@@ -1243,6 +1131,5 @@ export default {
   searchProducts,
   importProducts,
   exportProducts,
-  getCategories,
   printBarcode
 };

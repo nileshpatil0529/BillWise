@@ -589,66 +589,7 @@
     </div>
   </mat-expansion-panel>
 
-  <!-- Categories Section (Admin Only) -->
-  <mat-expansion-panel>
-    <mat-expansion-panel-header>
-      <mat-panel-title>
-        <mat-icon>category</mat-icon>
-        <span>{{ translateService.t('settings.categories') }}</span>
-      </mat-panel-title>
-    </mat-expansion-panel-header>
 
-    <div class="settings-card">
-      <div class="category-add-row">
-        <mat-form-field appearance="outline" class="category-field">
-          <mat-label>{{ translateService.t('settings.newCategory') }}</mat-label>
-          <input matInput 
-                 [value]="newCategoryName()" 
-                 (input)="newCategoryName.set($any($event.target).value)"
-                 (keyup.enter)="addCategory()"
-                 placeholder="Category name">
-        </mat-form-field>
-        <button mat-flat-button color="primary" (click)="addCategory()">
-          <mat-icon>add</mat-icon>
-        </button>
-      </div>
-
-      @if (categories().length === 0) {
-        <div class="empty-categories">
-          <mat-icon>category</mat-icon>
-          <span>No categories yet</span>
-        </div>
-      } @else {
-        <div class="categories-list">
-          @for (category of categories(); track $index) {
-            <div class="category-item">
-              <mat-checkbox 
-                [checked]="category.enabled"
-                (change)="toggleCategory($index)">
-                {{ category.name }}
-              </mat-checkbox>
-              @if (category.name !== 'General') {
-                <button mat-icon-button color="warn" (click)="removeCategory($index)">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              }
-            </div>
-          }
-        </div>
-      }
-
-      <button mat-flat-button color="primary" class="save-btn" (click)="saveCategories()" [disabled]="saving()">
-        @if (saving()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          <ng-container>
-            <mat-icon>save</mat-icon>
-            {{ translateService.t('settings.saveChanges') }}
-          </ng-container>
-        }
-      </button>
-    </div>
-  </mat-expansion-panel>
   }
 
   <!-- App Info Section -->

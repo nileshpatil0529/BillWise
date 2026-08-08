@@ -18,7 +18,7 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
-import { Settings, ApplicationType, ThemeType, ScannerType, Category, TableColumn, Unit, ViewMode, LanguageType } from '../../../core/models/settings.model';
+import { Settings, ApplicationType, ThemeType, ScannerType, TableColumn, Unit, ViewMode, LanguageType } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 
@@ -59,8 +59,6 @@ export class SettingsComponent implements OnInit {
 
   saving = signal(false);
   logoPreview = signal<string | null>(null);
-  categories = signal<Category[]>([]);
-  newCategoryName = signal<string>('');
   
   // Profile Photo
   profilePhotoPreview = signal<string | null>(null);
@@ -95,7 +93,6 @@ export class SettingsComponent implements OnInit {
     { key: 'productId', label: 'Product ID', visible: true },
     { key: 'name', label: 'Product Name', visible: true },
     { key: 'barcode', label: 'Barcode', visible: true },
-    { key: 'category', label: 'Category', visible: true },
     { key: 'unitPrice', label: 'Unit Price', visible: true },
     { key: 'stockQuantity', label: 'Stock', visible: true },
     { key: 'status', label: 'Status', visible: true },
@@ -183,7 +180,7 @@ export class SettingsComponent implements OnInit {
     });
 
     this.taxForm = this.fb.group({
-      taxEnabled: [true],
+      taxEnabled: [false],
       taxName: ['GST', Validators.required],
       taxRate: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
       taxNumber: [''],
@@ -218,7 +215,7 @@ export class SettingsComponent implements OnInit {
 
     const taxRate = settings.taxRates?.length > 0 ? settings.taxRates[0] : { name: 'GST', rate: 18 };
     this.taxForm.patchValue({
-      taxEnabled: settings.taxEnabled ?? settings.taxRates?.length > 0,
+      taxEnabled: settings.taxEnabled ?? false,
       taxName: taxRate.name,
       taxRate: taxRate.rate,
       taxNumber: settings.taxNumber,
@@ -243,9 +240,6 @@ export class SettingsComponent implements OnInit {
       this.logoPreview.set(settings.logo);
     }
 
-    // Load categories
-    this.categories.set(settings.categories || [{ name: 'General', enabled: true }]);
-    
     // Load units (for grocery mode)
     const defaultUnits: Unit[] = [
       { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },
@@ -423,65 +417,6 @@ export class SettingsComponent implements OnInit {
 
   getAppTypeIcon(type: string): string {
     return this.applicationTypes.find(t => t.value === type)?.icon || 'store';
-  }
-
-  // Categories Management
-  addCategory(): void {
-    const name = this.newCategoryName().trim();
-    if (!name) {
-      this.snackBar.open('Please enter a category name', 'Close', { duration: 3000 });
-      return;
-    }
-
-    const currentCategories = this.categories();
-    if (currentCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-      this.snackBar.open('Category already exists', 'Close', { duration: 3000 });
-      return;
-    }
-
-    const newCategory: Category = { name, enabled: true };
-    this.categories.set([...currentCategories, newCategory]);
-    this.newCategoryName.set('');
-  }
-
-  toggleCategory(index: number): void {
-    const currentCategories = [...this.categories()];
-    currentCategories[index].enabled = !currentCategories[index].enabled;
-    this.categories.set(currentCategories);
-  }
-
-  removeCategory(index: number): void {
-    const categoryName = this.categories()[index].name;
-    
-    // Prevent removing 'General' category
-    if (categoryName === 'General') {
-      this.snackBar.open('Cannot remove General category', 'Close', { duration: 3000 });
-      return;
-    }
-
-    if (confirm(`Are you sure you want to remove "${categoryName}"?`)) {
-      const currentCategories = [...this.categories()];
-      currentCategories.splice(index, 1);
-      this.categories.set(currentCategories);
-    }
-  }
-
-  saveCategories(): void {
-    this.saving.set(true);
-    
-    const settings: Partial<Settings> = {
-      categories: this.categories()
-    };
-
-    this.settingsService.updateSettings(settings).subscribe({
-      next: () => {
-        this.saving.set(false);
-      },
-      error: () => {
-        this.snackBar.open('Failed to save categories', 'Close', { duration: 3000 });
-        this.saving.set(false);
-      }
-    });
   }
 
   // Table Column Management Methods

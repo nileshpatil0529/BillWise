@@ -26,7 +26,7 @@ export class SettingsService {
     applicationType: 'general',
     theme: 'dark',
     scannerType: 'none',
-    taxEnabled: true,
+    taxEnabled: false,
     taxRates: [],
     categories: [{ name: 'General', enabled: true }],
     discountEnabled: true,

@@ -205,7 +205,7 @@ const initializeDatabase = () => {
       applicationType TEXT DEFAULT 'general',
       theme TEXT DEFAULT 'dark',
       scannerType TEXT DEFAULT 'usb',
-      taxEnabled INTEGER DEFAULT 1,
+      taxEnabled INTEGER DEFAULT 0,
       taxRates TEXT DEFAULT '[{"name":"GST 5%","rate":5},{"name":"GST 12%","rate":12},{"name":"GST 18%","rate":18}]',
       discountEnabled INTEGER DEFAULT 1,
       debtEnabled INTEGER DEFAULT 1,

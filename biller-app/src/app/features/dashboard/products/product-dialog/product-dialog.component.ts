@@ -1,7 +1,7 @@
 import { Component, Inject, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,7 +12,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Product } from '../../../../core/models/product.model';
 import { SettingsService } from '../../../../core/services/settings.service';
-import { ProductService } from '../../../../core/services/product.service';
 import { Unit } from '../../../../core/models/settings.model';
 
 interface DialogData {
@@ -48,15 +47,6 @@ interface DialogData {
             @if (productForm.get('name')?.hasError('required')) {
               <mat-error>Name is required</mat-error>
             }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Category</mat-label>
-            <mat-select formControlName="category">
-              @for (category of productService.categories(); track category) {
-                <mat-option [value]="category">{{ category }}</mat-option>
-              }
-            </mat-select>
           </mat-form-field>
         </div>
 
@@ -257,20 +247,13 @@ interface DialogData {
 export class ProductDialogComponent {
   productForm: FormGroup;
   settingsService = inject(SettingsService);
-  productService = inject(ProductService);
   units = signal<Unit[]>([]);
 
   constructor(
     private fb: FormBuilder,
     public dialogRef: MatDialogRef<ProductDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: DialogData,
-    private dialog: MatDialog
+    @Inject(MAT_DIALOG_DATA) public data: DialogData
   ) {
-    // Load categories if not already loaded
-    if (this.productService.categories().length === 0) {
-      this.productService.getCategories().subscribe();
-    }
-    
     // Load units for grocery mode
     const settings = this.settingsService.settings();
     if (settings.units) {
@@ -284,7 +267,6 @@ export class ProductDialogComponent {
     this.productForm = this.fb.group({
       name: [product?.name || '', Validators.required],
       nameHi: [product?.nameHi || ''],
-      category: [product?.category || 'General'],
       description: [product?.description || ''],
       barcode: [product?.barcode || ''],
       confirmBarcode: [product?.barcode || ''],
