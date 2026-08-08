@@ -36,6 +36,7 @@ export class SettingsService {
     footerText: 'Thank you for your business!',
     lowStockAlertEnabled: true,
     lowStockThreshold: 10,
+    internetStatusCheckEnabled: true,
     updatedAt: ''
   });
 
@@ -75,7 +76,10 @@ export class SettingsService {
       if (storedSettings) {
         try {
           const settings = JSON.parse(storedSettings) as Settings;
-          this.settings.set(settings);
+          this.settings.set({
+            ...settings,
+            internetStatusCheckEnabled: settings.internetStatusCheckEnabled ?? true
+          });
           this.currentTheme.set(settings.theme);
         } catch {}
       }
@@ -87,14 +91,20 @@ export class SettingsService {
       .pipe(
         tap((response: any) => {
           if (response.success) {
-            this.settings.set(response.data);
+            this.settings.set({
+              ...response.data,
+              internetStatusCheckEnabled: response.data.internetStatusCheckEnabled ?? true
+            });
             this.currentTheme.set(response.data.theme);
             // Initialize language
             if (response.data.language) {
               this.translateService.initLanguage(response.data.language);
             }
             if (this.isBrowser) {
-              localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(response.data));
+              localStorage.setItem(this.SETTINGS_KEY, JSON.stringify({
+                ...response.data,
+                internetStatusCheckEnabled: response.data.internetStatusCheckEnabled ?? true
+              }));
             }
           }
         })
@@ -106,12 +116,18 @@ export class SettingsService {
       .pipe(
         tap((response: any) => {
           if (response.success) {
-            this.settings.set(response.data);
+            this.settings.set({
+              ...response.data,
+              internetStatusCheckEnabled: response.data.internetStatusCheckEnabled ?? true
+            });
             if (settings.theme) {
               this.currentTheme.set(settings.theme);
             }
             if (this.isBrowser) {
-              localStorage.setItem(this.SETTINGS_KEY, JSON.stringify(response.data));
+              localStorage.setItem(this.SETTINGS_KEY, JSON.stringify({
+                ...response.data,
+                internetStatusCheckEnabled: response.data.internetStatusCheckEnabled ?? true
+              }));
             }
           }
         })

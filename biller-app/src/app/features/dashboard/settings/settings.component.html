@@ -449,6 +449,23 @@
 
             <mat-divider></mat-divider>
 
+            <!-- Internet Status Check Section -->
+            <div class="account-section">
+              <label>{{ translateService.t('settings.internetStatusCheck') }}</label>
+              <div class="theme-toggle">
+                <span class="toggle-label">
+                  <mat-icon>wifi</mat-icon>
+                  {{ translateService.t('settings.internetStatusCheckHint') }}
+                </span>
+                <mat-slide-toggle
+                  [checked]="internetStatusCheckEnabled()"
+                  (change)="onInternetStatusCheckToggle($event.checked)">
+                </mat-slide-toggle>
+              </div>
+            </div>
+
+            <mat-divider></mat-divider>
+
             <!-- Change Password Section -->
             <div class="account-section">
               <label>{{ translateService.t('settings.password') }}</label>

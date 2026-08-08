@@ -213,6 +213,7 @@ const initializeDatabase = () => {
       tableColumns TEXT,
       viewMode TEXT DEFAULT 'desktop',
       language TEXT DEFAULT 'en',
+      internetStatusCheckEnabled INTEGER DEFAULT 1,
       invoicePrefix TEXT DEFAULT 'INV',
       invoiceStartNumber INTEGER DEFAULT 1,
       footerText TEXT DEFAULT 'Thank you for your business!',
@@ -317,6 +318,11 @@ const initializeDatabase = () => {
     if (!hasLanguage) {
       db.exec("ALTER TABLE settings ADD COLUMN language TEXT DEFAULT 'en'");
       console.log('✅ Migration: Added language column');
+    }
+    const hasInternetStatusCheckEnabled = columns.some(col => col.name === 'internetStatusCheckEnabled');
+    if (!hasInternetStatusCheckEnabled) {
+      db.exec('ALTER TABLE settings ADD COLUMN internetStatusCheckEnabled INTEGER DEFAULT 1');
+      console.log('✅ Migration: Added internetStatusCheckEnabled column');
     }
     const hasUpiId = columns.some(col => col.name === 'upiId');
     if (!hasUpiId) {

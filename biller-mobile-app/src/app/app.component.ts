@@ -3,6 +3,7 @@ import { RouterOutlet } from '@angular/router';
 import { MatIconRegistry } from '@angular/material/icon';
 import { SettingsService } from './core/services/settings.service';
 import { AutoBlurService } from './core/services/auto-blur.service';
+import { InternetConnectivityService } from './core/services/internet-connectivity.service';
 
 @Component({
   selector: 'app-root',
@@ -13,9 +14,10 @@ import { AutoBlurService } from './core/services/auto-blur.service';
 })
 export class AppComponent {
   title = 'biller-app';
-  private settingsService = inject(SettingsService);
+  settingsService = inject(SettingsService);
   private autoBlurService = inject(AutoBlurService);
   private matIconRegistry = inject(MatIconRegistry);
+  connectivityService = inject(InternetConnectivityService);
 
   constructor() {
     // Use legacy Material Icons ligature font
@@ -31,6 +33,11 @@ export class AppComponent {
     effect(() => {
       const isDark = this.settingsService.currentTheme() === 'dark';
       document.body.classList.toggle('dark-theme', isDark);
+    });
+
+    effect(() => {
+      const isEnabled = this.settingsService.settings().internetStatusCheckEnabled ?? true;
+      this.connectivityService.setEnabled(isEnabled);
     });
   }
 

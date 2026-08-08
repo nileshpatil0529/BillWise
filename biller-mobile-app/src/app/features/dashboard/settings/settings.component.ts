@@ -18,6 +18,7 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
+import { InternetConnectivityService } from '../../../core/services/internet-connectivity.service';
 import { Settings, ApplicationType, ThemeType, ScannerType, TableColumn, Unit, ViewMode, LanguageType } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
@@ -50,6 +51,7 @@ export class SettingsComponent implements OnInit {
   authService = inject(AuthService);
   hotelService = inject(HotelService);
   translateService = inject(TranslateService);
+  connectivityService = inject(InternetConnectivityService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
@@ -68,6 +70,7 @@ export class SettingsComponent implements OnInit {
   selectedLanguage = signal<LanguageType>('en');
   selectedReceiptLanguage = signal<LanguageType>('en');
   selectedKotLanguage = signal<LanguageType>('en');
+  internetStatusCheckEnabled = signal(true);
   
   // Hotel Management
   newTableStartNumber = signal<number>(1);
@@ -268,6 +271,22 @@ export class SettingsComponent implements OnInit {
     const lang = settings.language || 'en';
     this.selectedLanguage.set(lang);
     this.translateService.initLanguage(lang);
+
+    this.internetStatusCheckEnabled.set(settings.internetStatusCheckEnabled ?? true);
+  }
+
+  onInternetStatusCheckToggle(enabled: boolean): void {
+    this.internetStatusCheckEnabled.set(enabled);
+
+    this.settingsService.updateSettings({ internetStatusCheckEnabled: enabled }).subscribe({
+      next: () => {
+        this.connectivityService.setEnabled(enabled);
+      },
+      error: () => {
+        this.internetStatusCheckEnabled.set(!enabled);
+        this.snackBar.open('Failed to save internet status check setting', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onThemeChange(isDark: boolean): void {

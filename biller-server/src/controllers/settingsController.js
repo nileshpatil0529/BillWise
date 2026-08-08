@@ -58,6 +58,7 @@ export const getSettings = async (req, res) => {
         { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
       ],
       taxEnabled: Boolean(settings.taxEnabled),
+      internetStatusCheckEnabled: Boolean(settings.internetStatusCheckEnabled ?? 1),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
       debtEnabled: Boolean(settings.debtEnabled ?? 0),
       lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)
@@ -85,7 +86,7 @@ export const updateSettings = async (req, res) => {
     const allowedFields = [
       'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber', 'upiId',
       'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
-      'taxEnabled', 'taxRates', 'tableColumns', 'units', 'viewMode', 'language', 'receiptLanguage', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
+      'taxEnabled', 'taxRates', 'tableColumns', 'units', 'viewMode', 'language', 'receiptLanguage', 'internetStatusCheckEnabled', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
       'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
     ];
 
@@ -99,7 +100,7 @@ export const updateSettings = async (req, res) => {
         // Handle special conversions
         if (field === 'taxRates' || field === 'tableColumns' || field === 'units') {
           values.push(JSON.stringify(updates[field]));
-        } else if (field === 'taxEnabled' || field === 'discountEnabled' || field === 'debtEnabled' || field === 'lowStockAlertEnabled') {
+        } else if (field === 'taxEnabled' || field === 'internetStatusCheckEnabled' || field === 'discountEnabled' || field === 'debtEnabled' || field === 'lowStockAlertEnabled') {
           values.push(updates[field] ? 1 : 0);
         } else {
           values.push(updates[field]);
@@ -131,6 +132,7 @@ export const updateSettings = async (req, res) => {
         { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
       ],
       taxEnabled: Boolean(settings.taxEnabled),
+      internetStatusCheckEnabled: Boolean(settings.internetStatusCheckEnabled ?? 1),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
       debtEnabled: Boolean(settings.debtEnabled ?? 0),
       lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)

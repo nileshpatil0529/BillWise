@@ -60,6 +60,7 @@ export interface Settings {
   language?: LanguageType;
   receiptLanguage?: LanguageType;
   kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
+  internetStatusCheckEnabled?: boolean;
   units?: Unit[];
   viewMode?: ViewMode;
   tableColumns?: {

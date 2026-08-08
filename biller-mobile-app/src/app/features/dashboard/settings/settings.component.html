@@ -84,6 +84,22 @@
           </div>
           <mat-icon class="chevron">chevron_right</mat-icon>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon language">
+              <mat-icon>wifi</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.internetStatusCheck') }}</span>
+              <span class="setting-value">{{ translateService.t('settings.internetStatusCheckHint') }}</span>
+            </div>
+          </div>
+          <mat-slide-toggle
+            [checked]="internetStatusCheckEnabled()"
+            (change)="onInternetStatusCheckToggle($event.checked)">
+          </mat-slide-toggle>
+        </div>
       </div>
     </mat-expansion-panel>
 
