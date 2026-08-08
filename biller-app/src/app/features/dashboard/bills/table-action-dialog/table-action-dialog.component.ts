@@ -272,7 +272,6 @@ export class TableActionDialogComponent implements OnInit {
         }).subscribe({
           next: () => {
             this.saving.set(false);
-            this.snackBar.open('Bill printed and saved', 'OK', { duration: 2000 });
             this.dialogRef.close({ saved: true });
           },
           error: (err: any) => {
@@ -300,7 +299,6 @@ export class TableActionDialogComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.saving.set(false);
-        this.snackBar.open('Bill saved', 'OK', { duration: 2000 });
         this.dialogRef.close({ saved: true });
       },
       error: (err: any) => {
@@ -326,7 +324,6 @@ export class TableActionDialogComponent implements OnInit {
           this.hotelService.settleTable(tableId).subscribe({
             next: () => {
               this.saving.set(false);
-              this.snackBar.open('Table settled successfully', 'OK', { duration: 2000 });
               this.dialogRef.close({ settled: true });
             },
             error: (err: any) => {
@@ -355,7 +352,6 @@ export class TableActionDialogComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.saving.set(false);
-        this.snackBar.open('Payment method updated', 'OK', { duration: 2000 });
         this.dialogRef.close({ saved: true });
       },
       error: (err: any) => {

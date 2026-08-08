@@ -349,7 +349,7 @@ export class BillsComponent implements OnInit, OnDestroy {
       error: (error: any) => {
         this.loading.set(false);
         const message = error.error?.message || 'Failed to print bill';
-        // Info snack bar removed
+        this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
   }

@@ -37,7 +37,6 @@ export const getAllProducts = async (req, res) => {
       return '';
     })();
     
-    console.log('[getAllProducts] Query params:', { category, status, search, page, limit, stockFilter: normalizedStockFilter || 'all' });
     
     let products = [];
     let total = 0;
@@ -143,12 +142,6 @@ export const getAllProducts = async (req, res) => {
     // Parse metadata JSON and boolean fields for each product
     const productsWithMetadata = products.map(normalizeProduct);
 
-    // Debug: Check total products in database
-    const dbTotal = db.prepare('SELECT COUNT(*) as count FROM products').get();
-    const activeCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE status = ?').get('active');
-    const inactiveCount = db.prepare('SELECT COUNT(*) as count FROM products WHERE status = ?').get('inactive');
-    console.log('[getAllProducts] DB stats - Total:', dbTotal.count, 'Active:', activeCount.count, 'Inactive:', inactiveCount.count);
-    console.log('[getAllProducts] Returning', products.length, 'products, total count:', total);
 
     res.json({
       success: true,
@@ -490,7 +483,6 @@ export const importProducts = async (req, res) => {
     const worksheet = workbook.Sheets[sheetName];
     const data = XLSX.utils.sheet_to_json(worksheet);
 
-    console.log(`Excel import: Found ${data.length} rows in file`);
 
     const settings = db.prepare('SELECT applicationType FROM settings WHERE id = 1').get();
     const isHotelMode = settings && settings.applicationType === 'hotel';
@@ -515,10 +507,7 @@ export const importProducts = async (req, res) => {
       for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
         try {
-          // Log first few rows to debug column mapping
-          if (i < 3) {
-            console.log(`Row ${i + 2} raw data:`, JSON.stringify(row, null, 2));
-          }
+          // Log output intentionally removed; validation and errors are still collected.
           
           const productName = (row.name || row.Name || row['Product Name'] || '').toString().trim();
           
@@ -548,13 +537,11 @@ export const importProducts = async (req, res) => {
             productStatus = statusValue.toString().trim().toLowerCase();
           }
           
-          console.log(`Row ${i + 2}: ${productName} - Status from Excel: '${statusValue}' -> Processed: '${productStatus}'`);
           
           const now = new Date().toISOString();
 
           // Validation: Check required fields
           if (!productName || productName === '') {
-            console.log(`Row ${i + 2}: Skipping - Product Name is required and cannot be blank`);
             errors.push({ 
               row: i + 2, // Excel row number (1-indexed + header)
               productName: productName || 'N/A',
@@ -563,11 +550,8 @@ export const importProducts = async (req, res) => {
             continue;
           }
 
-          console.log(`Row ${i + 2}: Processing ${productName}, Status: ${productStatus}`);
-
           // Validation: Check if status is valid
           if (productStatus !== 'active' && productStatus !== 'inactive') {
-            console.log(`Row ${i + 2}: Invalid status '${productStatus}' for ${productName}, defaulting to 'active'`);
             productStatus = 'active'; // Force to active instead of rejecting
           }
 
@@ -612,7 +596,6 @@ export const importProducts = async (req, res) => {
             );
             // Always update status to ensure consistency
             db.prepare('UPDATE products SET status = ?, updatedAt = ? WHERE productId = ?').run(productStatus, now, existingProduct.productId);
-            console.log(`Updated product ${productName} (${existingProduct.productId}) - Status: ${existingProduct.status} -> ${productStatus}`);
             updated++;
             imported++;
           } else {
@@ -639,7 +622,6 @@ export const importProducts = async (req, res) => {
             );
             // Always set status for new products
             db.prepare('UPDATE products SET status = ? WHERE productId = ?').run(productStatus, newProductId);
-            console.log(`Inserted new product ${productName} (${newProductId}) - Status: ${productStatus}`);
             inserted++;
             imported++;
           }
@@ -663,11 +645,6 @@ export const importProducts = async (req, res) => {
       inactive: db.prepare('SELECT COUNT(*) as count FROM products WHERE status = ?').get('inactive').count
     };
 
-    console.log(`Import completed: ${imported} imported, ${updated} updated, ${inserted} inserted, ${errors.length} errors`);
-    console.log('Final DB stats:', finalStats);
-    if (errors.length > 0) {
-      console.log('Import errors:', errors);
-    }
 
     // Build response message
     let message = `Successfully imported ${imported} products (${updated} updated, ${inserted} new)`;
@@ -1021,8 +998,6 @@ export const printBarcode = async (req, res) => {
         message: 'Product not found with this barcode'
       });
     }
-
-    console.log('Printing barcode for product:', product.name, 'Barcode:', barcode);
 
     // Get printer path from environment
     const printerPath = process.env.PRINTER_INTERFACE || '\\\\localhost\\MyPOS';

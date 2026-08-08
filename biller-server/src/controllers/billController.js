@@ -366,9 +366,8 @@ export const updateBill = async (req, res) => {
             const now2 = new Date().toISOString();
             db.prepare('UPDATE restaurant_tables SET status = ?, updatedAt = ? WHERE id = ?')
               .run('unsettled', now2, bill.tableId);
-            console.log('✅ Table marked as unsettled after bill completion:', bill.tableId);
           } catch (tableError) {
-            console.log('⚠️ Could not update table status (table might not exist):', tableError.message);
+            // Ignore table update failures to avoid blocking bill completion.
           }
         }
       }
@@ -1095,20 +1094,16 @@ export const printKOT = async (req, res) => {
 export const deleteBill = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🗑️  deleteBill called for billId:', id);
     
     // Check if bill exists
     const bill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
     
     if (!bill) {
-      console.log('❌ Bill not found in database:', id);
       return res.status(404).json({
         success: false,
         message: 'Bill not found'
       });
     }
-    
-    console.log('✅ Bill found, proceeding with deletion:', bill.billNumber);
 
     // Determine default stock behavior when product-level flag is absent
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
@@ -1132,25 +1127,20 @@ export const deleteBill = async (req, res) => {
       try {
         db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL WHERE id = ?')
           .run('available', bill.tableId);
-        console.log('✅ Table marked as available:', bill.tableId);
         // Emit table update
         emitTableUpdate({ tableId: bill.tableId, billId: null, status: 'available' });
       } catch (tableError) {
-        console.log('⚠️ Could not update table (table may not exist):', tableError.message);
         // Continue with bill deletion even if table update fails
       }
     }
 
     // Delete bill items first (foreign key constraint)
     db.prepare('DELETE FROM bill_items WHERE billId = ?').run(id);
-    console.log('✅ Deleted bill items for billId:', id);
     
     // Delete the bill
     db.prepare('DELETE FROM bills WHERE billId = ?').run(id);
-    console.log('✅ Deleted bill from database, billId:', id);
 
     // Emit WebSocket event for real-time updates
-    console.log('📡 Emitting bill-deleted WebSocket event for billId:', id);
     emitBillDeleted(id);
 
     res.json({
@@ -1158,7 +1148,6 @@ export const deleteBill = async (req, res) => {
       message: 'Bill deleted successfully',
       data: { billId: id }
     });
-    console.log('✅ Delete bill response sent successfully');
   } catch (error) {
     console.error('❌ Delete bill error:', error);
     console.error('❌ Error stack:', error.stack);

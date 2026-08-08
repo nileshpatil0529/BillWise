@@ -291,7 +291,7 @@
         <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('bills.dateTime') }}</th>
           <td mat-cell *matCellDef="let bill">
-            {{ bill.createdAt | date:'dd/MM/yyyy HH:mm' }}
+            {{ bill.createdAt | date:'dd/MM/yyyy hh:mm a' }}
           </td>
         </ng-container>
 

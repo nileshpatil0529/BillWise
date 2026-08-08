@@ -415,7 +415,6 @@ export class BillsComponent implements OnInit, OnDestroy {
     if (confirm('Mark this table as settled? It will become available for new orders.')) {
       this.hotelService.settleTable(bill.tableId).subscribe({
         next: () => {
-          this.snackBar.open('Table settled successfully', 'Close', { duration: 2000 });
           this.hotelService.loadTables().subscribe();
           this.loadBills(true);
         },

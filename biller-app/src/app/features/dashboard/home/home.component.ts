@@ -1720,7 +1720,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (confirm('Mark this table as settled? This will make the table available for new orders.')) {
       this.hotelService.settleTable(tableId).subscribe({
         next: () => {
-          this.snackBar.open('Table settled successfully', 'Close', { duration: 2000 });
           this.hotelService.loadTables().subscribe();
         },
         error: (err) => {
@@ -1743,17 +1742,22 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           amountPaid: table.grandTotal || 0
         }).subscribe({
           next: () => {
-            this.snackBar.open('Bill printed & completed', 'Close', { duration: 2000 });
             // If this was the selected table, reset local state
             if (this.selectedTable()?.id === table.id) {
               this.clearCartAndResetState();
             }
             this.hotelService.loadTables().subscribe();
           },
-          error: () => this.snackBar.open('Bill printed but failed to complete', 'Close', { duration: 3000 })
+          error: (err) => {
+            const message = err?.error?.message || 'Bill printed but failed to complete';
+            this.snackBar.open(message, 'Close', { duration: 3000 });
+          }
         });
       },
-      error: () => this.snackBar.open('Failed to print bill', 'Close', { duration: 3000 })
+      error: (err) => {
+        const message = err?.error?.message || 'Failed to print bill';
+        this.snackBar.open(message, 'Close', { duration: 3000 });
+      }
     });
   }
 

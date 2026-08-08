@@ -226,7 +226,7 @@
           <div class="bill-main">
             <div class="bill-info">
               <span class="bill-number">#{{ formatBillNumber(bill.billNumber) }}</span>
-              <span class="bill-date">{{ bill.createdAt | date:'dd MMM, HH:mm' }}</span>
+              <span class="bill-date">{{ bill.createdAt | date:'dd MMM, hh:mm a' }}</span>
             </div>
             <div class="bill-amount">
               <span class="amount">{{ formatCurrency(bill.grandTotal) }}</span>

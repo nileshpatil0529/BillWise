@@ -400,7 +400,6 @@ async function startService() {
   });
 
   app.listen(AGENT_PORT, AGENT_HOST, () => {
-    console.log(`BillWise Print Agent listening on http://${AGENT_HOST}:${AGENT_PORT}`);
     if (process.platform === 'win32') preventSystemSleep();
   });
 }
@@ -445,7 +444,6 @@ function installAndStart() {
   });
   child.unref();
 
-  console.log('BillWise Print Agent installed and added to Windows startup.');
 }
 
 const args = new Set(process.argv.slice(2));

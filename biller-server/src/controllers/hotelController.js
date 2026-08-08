@@ -126,7 +126,6 @@ export const createTables = async (req, res) => {
 
     // Emit WebSocket event if tables were created
     if (createdTables.length > 0) {
-      console.log('📤 Emitting tables-refresh after creating', createdTables.length, 'tables');
       emitTablesRefresh();
     }
 
@@ -172,7 +171,6 @@ export const updateTable = async (req, res) => {
     );
 
     // Emit WebSocket events for real-time updates
-    console.log('📤 Emitting table update for table:', id);
     emitTablesRefresh(); // Refresh all table grids
 
     res.json({
@@ -211,7 +209,6 @@ export const deleteTable = async (req, res) => {
     db.prepare('DELETE FROM restaurant_tables WHERE id = ?').run(id);
 
     // Emit WebSocket event for real-time updates
-    console.log('📤 Emitting tables-refresh after deleting table:', id);
     emitTablesRefresh();
 
     res.json({
@@ -240,7 +237,6 @@ export const updateTableStatus = async (req, res) => {
     `).run(status, currentBillId || null, new Date().toISOString(), id);
 
     // Emit WebSocket events for real-time updates
-    console.log('📤 Emitting table status update for table:', id, 'status:', status);
     emitTableUpdate({ tableId: parseInt(id), status, currentBillId: currentBillId || null });
     emitTablesRefresh(); // Refresh all table grids
 
@@ -275,7 +271,6 @@ export const settleTable = async (req, res) => {
     db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL, updatedAt = ? WHERE id = ?')
       .run('available', now, id);
 
-    console.log('✅ Table settled by admin:', id);
     emitTableUpdate({ tableId: parseInt(id), status: 'available', currentBillId: null });
     emitTablesRefresh();
 

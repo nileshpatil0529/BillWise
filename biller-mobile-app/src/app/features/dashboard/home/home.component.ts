@@ -921,11 +921,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           // Print the bill
           this.billService.printBill(response.data.billId).subscribe({
             next: () => {
-              // Success snack bar removed
               this.clearCart();
             },
-            error: () => {
-              // Info snack bar removed
+            error: (err) => {
+              const message = err?.error?.message || 'Failed to print bill';
+              this.snackBar.open(message, 'Close', { duration: 3000 });
               this.clearCart();
             }
           });
@@ -1673,14 +1673,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.billService.printKOT(this.currentBillId()!).subscribe({
               next: (printResponse) => {
                 if (printResponse.success) {
-                  // Success snack bar removed
                   this.billStatus.set('kot-printed');
                 }
                 this.kotPrinting.set(false);
               },
               error: (err) => {
                 const message = err.error?.message || 'Failed to print KOT';
-                // Info snack bar removed
+                this.snackBar.open(message, 'Close', { duration: 5000 });
                 // Bill is saved, just print failed - user can retry
                 this.kotPrinting.set(false);
               }
@@ -1712,14 +1711,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.billService.printKOT(response.data.billId).subscribe({
               next: (printResponse) => {
                 if (printResponse.success) {
-                  // Success snack bar removed
                   this.billStatus.set('kot-printed');
                 }
                 this.kotPrinting.set(false);
               },
               error: (err) => {
                 const message = err.error?.message || 'Failed to print KOT';
-                // Info snack bar removed
+                this.snackBar.open(message, 'Close', { duration: 5000 });
                 // Bill is saved, just print failed - user can retry
                 this.kotPrinting.set(false);
               }
@@ -1825,7 +1823,6 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (confirm('Mark this table as settled? This will make the table available for new orders.')) {
       this.hotelService.settleTable(tableId).subscribe({
         next: () => {
-          this.snackBar.open('Table settled successfully', 'Close', { duration: 2000 });
           this.hotelService.loadTables().subscribe();
         },
         error: (err) => {
@@ -1848,16 +1845,21 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           amountPaid: table.grandTotal || 0
         }).subscribe({
           next: () => {
-            this.snackBar.open('Bill printed & completed', 'Close', { duration: 2000 });
             if (this.selectedTable()?.id === table.id) {
               this.clearCartAndResetState();
             }
             this.hotelService.loadTables().subscribe();
           },
-          error: () => this.snackBar.open('Bill printed but failed to complete', 'Close', { duration: 3000 })
+          error: (err) => {
+            const message = err?.error?.message || 'Bill printed but failed to complete';
+            this.snackBar.open(message, 'Close', { duration: 3000 });
+          }
         });
       },
-      error: () => this.snackBar.open('Failed to print bill', 'Close', { duration: 3000 })
+      error: (err) => {
+        const message = err?.error?.message || 'Failed to print bill';
+        this.snackBar.open(message, 'Close', { duration: 3000 });
+      }
     });
   }
 

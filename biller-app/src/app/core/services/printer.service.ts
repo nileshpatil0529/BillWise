@@ -539,7 +539,7 @@ export class PrinterService {
     drawH(y);
 
     const dt = new Date(bill.createdAt || Date.now());
-    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+    const timeStr = dt.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
     const dateStr = dt.toLocaleDateString('en-GB').replace(/\//g, '/');
     const btd = bill.businessTypeData || {};
     const tableNo = String(btd.tableNumber || '-');

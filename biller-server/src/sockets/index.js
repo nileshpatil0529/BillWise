@@ -28,22 +28,17 @@ export const initializeSocketIO = (httpServer) => {
   });
 
   io.on('connection', (socket) => {
-    console.log('✅ Socket client connected:', socket.id);
-
     // Join rooms for specific updates
     socket.on('join-tables-room', () => {
       socket.join('tables');
-      console.log(`🎯 Socket ${socket.id} joined tables room`);
     });
 
     socket.on('join-bills-room', () => {
       socket.join('bills');
-      console.log(`🎯 Socket ${socket.id} joined bills room`);
     });
 
     socket.on('join-products-room', () => {
       socket.join('products');
-      console.log(`🎯 Socket ${socket.id} joined products room`);
     });
 
     // User identification — places them in a personal room for targeted events
@@ -58,13 +53,11 @@ export const initializeSocketIO = (httpServer) => {
     socket.on('register-printer', ({ userId }) => {
       if (!userId) return;
       printerUsers.set(userId, socket.id);
-      console.log(`🖨️ Printer registered: user=${userId}, socket=${socket.id}`);
     });
 
     // Unregister printer (e.g., user disabled config or closed printer tab)
     socket.on('unregister-printer', ({ userId }) => {
       printerUsers.delete(userId);
-      console.log(`🖨️ Printer unregistered: user=${userId}`);
     });
 
     // Printer client responds with result of a routed print job
@@ -121,14 +114,12 @@ export const initializeSocketIO = (httpServer) => {
           printerUsers.delete(userId);
         }
       }
-      console.log('❌ Socket client disconnected:', socket.id, reason);
     });
 
     // Send welcome message
     socket.emit('connected', { message: 'Connected to Biller WebSocket server' });
   });
 
-  console.log('🔌 Socket.IO server initialized');
   return io;
 };
 
@@ -155,7 +146,6 @@ const dispatchPrintJob = (requestId, payload, requesterUserId, retryCount) => {
       const { socketId, userId } = findConnectedPrinter();
       if (socketId) {
         const newId = uuidv4();
-        console.warn(`⚠️ Print job timed out, auto-retry ${retryCount + 1}/${MAX_PRINT_RETRIES}: ${newId}`);
         dispatchPrintJob(newId, payload, requesterUserId, retryCount + 1);
         io.to(socketId).emit('print-job', { requestId: newId, ...payload });
         return;
@@ -163,7 +153,6 @@ const dispatchPrintJob = (requestId, payload, requesterUserId, retryCount) => {
     }
 
     // All retries exhausted — only now tell the requester
-    console.warn(`❌ Print job failed after ${retryCount} retries: requestId=${requestId}`);
     if (requesterUserId) {
       io.to(`user:${requesterUserId}`).emit('print-response', {
         requestId, success: false,
@@ -199,7 +188,6 @@ export const routePrintJob = (payload, requesterUserId) => {
   dispatchPrintJob(requestId, payload, requesterUserId, 0);
 
   io.to(printerSocketId).emit('print-job', { requestId, ...payload });
-  console.log(`🖨️ Print job routed: requestId=${requestId}, type=${payload.type}, printer user=${printerUserId}`);
 
   return { success: true, message: 'Print job sent to printer', requestId };
 };
@@ -219,7 +207,6 @@ export const getIO = () => {
  */
 export const emitTableUpdate = (tableData) => {
   if (io) {
-    console.log('📤 Emitting table-updated event:', tableData);
     io.to('tables').emit('table-updated', tableData);
   }
 };
@@ -238,7 +225,6 @@ export const emitTablesRefresh = () => {
  */
 export const emitBillUpdate = (billData) => {
   if (io) {
-    console.log('📤 Emitting bill-updated event for billId:', billData.billId);
     io.to('bills').emit('bill-updated', billData);
   }
 };
@@ -248,7 +234,6 @@ export const emitBillUpdate = (billData) => {
  */
 export const emitBillCreated = (billData) => {
   if (io) {
-    console.log('📤 Emitting bill-created event for billId:', billData.billId);
     io.to('bills').emit('bill-created', billData);
   }
 };
@@ -258,9 +243,7 @@ export const emitBillCreated = (billData) => {
  */
 export const emitBillDeleted = (billId) => {
   if (io) {
-    console.log('📤 Socket: Emitting bill-deleted event to bills room, billId:', billId);
     io.to('bills').emit('bill-deleted', { billId });
-    console.log('✅ Socket: bill-deleted event emitted successfully');
   } else {
     console.error('❌ Socket: Cannot emit bill-deleted - io is null');
   }
@@ -298,7 +281,6 @@ export const emitLowStockAlert = (productData) => {
  */
 export const emitKOTPrinted = (billData) => {
   if (io) {
-    console.log('📤 Emitting kot-printed event for billId:', billData.billId, 'printError:', billData.printError || false);
     io.to('bills').emit('kot-printed', billData);
   }
 };

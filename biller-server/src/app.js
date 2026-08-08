@@ -36,13 +36,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging (development only)
-if (config.nodeEnv === 'development') {
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-  });
-}
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -156,32 +149,6 @@ const HOST = '0.0.0.0'; // Bind to all network interfaces for WiFi access
 const httpServer = createServer(app);
 initializeSocketIO(httpServer);
 
-httpServer.listen(PORT, HOST, () => {
-  const localIP = getLocalIP();
-  const ipUrl       = `http://${localIP}:${PORT}`.padEnd(38);
-  const localUrl    = `http://localhost:${PORT}`.padEnd(38);
-  const networkName = `http://local.billwise:${PORT}`.padEnd(38);
-
-  console.log(`
-  ╔══════════════════════════════════════════════════════════════╗
-  ║                                                              ║
-  ║   🚀 BillWise Server Started Successfully!                   ║
-  ║                                                              ║
-  ║   📍 Local:        ${localUrl}║
-  ║   🌐 Network IP:   ${ipUrl}║
-  ║   🏷️  Network Name: ${networkName}║
-  ║                                                              ║
-  ║   📱 Mobile/Tablet → mobile app served automatically         ║
-  ║   🖥️  Desktop/Laptop → desktop app served automatically      ║
-  ║                                                              ║
-  ║   🌍 Environment: ${config.nodeEnv.padEnd(41)}║
-  ║   📅 Started:     ${new Date().toLocaleString().padEnd(41)}║
-  ║                                                              ║
-  ║   💡 To use local.billwise on devices:                       ║
-  ║      Add to each device's hosts file:                        ║
-  ║      ${`${localIP}  local.billwise`.padEnd(54)}║
-  ╚══════════════════════════════════════════════════════════════╝
-  `);
-});
+httpServer.listen(PORT, HOST);
 
 export default app;
