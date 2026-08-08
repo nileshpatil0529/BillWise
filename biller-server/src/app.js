@@ -149,6 +149,10 @@ const HOST = '0.0.0.0'; // Bind to all network interfaces for WiFi access
 const httpServer = createServer(app);
 initializeSocketIO(httpServer);
 
-httpServer.listen(PORT, HOST);
+httpServer.listen(PORT, HOST, () => {
+  const localIP = getLocalIP();
+  console.log(`Backend: http://localhost:${PORT}`);
+  console.log(`Backend (IP): http://${localIP}:${PORT}`);
+});
 
 export default app;
