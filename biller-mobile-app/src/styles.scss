@@ -65,6 +65,14 @@ app-root {
   overflow: hidden;
 }
 
+// Each routed page fills exactly the visible area between header and bottom nav
+.app-content > *:not(router-outlet) {
+  display: block;
+  height: calc(100dvh - 120px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
 // Disable text selection for UI elements (not inputs)
 button, a, mat-icon, .no-select {
   user-select: none;
