@@ -68,7 +68,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   loading = signal(false);
   loadingMore = signal(false);
   searchQuery = signal('');
-  selectedCategory = signal('');
+  selectedStockFilter = signal<'all' | 'tracked' | 'untracked'>('all');
 
   // Lazy loading state
   currentPage = signal(1);
@@ -95,6 +95,10 @@ export class ProductsComponent implements OnInit, OnDestroy {
     return this.settingsService.settings().applicationType === 'hotel';
   }
 
+  isStockTracked(product: Product): boolean {
+    return product.isStockTracked !== false;
+  }
+
   // Check if mobile mode is enabled
   isMobileMode(): boolean {
     return this.settingsService.settings().viewMode === 'mobile';
@@ -118,8 +122,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Load categories and initial products
-    this.productService.getCategories().subscribe();
+    // Load initial products
     this.loadProducts(true);
     
     // Setup search with debounce
@@ -181,7 +184,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
     }
 
     this.productService.getProducts({
-      category: this.selectedCategory() || undefined,
+      stockFilter: this.selectedStockFilter() === 'all' ? undefined : this.selectedStockFilter(),
       search: this.searchQuery() || undefined,
       page: this.currentPage(),
       limit: this.pageSize
@@ -231,8 +234,16 @@ export class ProductsComponent implements OnInit, OnDestroy {
     this.loadProducts(true);
   }
 
-  onCategoryChange(): void {
+  onStockFilterChange(filter: 'all' | 'tracked' | 'untracked'): void {
+    this.selectedStockFilter.set(filter);
     this.loadProducts(true); // Reset and reload
+  }
+
+  getStockFilterLabel(): string {
+    const filter = this.selectedStockFilter();
+    if (filter === 'tracked') return 'Stocked Items';
+    if (filter === 'untracked') return 'Unstocked Items';
+    return 'All Items';
   }
 
   /**

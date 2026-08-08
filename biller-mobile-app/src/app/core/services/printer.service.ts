@@ -117,25 +117,15 @@ export class PrinterService {
   async printReceipt(bill: any, settings: any): Promise<void> {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
-    if (this.shouldUseImagePipeline(settings)) {
-      const imageBase64 = this.buildReceiptImage(bill, settings, cfg.paperSize);
-      await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
-      return;
-    }
-    const data = this.buildReceiptData(bill, settings, cfg.paperSize);
-    await this.sendRaw(cfg.printerName, data);
+    const imageBase64 = this.buildReceiptImage(bill, settings, cfg.paperSize);
+    await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
   }
 
   async printKOT(bill: any, settings: any): Promise<void> {
     const cfg = this.config();
     if (!cfg.printerName) throw new Error('No printer selected');
-    if (this.shouldUseImagePipeline(settings)) {
-      const imageBase64 = this.buildKOTImage(bill, settings, cfg.paperSize);
-      await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
-      return;
-    }
-    const data = this.buildKOTData(bill, settings, cfg.paperSize);
-    await this.sendRaw(cfg.printerName, data);
+    const imageBase64 = this.buildKOTImage(bill, settings, cfg.paperSize);
+    await this.sendImage(cfg.printerName, imageBase64, cfg.paperSize);
   }
 
   private async sendRaw(printerName: string, escData: string): Promise<void> {
@@ -311,11 +301,11 @@ export class PrinterService {
   }
 
   private buildReceiptImage(bill: any, settings: any, paperSize: PaperSize): string {
-    return this.renderReceiptTableToPngBase64(bill, settings, paperSize, true);
+    return this.renderReceiptTableToPngBase64(bill, settings, paperSize, settings?.receiptLanguage === 'hi');
   }
 
   private buildKOTImage(bill: any, settings: any, paperSize: PaperSize): string {
-    return this.renderKOTTableToPngBase64(bill, paperSize, settings?.receiptLanguage === 'hi');
+    return this.renderKOTTableToPngBase64(bill, paperSize, settings?.kotLanguage === 'hi');
   }
 
   private renderKOTTableToPngBase64(bill: any, paperSize: PaperSize, isHindi: boolean): string {
@@ -409,6 +399,7 @@ export class PrinterService {
       if (item.note) ctx.fillText(String(item.note), x2 + 4, rowY + 4);
       y += Math.max(1, nameLines.length) * rowHeight;
     });
+    y += padding; // bottom padding inside KOT box (same as top)
     drawH(y);
 
     drawV(x0, tableStartY, y); drawV(x1, tableStartY, y);
@@ -470,7 +461,7 @@ export class PrinterService {
     const qrDisplaySize = paperSize === '2inch' ? 120 : 160;
     if (showQr) height += qrDisplaySize + smallSize + 18;
     height += smallSize + 4;
-    height += padding + 4;
+    height += padding * 2; // top padding (outside) + bottom padding (inside + outside)
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -646,6 +637,7 @@ export class PrinterService {
     const thanksW = ctx.measureText(thanks).width;
     ctx.fillText(thanks, Math.round(Math.max(x0 + 4, x0 + ((innerW - thanksW) / 2))), Math.round(y + 2));
     y += smallSize + 4;
+    y += padding; // bottom padding inside receipt box (same as top)
 
     // Close outer border
     drawV(x0, topY, y);

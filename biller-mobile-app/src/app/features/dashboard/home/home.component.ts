@@ -290,20 +290,24 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             this.billService.clearCart();
             this.billService.billDiscount.set(bill.discountTotal || 0);
             if (bill.items) {
-              bill.items.forEach((item: any) => {
-                const product = {
-                  productId: item.productId,
-                  name: item.name,
-                  nameHi: item.nameHi,
-                  unitPrice: item.unitPrice,
-                  category: item.category || 'General',
-                  stockQuantity: 9999,
-                  status: 'active' as const
-                };
-                for (let i = 0; i < item.quantity; i++) {
-                  this.billService.addToCart(product);
-                }
-              });
+              const cartItems = bill.items.map((item: any) => ({
+                productId: item.productId,
+                name: item.name,
+                nameHi: item.nameHi,
+                unitPrice: item.unitPrice,
+                category: item.category || 'General',
+                stockQuantity: item.stockQuantity ?? 0,
+                isStockTracked: item.isStockTracked !== undefined && item.isStockTracked !== null
+                  ? Boolean(item.isStockTracked)
+                  : false,
+                status: 'active' as const,
+                quantity: item.quantity,
+                discount: 0,
+                discountType: 'fixed' as const,
+                lineTotal: item.unitPrice * item.quantity,
+                note: item.note
+              }));
+              this.billService.cartItems.set(cartItems);
             }
           }
           this.hotelModeInitialized.set(true);
@@ -333,15 +337,28 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.settingsService.settings().applicationType === 'hotel';
   }
 
+  isStockTracked(product: Product | CartItem | null | undefined): boolean {
+    if (!product) return false;
+    if (product.isStockTracked === undefined || product.isStockTracked === null) {
+      return !this.isHotelMode();
+    }
+    return product.isStockTracked !== false;
+  }
+
+  isOutOfStock(product: Product | CartItem | null | undefined): boolean {
+    if (!product) return false;
+    return this.isStockTracked(product) && product.stockQuantity <= 0;
+  }
+
   // Check if current application type is electronics
   isElectronicsMode(): boolean {
     return this.settingsService.settings().applicationType === 'electronics';
   }
 
-  // Get display name based on receipt language setting (Hindi if selected and available, else English)
+  // Get display name based on UI language setting (Hindi if selected and available, else English)
   getDisplayName(item: { name: string; nameHi?: string }): string {
     const settings = this.settingsService.settings();
-    if (settings.receiptLanguage === 'hi' && item.nameHi) {
+    if (settings.language === 'hi' && item.nameHi) {
       return item.nameHi;
     }
     return item.name;
@@ -517,7 +534,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         // Adjust stock quantities based on cart contents
         const products = (response.data || []).map((product: Product) => ({
           ...product,
-          stockQuantity: product.stockQuantity - this.getCartQuantity(product.productId)
+          stockQuantity: this.isStockTracked(product)
+            ? (product.stockQuantity - this.getCartQuantity(product.productId))
+            : product.stockQuantity
         }));
         this.searchResults.set(products);
         this.searching.set(false);
@@ -530,9 +549,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
 
   selectProduct(product: Product): void {
     // stockQuantity is already adjusted (original - cart qty) from search/barcode scan
-    // Check if no stock available (skip for hotel mode - hotels don't track inventory)
-    const isHotel = this.isHotelMode();
-    if (!isHotel && product.stockQuantity <= 0) {
+    // Check if no stock available for stock-tracked products
+    if (this.isOutOfStock(product)) {
       this.beepService.playError();
       this.openOutOfStockDialog(product);
       this.searchQuery.set('');
@@ -607,10 +625,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       return;
     }
 
-    // Check if total quantity would exceed stock
+    // Check if total quantity would exceed stock for stock-tracked products
     const currentCartQty = this.getCartQuantity(product.productId);
     const totalQty = currentCartQty + quantity;
-    if (totalQty > product.stockQuantity) {
+    if (this.isStockTracked(product) && totalQty > product.stockQuantity) {
       this.beepService.playError();
       const available = product.stockQuantity - currentCartQty;
       this.snackBar.open(
@@ -653,8 +671,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // For loose items, use 0.01 as minimum, for regular items use 1
     const minQuantity = item.isLooseItem ? 0.01 : 1;
     
-    // Check stock limit when increasing quantity (skip for hotel mode)
-    if (change > 0 && !this.isHotelMode() && newQuantity > item.stockQuantity) {
+    // Check stock limit when increasing quantity for stock-tracked products
+    if (change > 0 && this.isStockTracked(item) && newQuantity > item.stockQuantity) {
       this.beepService.playError();
       this.snackBar.open(`Only ${item.stockQuantity} available in stock`, 'Close', {
         duration: 3000,
@@ -948,10 +966,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           // Adjust stock quantity based on cart contents
           const adjustedProduct = {
             ...product,
-            stockQuantity: product.stockQuantity - this.getCartQuantity(product.productId)
+            stockQuantity: this.isStockTracked(product)
+              ? (product.stockQuantity - this.getCartQuantity(product.productId))
+              : product.stockQuantity
           };
           
-          if (adjustedProduct.stockQuantity <= 0) {
+          if (this.isOutOfStock(adjustedProduct)) {
             this.beepService.playError();
             this.openOutOfStockDialog(adjustedProduct);
           } else {
@@ -1018,10 +1038,12 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
           // Adjust stock quantity based on cart contents (same as search)
           const adjustedProduct = {
             ...product,
-            stockQuantity: product.stockQuantity - this.getCartQuantity(product.productId)
+            stockQuantity: this.isStockTracked(product)
+              ? (product.stockQuantity - this.getCartQuantity(product.productId))
+              : product.stockQuantity
           };
           
-          if (adjustedProduct.stockQuantity <= 0) {
+          if (this.isOutOfStock(adjustedProduct)) {
             this.beepService.playError();
             this.openOutOfStockDialog(adjustedProduct);
           } else {
@@ -1123,7 +1145,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                 nameHi: item.nameHi,
               unitPrice: item.unitPrice,
               category: item.category || 'General',
-              stockQuantity: 9999,
+              stockQuantity: item.stockQuantity ?? 0,
+              isStockTracked: item.isStockTracked !== undefined && item.isStockTracked !== null
+                ? Boolean(item.isStockTracked)
+                : false,
               status: 'active' as const,
               quantity: item.quantity,
               discount: 0,
@@ -1428,20 +1453,16 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Restore cart items and discount
     this.billService.clearCart();
     this.billService.billDiscount.set(state.billDiscount || 0);
-    state.cartItems.forEach(item => {
-      const product = {
-        productId: item.productId,
-        name: item.name,
-        nameHi: item.nameHi,
-        unitPrice: item.unitPrice,
-        category: item.category || 'General',
-        stockQuantity: 9999,
-        status: 'active' as const
-      };
-      for (let i = 0; i < item.quantity; i++) {
-        this.billService.addToCart(product);
-      }
-    });
+    this.billService.cartItems.set(
+      state.cartItems.map(item => ({
+        ...item,
+        stockQuantity: item.stockQuantity ?? 0,
+        isStockTracked: item.isStockTracked !== undefined && item.isStockTracked !== null
+          ? Boolean(item.isStockTracked)
+          : false,
+        lineTotal: item.unitPrice * item.quantity
+      }))
+    );
     // Update snapshot after restoring cart
     this.updateCartSnapshot();
   }
@@ -2002,7 +2023,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                         nameHi: item.nameHi,
                         unitPrice: item.unitPrice,
                         category: item.category || 'General',
-                        stockQuantity: 9999,
+                        stockQuantity: item.stockQuantity ?? 0,
+                        isStockTracked: item.isStockTracked !== undefined && item.isStockTracked !== null
+                          ? Boolean(item.isStockTracked)
+                          : false,
                         status: 'active' as const,
                         quantity: item.quantity,
                         discount: 0,

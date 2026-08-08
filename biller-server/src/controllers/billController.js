@@ -48,6 +48,14 @@ const ensureDebtCustomer = (name, phone, now) => {
   `).run(customerId, customerName || customerPhone, customerPhone, now, now);
 };
 
+const isStockTrackedProduct = (product, isHotelMode) => {
+  if (!product) return !isHotelMode;
+  if (product.isStockTracked === null || product.isStockTracked === undefined) {
+    return !isHotelMode;
+  }
+  return Boolean(product.isStockTracked);
+};
+
 export const getAllBills = async (req, res) => {
   try {
     const { 
@@ -97,7 +105,7 @@ export const getAllBills = async (req, res) => {
     // Get items for each bill
     const billsWithItems = bills.map(bill => {
       const items = db.prepare(`
-        SELECT bi.*, p.nameHi, p.isLooseItem
+        SELECT bi.*, p.nameHi, p.isLooseItem, p.stockQuantity, p.isStockTracked
         FROM bill_items bi
         LEFT JOIN products p ON p.productId = bi.productId
         WHERE bi.billId = ?
@@ -141,7 +149,7 @@ export const getBillById = async (req, res) => {
 
     // Get items for this bill
     const items = db.prepare(`
-      SELECT bi.*, p.nameHi, p.isLooseItem
+      SELECT bi.*, p.nameHi, p.isLooseItem, p.stockQuantity, p.isStockTracked
       FROM bill_items bi
       LEFT JOIN products p ON p.productId = bi.productId
       WHERE bi.billId = ?
@@ -253,9 +261,10 @@ export const createBill = async (req, res) => {
         tipAmount
       );
 
-      // Get settings to check if stock tracking is enabled
+      // Determine default stock behavior when product-level flag is absent
       const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
       const isHotelMode = settings?.applicationType === 'hotel';
+      const getProduct = db.prepare('SELECT productId, isStockTracked FROM products WHERE productId = ?');
 
       // Insert items
       const insertItem = db.prepare(`
@@ -278,10 +287,13 @@ export const createBill = async (req, res) => {
           item.note || null
         );
 
-        // Update product stock if productId exists (skip for hotel mode)
-        if (item.productId && !isHotelMode) {
-          db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
-            .run(item.quantity, item.productId);
+        // Update product stock only for stock-tracked products
+        if (item.productId) {
+          const product = getProduct.get(item.productId);
+          if (isStockTrackedProduct(product, isHotelMode)) {
+            db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+              .run(item.quantity, item.productId);
+          }
         }
       }
     });
@@ -363,9 +375,10 @@ export const updateBill = async (req, res) => {
 
       // Handle items update - Replace all items with new cart state
       if (updates.items !== undefined) {
-        // Get settings to check if stock tracking is enabled
+        // Determine default stock behavior when product-level flag is absent
         const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
         const isHotelMode = settings?.applicationType === 'hotel';
+        const getProduct = db.prepare('SELECT productId, isStockTracked FROM products WHERE productId = ?');
         
         // Get existing items before deletion
         const existingItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
@@ -380,10 +393,11 @@ export const updateBill = async (req, res) => {
           };
         });
         
-        // Restore stock for all existing items (skip for hotel mode)
-        if (!isHotelMode) {
-          for (const existingItem of existingItems) {
-            if (existingItem.productId) {
+        // Restore stock for stock-tracked products
+        for (const existingItem of existingItems) {
+          if (existingItem.productId) {
+            const product = getProduct.get(existingItem.productId);
+            if (isStockTrackedProduct(product, isHotelMode)) {
               db.prepare('UPDATE products SET stockQuantity = stockQuantity + ? WHERE productId = ?')
                 .run(existingItem.quantity, existingItem.productId);
             }
@@ -418,10 +432,13 @@ export const updateBill = async (req, res) => {
             
             insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus, kotPrintedQty, item.note || null);
             
-            // Deduct stock for new quantities (skip for hotel mode)
-            if (item.productId && !isHotelMode) {
-              db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
-                .run(item.quantity, item.productId);
+            // Deduct stock for stock-tracked products
+            if (item.productId) {
+              const product = getProduct.get(item.productId);
+              if (isStockTrackedProduct(product, isHotelMode)) {
+                db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+                  .run(item.quantity, item.productId);
+              }
             }
           }
         }
@@ -1093,15 +1110,17 @@ export const deleteBill = async (req, res) => {
     
     console.log('✅ Bill found, proceeding with deletion:', bill.billNumber);
 
-    // Get settings to check if stock tracking is enabled
+    // Determine default stock behavior when product-level flag is absent
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
     const isHotelMode = settings?.applicationType === 'hotel';
+    const getProduct = db.prepare('SELECT productId, isStockTracked FROM products WHERE productId = ?');
 
-    // Restore stock before deleting (skip for hotel mode)
-    if (!isHotelMode) {
-      const billItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
-      for (const item of billItems) {
-        if (item.productId) {
+    // Restore stock before deleting only for stock-tracked products
+    const billItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+    for (const item of billItems) {
+      if (item.productId) {
+        const product = getProduct.get(item.productId);
+        if (isStockTrackedProduct(product, isHotelMode)) {
           db.prepare('UPDATE products SET stockQuantity = stockQuantity + ? WHERE productId = ?')
             .run(item.quantity, item.productId);
         }

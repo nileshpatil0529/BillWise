@@ -10,11 +10,34 @@ const generateProductId = () => {
   return `PRD${count.toString().padStart(6, '0')}`;
 };
 
+const parseYesNoBoolean = (value, fallback = false) => {
+  if (value === undefined || value === null || value === '') return fallback;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value === 1;
+  const normalized = value.toString().trim().toLowerCase();
+  return ['yes', 'true', '1', 'tracked', 'stocked'].includes(normalized);
+};
+
+const normalizeProduct = (product) => ({
+  ...product,
+  metadata: product.metadata ? JSON.parse(product.metadata) : {},
+  isLooseItem: Boolean(product.isLooseItem),
+  isStockTracked: Boolean(product.isStockTracked),
+  warrantyMonths: product.warrantyMonths || 0,
+  nameHi: product.nameHi || null
+});
+
 export const getAllProducts = async (req, res) => {
   try {
-    const { category, status, search, page = 1, limit = 50 } = req.query;
+    const { category, status, search, page = 1, limit = 50, stockFilter } = req.query;
+    const normalizedStockFilter = (() => {
+      const value = (stockFilter || '').toString().trim().toLowerCase();
+      if (['tracked', 'stocked', 'stoked'].includes(value)) return 'tracked';
+      if (['untracked', 'unstocked', 'unstoked'].includes(value)) return 'untracked';
+      return '';
+    })();
     
-    console.log('[getAllProducts] Query params:', { category, status, search, page, limit });
+    console.log('[getAllProducts] Query params:', { category, status, search, page, limit, stockFilter: normalizedStockFilter || 'all' });
     
     let products = [];
     let total = 0;
@@ -42,6 +65,11 @@ export const getAllProducts = async (req, res) => {
           ftsSearch += ' AND p.status = ?';
           ftsParams.push(status);
         }
+        if (normalizedStockFilter === 'tracked') {
+          ftsSearch += ' AND p.isStockTracked = 1';
+        } else if (normalizedStockFilter === 'untracked') {
+          ftsSearch += ' AND p.isStockTracked = 0';
+        }
         
         // Get count
         const countResult = db.prepare(ftsSearch.replace('SELECT p.*', 'SELECT COUNT(*) as count')).get(...ftsParams);
@@ -68,6 +96,11 @@ export const getAllProducts = async (req, res) => {
           likeSearch += ' AND status = ?';
           likeParams.push(status);
         }
+        if (normalizedStockFilter === 'tracked') {
+          likeSearch += ' AND isStockTracked = 1';
+        } else if (normalizedStockFilter === 'untracked') {
+          likeSearch += ' AND isStockTracked = 0';
+        }
 
         const countResult = db.prepare(likeSearch.replace('SELECT *', 'SELECT COUNT(*) as count')).get(...likeParams);
         total = countResult.count;
@@ -90,6 +123,11 @@ export const getAllProducts = async (req, res) => {
         query += ' AND status = ?';
         params.push(status);
       }
+      if (normalizedStockFilter === 'tracked') {
+        query += ' AND isStockTracked = 1';
+      } else if (normalizedStockFilter === 'untracked') {
+        query += ' AND isStockTracked = 0';
+      }
 
       // Get total count
       const countQuery = query.replace('SELECT *', 'SELECT COUNT(*) as count');
@@ -103,13 +141,7 @@ export const getAllProducts = async (req, res) => {
     }
 
     // Parse metadata JSON and boolean fields for each product
-    const productsWithMetadata = products.map(p => ({
-      ...p,
-      metadata: p.metadata ? JSON.parse(p.metadata) : {},
-      isLooseItem: Boolean(p.isLooseItem),
-      warrantyMonths: p.warrantyMonths || 0,
-      nameHi: p.nameHi || null
-    }));
+    const productsWithMetadata = products.map(normalizeProduct);
 
     // Debug: Check total products in database
     const dbTotal = db.prepare('SELECT COUNT(*) as count FROM products').get();
@@ -150,13 +182,7 @@ export const getProductById = async (req, res) => {
 
     res.json({
       success: true,
-      data: {
-        ...product,
-        metadata: product.metadata ? JSON.parse(product.metadata) : {},
-        isLooseItem: Boolean(product.isLooseItem),
-        warrantyMonths: product.warrantyMonths || 0,
-        nameHi: product.nameHi || null
-      }
+      data: normalizeProduct(product)
     });
   } catch (error) {
     res.status(500).json({
@@ -169,9 +195,12 @@ export const getProductById = async (req, res) => {
 export const createProduct = async (req, res) => {
   try {
     const productData = req.body;
+    const settings = db.prepare('SELECT applicationType FROM settings WHERE id = 1').get();
+    const isHotelMode = settings?.applicationType === 'hotel';
     const productName = productData.name;
     const productBarcode = productData.barcode || '';
-    const stockToAdd = parseInt(productData.stockQuantity) || 0;
+    const isStockTracked = parseYesNoBoolean(productData.isStockTracked, !isHotelMode);
+    const stockToAdd = isStockTracked ? (parseInt(productData.stockQuantity) || 0) : 0;
 
     // Check for existing product with same name or barcode
     let existingProduct = null;
@@ -186,11 +215,11 @@ export const createProduct = async (req, res) => {
 
     if (existingProduct) {
       // Update existing product's stock quantity
-      const newStock = existingProduct.stockQuantity + stockToAdd;
+      const newStock = isStockTracked ? (existingProduct.stockQuantity + stockToAdd) : existingProduct.stockQuantity;
       const now = new Date().toISOString();
       
-      db.prepare('UPDATE products SET stockQuantity = ?, updatedAt = ? WHERE productId = ?')
-        .run(newStock, now, existingProduct.productId);
+      db.prepare('UPDATE products SET stockQuantity = ?, isStockTracked = ?, updatedAt = ? WHERE productId = ?')
+        .run(newStock, isStockTracked ? 1 : 0, now, existingProduct.productId);
       
       // Update barcode if provided and not set
       if (productBarcode && !existingProduct.barcode) {
@@ -203,8 +232,10 @@ export const createProduct = async (req, res) => {
 
       res.status(200).json({
         success: true,
-        message: `Product already exists. Stock updated by ${stockToAdd}. New total: ${newStock}`,
-        data: updatedProduct,
+        message: isStockTracked
+          ? `Product already exists. Stock updated by ${stockToAdd}. New total: ${newStock}`
+          : 'Product already exists. Stock tracking updated.',
+        data: normalizeProduct(updatedProduct),
         updated: true
       });
     } else {
@@ -212,12 +243,13 @@ export const createProduct = async (req, res) => {
       const now = new Date().toISOString();
       
       db.prepare(`
-        INSERT INTO products (productId, name, nameHi, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO products (productId, name, nameHi, isStockTracked, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, imageUrl, status, metadata, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         productId,
         productName,
         productData.nameHi || null,
+        isStockTracked ? 1 : 0,
         productData.category || 'General',
         productData.description || '',
         productBarcode,
@@ -240,11 +272,7 @@ export const createProduct = async (req, res) => {
       res.status(201).json({
         success: true,
         message: 'Product created successfully',
-        data: {
-          ...newProduct,
-          isLooseItem: Boolean(newProduct.isLooseItem),
-          warrantyMonths: newProduct.warrantyMonths || 0
-        }
+        data: normalizeProduct(newProduct)
       });
     }
   } catch (error) {
@@ -286,6 +314,7 @@ export const updateProduct = async (req, res) => {
         imageUrl = COALESCE(?, imageUrl),
         status = COALESCE(?, status),
         metadata = COALESCE(?, metadata),
+        isStockTracked = COALESCE(?, isStockTracked),
         isLooseItem = COALESCE(?, isLooseItem),
         unit = COALESCE(?, unit),
         warrantyMonths = COALESCE(?, warrantyMonths),
@@ -304,6 +333,7 @@ export const updateProduct = async (req, res) => {
       updates.imageUrl,
       updates.status,
       updates.metadata ? JSON.stringify(updates.metadata) : null,
+      updates.isStockTracked !== undefined ? (updates.isStockTracked ? 1 : 0) : null,
       updates.isLooseItem !== undefined ? (updates.isLooseItem ? 1 : 0) : null,
       updates.unit !== undefined ? updates.unit : null,
       updates.warrantyMonths !== undefined ? parseInt(updates.warrantyMonths) : null,
@@ -316,11 +346,7 @@ export const updateProduct = async (req, res) => {
     res.json({
       success: true,
       message: 'Product updated successfully',
-      data: {
-        ...updatedProduct,
-        isLooseItem: Boolean(updatedProduct.isLooseItem),
-        warrantyMonths: updatedProduct.warrantyMonths || 0
-      }
+      data: normalizeProduct(updatedProduct)
     });
   } catch (error) {
     console.error('Update product error:', error);
@@ -381,7 +407,7 @@ export const searchProducts = async (req, res) => {
     if (exactBarcode) {
       return res.json({
         success: true,
-        data: [exactBarcode]
+        data: [normalizeProduct(exactBarcode)]
       });
     }
 
@@ -394,7 +420,7 @@ export const searchProducts = async (req, res) => {
     if (exactProductId) {
       return res.json({
         success: true,
-        data: [exactProductId]
+        data: [normalizeProduct(exactProductId)]
       });
     }
 
@@ -439,7 +465,7 @@ export const searchProducts = async (req, res) => {
 
     res.json({
       success: true,
-      data: results
+      data: results.map(normalizeProduct)
     });
   } catch (error) {
     console.error('Search error:', error);
@@ -486,13 +512,13 @@ export const importProducts = async (req, res) => {
     let errors = [];
 
     const insertProduct = db.prepare(`
-      INSERT INTO products (productId, name, nameHi, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
+      INSERT INTO products (productId, name, nameHi, isStockTracked, category, description, barcode, unitPrice, costPrice, stockQuantity, lowStockAlert, status, isLooseItem, unit, warrantyMonths, createdAt, updatedAt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?, ?, ?, ?)
     `);
 
     const updateProduct = db.prepare(`
       UPDATE products 
-      SET name = ?, nameHi = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, isLooseItem = ?, unit = ?, warrantyMonths = ?, updatedAt = ? 
+      SET name = ?, nameHi = ?, isStockTracked = ?, category = ?, description = ?, barcode = ?, unitPrice = ?, costPrice = ?, stockQuantity = ?, lowStockAlert = ?, isLooseItem = ?, unit = ?, warrantyMonths = ?, updatedAt = ? 
       WHERE productId = ?
     `);
 
@@ -518,8 +544,13 @@ export const importProducts = async (req, res) => {
           
           let productCategory = (row.category || row.Category || 'General').toString().trim();
           
-          // For hotel mode, use default stock value of 9999
-          const stockQuantity = isHotelMode ? 9999 : parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0);
+          const isStockTracked = parseYesNoBoolean(
+            row.isStockTracked || row.IsStockTracked || row['Is Stock Tracked'] || row['Track Stock'] || row['Stock Tracked'],
+            !isHotelMode
+          );
+          const stockQuantity = isStockTracked
+            ? (parseInt(row.stockQuantity || row.StockQuantity || row['Stock'] || row['Stock Quantity'] || 0) || 0)
+            : 0;
           
           // Handle status more carefully - check if column exists and has value
           let productStatus = 'active'; // Default
@@ -603,13 +634,14 @@ export const importProducts = async (req, res) => {
             updateProduct.run(
               productName,
               productNameHi,
+              isStockTracked ? 1 : 0,
               productCategory,
               row.description || row.Description || '',
               productBarcode,
               parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
               isHotelMode ? 0 : parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
               stockQuantity,
-              isHotelMode ? 0 : parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              isStockTracked ? (parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10) || 10) : 0,
               isLooseItem,
               unit,
               warrantyMonths,
@@ -629,13 +661,14 @@ export const importProducts = async (req, res) => {
               newProductId,
               productName,
               productNameHi,
+              isStockTracked ? 1 : 0,
               productCategory,
               row.description || row.Description || '',
               productBarcode,
               parseFloat(row.unitPrice || row.UnitPrice || row['Unit Price'] || 0),
               isHotelMode ? 0 : parseFloat(row.costPrice || row.CostPrice || row['Cost Price'] || 0),
               stockQuantity,
-              isHotelMode ? 0 : parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10),
+              isStockTracked ? (parseInt(row.lowStockAlert || row.LowStockAlert || row['Low Stock Alert'] || 10) || 10) : 0,
               isLooseItem,
               unit,
               warrantyMonths,
@@ -742,7 +775,7 @@ export const exportProducts = async (req, res) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('Products');
 
-    // Define columns - exclude stock/cost fields for hotel mode
+    // Define columns - hotel mode supports both tracked and untracked stock items
     const columns = [
       { header: isHotelMode ? 'Product Name' : 'Product Name *', key: 'name', width: 30 },
       { header: 'Name (Hindi)', key: 'nameHi', width: 30 }
@@ -756,17 +789,18 @@ export const exportProducts = async (req, res) => {
     columns.push(
       { header: 'Category *', key: 'category', width: 20 },
       { header: 'Description', key: 'description', width: 40 },
-      { header: isHotelMode ? 'Unit Price' : 'Unit Price *', key: 'unitPrice', width: 12 }
+      { header: isHotelMode ? 'Unit Price' : 'Unit Price *', key: 'unitPrice', width: 12 },
+      { header: 'Is Stock Tracked', key: 'isStockTracked', width: 16 }
     );
     
-    // Add cost price and stock fields only for non-hotel modes
+    // Add cost price only for non-hotel modes
     if (!isHotelMode) {
-      columns.push(
-        { header: 'Cost Price', key: 'costPrice', width: 12 },
-        { header: 'Stock Quantity *', key: 'stockQuantity', width: 15 },
-        { header: 'Low Stock Alert', key: 'lowStockAlert', width: 15 }
-      );
+      columns.push({ header: 'Cost Price', key: 'costPrice', width: 12 });
     }
+    columns.push(
+      { header: isHotelMode ? 'Stock Quantity' : 'Stock Quantity *', key: 'stockQuantity', width: 15 },
+      { header: 'Low Stock Alert', key: 'lowStockAlert', width: 15 }
+    );
     
     columns.push({ header: 'Status', key: 'status', width: 12 });
 
@@ -785,7 +819,7 @@ export const exportProducts = async (req, res) => {
 
     // Add instruction row at the top (only for non-hotel modes)
     if (!isHotelMode) {
-      worksheet.insertRow(1, ['Fields marked with * are required. Stock Quantity must be provided for all products.']);
+      worksheet.insertRow(1, ['Fields marked with * are required. Set "Is Stock Tracked" to No for items that should not reduce stock.']);
       worksheet.mergeCells('A1:' + worksheet.getColumn(columns.length).letter + '1');
       worksheet.getRow(1).font = { bold: true, color: { argb: 'FF0000FF' } };
       worksheet.getRow(1).alignment = { horizontal: 'center' };
@@ -804,6 +838,9 @@ export const exportProducts = async (req, res) => {
         category: p.category,
         description: p.description,
         unitPrice: p.unitPrice,
+        isStockTracked: p.isStockTracked ? 'Yes' : 'No',
+        stockQuantity: p.isStockTracked ? p.stockQuantity : 0,
+        lowStockAlert: p.isStockTracked ? (p.lowStockAlert ?? 10) : 0,
         status: p.status
       };
       
@@ -812,11 +849,9 @@ export const exportProducts = async (req, res) => {
         row.barcode = p.barcode || '';
       }
       
-      // Add cost price and stock fields only for non-hotel modes
+      // Add cost price only for non-hotel modes
       if (!isHotelMode) {
         row.costPrice = p.costPrice;
-        row.stockQuantity = p.stockQuantity;
-        row.lowStockAlert = p.lowStockAlert;
       }
       
       if (isGroceryMode) {
@@ -871,6 +906,21 @@ export const exportProducts = async (req, res) => {
           errorStyle: 'error',
           errorTitle: 'Invalid Status',
           error: 'Please select either "active" or "inactive"'
+        };
+      }
+    });
+
+    // Add data validation for Is Stock Tracked
+    worksheet.getColumn('isStockTracked').eachCell({ includeEmpty: false }, (cell, rowNumber) => {
+      if (rowNumber > headerRowNum) {
+        cell.dataValidation = {
+          type: 'list',
+          allowBlank: false,
+          formulae: ['"Yes,No"'],
+          showErrorMessage: true,
+          errorStyle: 'error',
+          errorTitle: 'Invalid Value',
+          error: 'Please select either "Yes" or "No"'
         };
       }
     });
@@ -944,23 +994,32 @@ export const exportProducts = async (req, res) => {
       };
       worksheet.getCell(statusCell).value = 'active'; // Default value
       
-      // Add default values for non-hotel modes
+      // Default category
+      worksheet.getCell(categoryCell).value = 'General';
+
+      // Default stock tracking mode based on application type
+      const trackedCell = worksheet.getColumn('isStockTracked').letter + i;
+      worksheet.getCell(trackedCell).dataValidation = {
+        type: 'list',
+        allowBlank: false,
+        formulae: ['"Yes,No"'],
+        showErrorMessage: true,
+        errorStyle: 'error',
+        errorTitle: 'Invalid Value',
+        error: 'Please select either "Yes" or "No"'
+      };
+      worksheet.getCell(trackedCell).value = isHotelMode ? 'No' : 'Yes';
+
+      // Default stock quantity and alert
+      const stockCell = worksheet.getColumn('stockQuantity').letter + i;
+      worksheet.getCell(stockCell).value = 0;
+      const lowStockCell = worksheet.getColumn('lowStockAlert').letter + i;
+      worksheet.getCell(lowStockCell).value = 10;
+
+      // Default cost price (non-hotel)
       if (!isHotelMode) {
-        // Default category
-        const categoryCell = worksheet.getColumn('category').letter + i;
-        worksheet.getCell(categoryCell).value = 'General';
-        
-        // Default stock quantity (0 for now, user must fill)
-        const stockCell = worksheet.getColumn('stockQuantity').letter + i;
-        worksheet.getCell(stockCell).value = 0;
-        
-        // Default cost price
         const costCell = worksheet.getColumn('costPrice').letter + i;
         worksheet.getCell(costCell).value = 0;
-        
-        // Default low stock alert
-        const lowStockCell = worksheet.getColumn('lowStockAlert').letter + i;
-        worksheet.getCell(lowStockCell).value = 10;
       }
       
       // Add grocery-specific validations for empty rows

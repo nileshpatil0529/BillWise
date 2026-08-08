@@ -52,6 +52,7 @@ export interface Settings {
   lowStockThreshold: number;
   language?: LanguageType; // 'en' or 'hi' - UI language
   receiptLanguage?: LanguageType; // 'en' or 'hi' - Receipt/Bill language
+  kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
   units?: Unit[]; // Units for loose items (grocery mode)
   updatedAt: string;
 }

@@ -303,7 +303,7 @@
       <div class="search-results">
         @for (product of searchResults(); track product.productId) {
           <div class="search-result-item" 
-               [class.out-of-stock]="!isHotelMode() && product.stockQuantity <= 0"
+               [class.out-of-stock]="isOutOfStock(product)"
                [class.in-cart]="getCartQuantity(product.productId) > 0"
                (click)="selectProduct(product)">
             <div class="product-info">
@@ -311,8 +311,8 @@
               <span class="product-code">{{ product.productId }}</span>
             </div>
             <div class="product-price">{{ formatCurrency(product.unitPrice) }}</div>
-            @if (!isHotelMode()) {
-              @if (product.stockQuantity <= 0) {
+            @if (isStockTracked(product)) {
+              @if (isOutOfStock(product)) {
                 <mat-chip class="stock-chip out-of-stock-chip">
                   <mat-icon>block</mat-icon>
                   Out of Stock

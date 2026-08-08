@@ -535,6 +535,26 @@
           </div>
         </div>
 
+        <!-- KOT Language -->
+        <div class="setting-item language-setting">
+          <div class="setting-left">
+            <div class="setting-icon">
+              <mat-icon>restaurant_menu</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">KOT Language</span>
+            </div>
+          </div>
+          <div class="language-buttons">
+            <button mat-stroked-button 
+                    [class.active]="receiptForm.get('kotLanguage')?.value === 'en'"
+                    (click)="receiptForm.patchValue({ kotLanguage: 'en' })">EN</button>
+            <button mat-stroked-button 
+                    [class.active]="receiptForm.get('kotLanguage')?.value === 'hi'"
+                    (click)="receiptForm.patchValue({ kotLanguage: 'hi' })">हि</button>
+          </div>
+        </div>
+
         <div class="receipt-fields">
           <mat-form-field appearance="outline">
             <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>

@@ -47,6 +47,7 @@ const initializeDatabase = () => {
       productId TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       nameHi TEXT,
+      isStockTracked INTEGER DEFAULT 1,
       category TEXT DEFAULT 'General',
       description TEXT,
       barcode TEXT,
@@ -433,6 +434,15 @@ const initializeDatabase = () => {
   // Migration: Add loose item fields to products table (for grocery)
   try {
     const productColumns = db.prepare('PRAGMA table_info(products)').all();
+    const hasIsStockTracked = productColumns.some(col => col.name === 'isStockTracked');
+    if (!hasIsStockTracked) {
+      db.exec('ALTER TABLE products ADD COLUMN isStockTracked INTEGER DEFAULT 1');
+      const currentSettings = db.prepare('SELECT applicationType FROM settings WHERE id = 1').get();
+      if (currentSettings?.applicationType === 'hotel') {
+        db.exec('UPDATE products SET isStockTracked = 0');
+      }
+      console.log('✅ Migration: Added isStockTracked column to products');
+    }
     const hasIsLooseItem = productColumns.some(col => col.name === 'isLooseItem');
     if (!hasIsLooseItem) {
       db.exec('ALTER TABLE products ADD COLUMN isLooseItem INTEGER DEFAULT 0');

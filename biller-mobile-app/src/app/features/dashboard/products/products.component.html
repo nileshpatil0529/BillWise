@@ -14,35 +14,41 @@
       }
     </div>
     
-    <button mat-icon-button class="filter-btn" [matMenuTriggerFor]="filterMenu" [class.active]="selectedCategory()">
+    <button mat-icon-button class="filter-btn" [matMenuTriggerFor]="filterMenu" [class.active]="selectedStockFilter() !== 'all'">
       <mat-icon>filter_list</mat-icon>
     </button>
     
     <mat-menu #filterMenu="matMenu">
-      <button mat-menu-item (click)="selectedCategory.set(''); onCategoryChange()" [class.selected]="!selectedCategory()">
+      <button mat-menu-item (click)="onStockFilterChange('all')" [class.selected]="selectedStockFilter() === 'all'">
         <mat-icon>check</mat-icon>
-        <span>All Categories</span>
+        <span>All Items</span>
       </button>
       <mat-divider></mat-divider>
-      @for (category of productService.categories(); track category) {
-        <button mat-menu-item (click)="selectedCategory.set(category); onCategoryChange()" [class.selected]="selectedCategory() === category">
-          @if (selectedCategory() === category) {
-            <mat-icon>check</mat-icon>
-          } @else {
-            <mat-icon></mat-icon>
-          }
-          <span>{{ category }}</span>
-        </button>
-      }
+      <button mat-menu-item (click)="onStockFilterChange('tracked')" [class.selected]="selectedStockFilter() === 'tracked'">
+        @if (selectedStockFilter() === 'tracked') {
+          <mat-icon>check</mat-icon>
+        } @else {
+          <mat-icon></mat-icon>
+        }
+        <span>Stocked Items</span>
+      </button>
+      <button mat-menu-item (click)="onStockFilterChange('untracked')" [class.selected]="selectedStockFilter() === 'untracked'">
+        @if (selectedStockFilter() === 'untracked') {
+          <mat-icon>check</mat-icon>
+        } @else {
+          <mat-icon></mat-icon>
+        }
+        <span>Unstocked Items</span>
+      </button>
     </mat-menu>
   </div>
 
-  <!-- Category Filter Chips (visible when category selected) -->
-  @if (selectedCategory()) {
+  <!-- Stock Filter Chip (visible when not all) -->
+  @if (selectedStockFilter() !== 'all') {
     <div class="active-filter">
       <mat-chip-set>
-        <mat-chip (removed)="selectedCategory.set(''); onCategoryChange()">
-          {{ selectedCategory() }}
+        <mat-chip (removed)="onStockFilterChange('all')">
+          {{ getStockFilterLabel() }}
           <mat-icon matChipRemove>cancel</mat-icon>
         </mat-chip>
       </mat-chip-set>
@@ -85,8 +91,8 @@
             </div>
             <div class="product-right">
               <span class="product-price">{{ formatCurrency(product.unitPrice) }}</span>
-              @if (!isHotelMode()) {
-                <div class="stock-row">
+              <div class="stock-row">
+                @if (isStockTracked(product)) {
                   <div class="stock-info" [class.low-stock]="product.stockQuantity <= (product.lowStockAlert || 10)" [class.out-of-stock]="product.stockQuantity <= 0">
                     @if (product.stockQuantity <= 0) {
                       <span>Out</span>
@@ -94,15 +100,15 @@
                       <span>{{ product.stockQuantity }}</span>
                     }
                   </div>
-                  <button mat-icon-button class="action-btn delete" (click)="$event.stopPropagation(); deleteProduct(product)" matTooltip="Delete">
-                    <mat-icon>delete_outline</mat-icon>
-                  </button>
-                </div>
-              } @else {
+                } @else {
+                  <div class="stock-info">
+                    <span>N/A</span>
+                  </div>
+                }
                 <button mat-icon-button class="action-btn delete" (click)="$event.stopPropagation(); deleteProduct(product)" matTooltip="Delete">
                   <mat-icon>delete_outline</mat-icon>
                 </button>
-              }
+              </div>
             </div>
           </div>
           

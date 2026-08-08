@@ -100,7 +100,17 @@ interface DialogData {
           }
         </div>
 
-        @if (!isHotelMode()) {
+        @if (isHotelMode()) {
+          <div class="form-row">
+            <div class="checkbox-field">
+              <mat-checkbox formControlName="isStockTracked" color="primary" (change)="onStockTrackingChange($event.checked)">
+                Track Stock For This Item
+              </mat-checkbox>
+            </div>
+          </div>
+        }
+
+        @if (!isHotelMode() || productForm.get('isStockTracked')?.value) {
           <div class="form-row">
             <mat-form-field appearance="outline">
               <mat-label>Stock Quantity</mat-label>
@@ -279,6 +289,7 @@ export class ProductDialogComponent {
     
     const product = data.product;
     const isHotel = settings.applicationType === 'hotel';
+    const isStockTracked = product?.isStockTracked ?? !isHotel;
     
     this.productForm = this.fb.group({
       name: [product?.name || '', Validators.required],
@@ -289,13 +300,16 @@ export class ProductDialogComponent {
       confirmBarcode: [product?.barcode || ''],
       unitPrice: [product?.unitPrice || '', [Validators.required, Validators.min(1)]],
       costPrice: [product?.costPrice || 0, Validators.min(0)],
-      stockQuantity: [product?.stockQuantity || (isHotel ? 9999 : ''), isHotel ? [] : [Validators.required, Validators.min(1)]],
+      isStockTracked: [isStockTracked],
+      stockQuantity: [product?.stockQuantity ?? (isHotel ? 0 : ''), []],
       lowStockAlert: [product?.lowStockAlert || 10, Validators.min(0)],
       status: [product?.status !== 'inactive'], // Default to active for new products
       isLooseItem: [product?.isLooseItem || false],
       unit: [product?.unit || 'pcs'],
       warrantyMonths: [product?.warrantyMonths || 0, Validators.min(0)]
     });
+
+    this.updateStockValidators(isStockTracked);
 
     // Add barcode match validator
     this.productForm.get('confirmBarcode')?.setValidators([this.barcodeMatchValidator.bind(this)]);
@@ -332,6 +346,25 @@ export class ProductDialogComponent {
     }
   }
 
+  onStockTrackingChange(isTracked: boolean): void {
+    this.updateStockValidators(isTracked);
+    if (!isTracked) {
+      this.productForm.patchValue({ stockQuantity: 0, lowStockAlert: 0 });
+    }
+  }
+
+  private updateStockValidators(isTracked: boolean): void {
+    const stockControl = this.productForm.get('stockQuantity');
+    if (!stockControl) return;
+
+    if (isTracked) {
+      stockControl.setValidators([Validators.required, Validators.min(1)]);
+    } else {
+      stockControl.clearValidators();
+    }
+    stockControl.updateValueAndValidity();
+  }
+
   onCancel(): void {
     this.dialogRef.close();
   }
@@ -341,8 +374,12 @@ export class ProductDialogComponent {
       const formValue = this.productForm.value;
       // Remove confirmBarcode from the data sent to backend
       const { confirmBarcode, ...productData } = formValue;
+      const isStockTracked = this.isHotelMode() ? !!formValue.isStockTracked : true;
       this.dialogRef.close({
         ...productData,
+        isStockTracked,
+        stockQuantity: isStockTracked ? formValue.stockQuantity : 0,
+        lowStockAlert: isStockTracked ? formValue.lowStockAlert : 0,
         status: formValue.status ? 'active' : 'inactive',
         // Include loose item fields for grocery mode
         isLooseItem: this.isGroceryMode() ? formValue.isLooseItem : false,

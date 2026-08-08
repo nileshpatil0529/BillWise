@@ -20,6 +20,7 @@ export class ProductService {
   getProducts(params?: {
     category?: string;
     status?: string;
+    stockFilter?: 'tracked' | 'untracked';
     search?: string;
     page?: number;
     limit?: number;

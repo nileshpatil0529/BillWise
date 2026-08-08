@@ -43,12 +43,11 @@
       </mat-form-field>
 
       <mat-form-field appearance="outline" class="category-field">
-        <mat-label>{{ translateService.t('common.category') }}</mat-label>
-        <mat-select [value]="selectedCategory()" (selectionChange)="selectedCategory.set($event.value); onCategoryChange()">
-          <mat-option value="">{{ translateService.t('common.all') }} {{ translateService.t('settings.categories') }}</mat-option>
-          @for (category of productService.categories(); track category) {
-            <mat-option [value]="category">{{ category }}</mat-option>
-          }
+        <mat-label>Stock Filter</mat-label>
+        <mat-select [value]="selectedStockFilter()" (selectionChange)="onStockFilterChange($event.value)">
+          <mat-option value="all">All Items</mat-option>
+          <mat-option value="tracked">Stocked Items</mat-option>
+          <mat-option value="untracked">Unstocked Items</mat-option>
         </mat-select>
       </mat-form-field>
     </div>
@@ -110,11 +109,15 @@
         <ng-container matColumnDef="stockQuantity">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('products.stock') }}</th>
           <td mat-cell *matCellDef="let product">
-            <span [class.low-stock]="product.stockQuantity <= (product.lowStockAlert || 10)">
-              {{ product.stockQuantity }}
-            </span>
-            @if (product.stockQuantity <= (product.lowStockAlert || 10)) {
-              <mat-icon class="warning-icon" matTooltip="Low Stock">warning</mat-icon>
+            @if (isStockTracked(product)) {
+              <span [class.low-stock]="product.stockQuantity <= (product.lowStockAlert || 10)">
+                {{ product.stockQuantity }}
+              </span>
+              @if (product.stockQuantity <= (product.lowStockAlert || 10)) {
+                <mat-icon class="warning-icon" matTooltip="Low Stock">warning</mat-icon>
+              }
+            } @else {
+              <span class="muted">Not Tracked</span>
             }
           </td>
         </ng-container>

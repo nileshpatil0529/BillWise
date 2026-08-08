@@ -85,6 +85,7 @@ export class SettingsComponent implements OnInit {
   // Language
   selectedLanguage = signal<LanguageType>('en');
   selectedReceiptLanguage = signal<LanguageType>('en');
+  selectedKotLanguage = signal<LanguageType>('en');
   
   // Hotel Management
   newTableStartNumber = signal<number>(1);
@@ -176,7 +177,8 @@ export class SettingsComponent implements OnInit {
       footerText: ['Thank you for your business!'],
       invoicePrefix: ['INV'],
       invoiceStartNumber: [1, [Validators.required, Validators.min(1)]],
-      receiptLanguage: ['en']
+      receiptLanguage: ['en'],
+      kotLanguage: ['en']
     });
   }
 
@@ -210,11 +212,13 @@ export class SettingsComponent implements OnInit {
       footerText: settings.footerText,
       invoicePrefix: settings.invoicePrefix,
       invoiceStartNumber: settings.invoiceStartNumber,
-      receiptLanguage: settings.receiptLanguage || 'en'
+      receiptLanguage: settings.receiptLanguage || 'en',
+      kotLanguage: settings.kotLanguage || 'en'
     });
 
-    // Load receipt language preference
+    // Load receipt/KOT language preferences
     this.selectedReceiptLanguage.set(settings.receiptLanguage || 'en');
+    this.selectedKotLanguage.set(settings.kotLanguage || 'en');
 
     if (settings.logo) {
       this.logoPreview.set(settings.logo);
@@ -367,12 +371,14 @@ export class SettingsComponent implements OnInit {
       footerText: formValue.footerText,
       invoicePrefix: formValue.invoicePrefix,
       invoiceStartNumber: formValue.invoiceStartNumber,
-      receiptLanguage: formValue.receiptLanguage || 'en'
+      receiptLanguage: formValue.receiptLanguage || 'en',
+      kotLanguage: formValue.kotLanguage || 'en'
     };
 
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
         this.selectedReceiptLanguage.set(formValue.receiptLanguage || 'en');
+        this.selectedKotLanguage.set(formValue.kotLanguage || 'en');
         this.saving.set(false);
       },
       error: () => {

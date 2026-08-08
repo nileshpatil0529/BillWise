@@ -59,6 +59,7 @@ export interface Settings {
   lowStockThreshold: number;
   language?: LanguageType;
   receiptLanguage?: LanguageType;
+  kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
   units?: Unit[];
   viewMode?: ViewMode;
   tableColumns?: {
