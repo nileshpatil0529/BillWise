@@ -193,8 +193,11 @@ export class ProductsComponent implements OnInit, OnDestroy {
       this.loadingMore.set(true);
     }
 
+    const selectedStockFilter = this.selectedStockFilter();
+    const stockFilter = selectedStockFilter === 'all' ? undefined : selectedStockFilter;
+
     this.productService.getProducts({
-      stockFilter: this.selectedStockFilter() === 'all' ? undefined : this.selectedStockFilter(),
+      stockFilter,
       search: this.searchQuery() || undefined,
       page: this.currentPage(),
       limit: this.pageSize
