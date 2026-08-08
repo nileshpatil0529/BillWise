@@ -38,27 +38,16 @@
                           }
                         </div>
                       </button>
-                      @if (authService.isAdmin() && (table.status === 'occupied' || table.status === 'unsettled')) {
+                      @if (authService.isAdmin() && (table.status === 'occupied' || table.status === 'unsettled') && table.currentBillId) {
                         <div class="admin-table-actions">
                           @if (table.grandTotal) {
                             <span class="table-bill-amt">{{ formatCurrency(table.grandTotal) }}</span>
                           }
-                          <div class="btn-group">
-                            @if (table.status === 'occupied' && table.currentBillId) {
-                              <button mat-icon-button class="print-bill-btn"
-                                      (click)="$event.stopPropagation(); printAndCompleteTableBill(table)"
-                                      matTooltip="Print & Complete Bill">
-                                <mat-icon>print</mat-icon>
-                              </button>
-                            }
-                            @if (table.status === 'unsettled') {
-                              <button mat-icon-button class="settle-btn"
-                                      (click)="$event.stopPropagation(); settleTable(table.id)"
-                                      matTooltip="Settle Table">
-                                <mat-icon>check_circle</mat-icon>
-                              </button>
-                            }
-                          </div>
+                          <button mat-icon-button class="action-btn"
+                                  (click)="$event.stopPropagation(); openTableActionDialog(table)"
+                                  matTooltip="Table Actions">
+                            <mat-icon>receipt_long</mat-icon>
+                          </button>
                         </div>
                       }
                     </div>
@@ -161,11 +150,11 @@
                                 [class.parcel]="tableType === 'parcel'"
                                 [class.available]="table.status === 'available'"
                                 [class.current]="table.id === selectedTable()?.id"
-                                [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
+                                [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id && tableMode() !== 'change-table'"
                                 [class.unsettled]="table.status === 'unsettled'"
                                 [disabled]="
                                   (tableMode() === 'change-table' && table.id === selectedTable()?.id) ||
-                                  (tableMode() === 'attend-new' && table.status === 'occupied') ||
+                                  (tableMode() === 'attend-new' && (table.status === 'occupied' || table.status === 'unsettled')) ||
                                   (tableMode() === 'switch-table' && table.id === selectedTable()?.id)
                                 "
                                 (click)="handleTableClick(table)">
@@ -181,25 +170,16 @@
                             }
                           </div>
                         </button>
-                        @if (authService.isAdmin() && (table.status === 'occupied' || table.status === 'unsettled' || table.id === selectedTable()?.id)) {
+                        @if (authService.isAdmin() && tableMode() === 'attend-new' && (table.status === 'occupied' || table.status === 'unsettled') && table.currentBillId) {
                           <div class="admin-table-actions">
-                            <span class="table-bill-amt">{{ formatCurrency(table.grandTotal || 0) }}</span>
-                            <div class="btn-group">
-                              @if ((table.status === 'occupied' || table.id === selectedTable()?.id) && table.currentBillId) {
-                                <button mat-icon-button class="print-bill-btn" 
-                                        (click)="$event.stopPropagation(); printAndCompleteTableBill(table)"
-                                        matTooltip="Print & Complete Bill">
-                                  <mat-icon>print</mat-icon>
-                                </button>
-                              }
-                              @if (table.status === 'unsettled') {
-                                <button mat-icon-button class="settle-btn"
-                                        (click)="$event.stopPropagation(); settleTable(table.id)"
-                                        matTooltip="Settle Table">
-                                  <mat-icon>check_circle</mat-icon>
-                                </button>
-                              }
-                            </div>
+                            @if (table.grandTotal) {
+                              <span class="table-bill-amt">{{ formatCurrency(table.grandTotal) }}</span>
+                            }
+                            <button mat-icon-button class="action-btn"
+                                    (click)="$event.stopPropagation(); openTableActionDialog(table)"
+                                    matTooltip="Table Actions">
+                              <mat-icon>receipt_long</mat-icon>
+                            </button>
                           </div>
                         }
                       </div>

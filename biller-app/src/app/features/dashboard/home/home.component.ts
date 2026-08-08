@@ -33,6 +33,7 @@ import { Product, CartItem } from '../../../core/models/product.model';
 import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
 import { Unit } from '../../../core/models/settings.model';
+import { TableActionDialogComponent } from '../bills/table-action-dialog/table-action-dialog.component';
 
 // Interface for tracking attended table state
 interface AttendedTableState {
@@ -1678,6 +1679,24 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     });
   }
 
+  // Open the unified table-action dialog for any occupied/unsettled table (Admin only)
+  openTableActionDialog(table: RestaurantTable): void {
+    if (!table.currentBillId) return;
+    const dialogRef = this.dialog.open(TableActionDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      data: { billId: table.currentBillId, table }
+    });
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result?.settled || result?.saved) {
+        this.hotelService.loadTables().subscribe();
+        if (result.settled && this.selectedTable()?.id === table.id) {
+          this.clearCartAndResetState();
+        }
+      }
+    });
+  }
+
   // Settle an unsettled table (Admin only)
   settleTable(tableId: number): void {
     if (confirm('Mark this table as settled? This will make the table available for new orders.')) {
@@ -1818,14 +1837,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleTableUpdate(data: any): void {
-    // Check if a table relevant to the current session was settled
     const currentTable = this.selectedTable();
-    const shouldClearCart = currentTable && 
-                           data.tableId === currentTable.id && 
-                           (data.status === 'available' || data.billStatus === 'completed');
-    
+    const isMyTable = currentTable && data.tableId === currentTable.id;
+    // Clear session when admin completes/settles the table this user had open
+    const shouldClearCart = isMyTable &&
+      (data.status === 'available' || data.status === 'unsettled' || data.billStatus === 'completed');
+
     if (shouldClearCart) {
-      // Clear local cart and reset state
       this.billService.clearCart();
       this.billService.billDiscount.set(0);
       this.customerName.set('');
@@ -1834,9 +1852,11 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.currentBillId.set(null);
       this.billStatus.set('new');
       this.savedCartSnapshot.set('');
+      if (data.status === 'unsettled') {
+        this.snackBar.open('This table has been billed by admin. Please select another table.', 'OK', { duration: 5000 });
+      }
     }
-    
-    // Reload tables to get latest status and grand totals
+
     this.hotelService.loadTables().subscribe();
   }
 

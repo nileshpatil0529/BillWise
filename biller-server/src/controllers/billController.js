@@ -477,19 +477,19 @@ export const updateBill = async (req, res) => {
     // Emit WebSocket event for real-time updates
     emitBillUpdate(billData);
     if (updatedBill.tableId) {
-      // If bill is completed, emit table-updated with status 'available'
+      // When bill is completed the table is marked 'unsettled' (awaiting admin settlement)
       if (updatedBill.billStatus === 'completed') {
-        emitTableUpdate({ 
-          tableId: updatedBill.tableId, 
-          billId: null, 
-          status: 'available',
-          billStatus: 'completed' 
+        emitTableUpdate({
+          tableId: updatedBill.tableId,
+          billId: updatedBill.billId,
+          status: 'unsettled',
+          billStatus: 'completed'
         });
       } else {
-        emitTableUpdate({ 
-          tableId: updatedBill.tableId, 
-          billId: updatedBill.billId, 
-          billStatus: updatedBill.billStatus 
+        emitTableUpdate({
+          tableId: updatedBill.tableId,
+          billId: updatedBill.billId,
+          billStatus: updatedBill.billStatus
         });
       }
     }

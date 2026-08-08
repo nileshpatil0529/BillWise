@@ -18,6 +18,7 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 
@@ -28,6 +29,7 @@ import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { SocketService } from '../../../core/services/socket.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
+import { TableActionDialogComponent } from './table-action-dialog/table-action-dialog.component';
 
 // jsPDF import for PDF generation
 declare var jspdf: any;
@@ -54,6 +56,7 @@ declare var jspdf: any;
     MatTabsModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatDialogModule,
     MatExpansionModule,
     ScrollingModule
   ],
@@ -127,6 +130,7 @@ export class BillsComponent implements OnInit, OnDestroy {
     public authService: AuthService,
     public translateService: TranslateService,
     private snackBar: MatSnackBar,
+    private dialog: MatDialog,
     private socketService: SocketService,
     public hotelService: HotelService
   ) {
@@ -179,6 +183,8 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.socketService.off('bill-created');
     this.socketService.off('bill-updated');
     this.socketService.off('bill-deleted');
+    this.socketService.off('table-updated');
+    this.socketService.off('tables-refresh-needed');
     
     this.destroy$.next();
     this.destroy$.complete();
@@ -196,6 +202,15 @@ export class BillsComponent implements OnInit, OnDestroy {
 
     this.socketService.on('bill-deleted', (data: any) => {
       this.handleBillDeleted(data);
+    });
+
+    // Refresh table status column when tables change on any client
+    this.socketService.on('table-updated', () => {
+      this.hotelService.loadTables().subscribe();
+    });
+
+    this.socketService.on('tables-refresh-needed', () => {
+      this.hotelService.loadTables().subscribe();
     });
   }
 
@@ -588,5 +603,53 @@ export class BillsComponent implements OnInit, OnDestroy {
       case 'partial': return 'status-partial';
       default: return '';
     }
+  }
+
+  // Returns the effective display status for hotel-mode bills (Pending / Unsettled / Paid)
+  getDisplayStatusLabel(bill: Bill): string {
+    if (this.settingsService.settings().applicationType === 'hotel' && bill.tableId) {
+      const table = this.hotelService.tables().find(
+        t => t.id === bill.tableId && t.currentBillId === bill.billId
+      );
+      if (table?.status === 'occupied')   return 'Pending';
+      if (table?.status === 'unsettled')  return 'Unsettled';
+    }
+    return bill.paymentStatus.charAt(0).toUpperCase() + bill.paymentStatus.slice(1);
+  }
+
+  getDisplayStatusClass(bill: Bill): string {
+    if (this.settingsService.settings().applicationType === 'hotel' && bill.tableId) {
+      const table = this.hotelService.tables().find(
+        t => t.id === bill.tableId && t.currentBillId === bill.billId
+      );
+      if (table?.status === 'occupied')  return 'status-pending';
+      if (table?.status === 'unsettled') return 'status-unsettled';
+    }
+    return this.getPaymentStatusClass(bill.paymentStatus);
+  }
+
+  // Admin-only: open the table action dialog for any bill
+  openTableActionDialog(bill: Bill, event: Event): void {
+    event.stopPropagation();
+    // Only treat the table as live if this bill is still the active bill on it
+    const table = bill.tableId
+      ? this.hotelService.tables().find(
+          t => t.id === bill.tableId && t.currentBillId === bill.billId
+        )
+      : undefined;
+    const dialogRef = this.dialog.open(TableActionDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      data: { bill, table }
+    });
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result?.settled || result?.saved) {
+        this.loadBills(true);
+        this.loadReport();
+        if (result.settled) {
+          this.hotelService.loadTables().subscribe();
+        }
+      }
+    });
   }
 }

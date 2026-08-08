@@ -346,8 +346,8 @@
         <ng-container matColumnDef="paymentStatus">
           <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.status') }}</th>
           <td mat-cell *matCellDef="let bill">
-            <mat-chip [class]="getPaymentStatusClass(bill.paymentStatus)">
-              {{ bill.paymentStatus | titlecase }}
+            <mat-chip [class]="getDisplayStatusClass(bill)">
+              {{ getDisplayStatusLabel(bill) }}
             </mat-chip>
           </td>
         </ng-container>
@@ -356,14 +356,15 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.actions') }}</th>
           <td mat-cell *matCellDef="let bill">
-            <button mat-icon-button (click)="printBill(bill); $event.stopPropagation()" matTooltip="Print">
-              <mat-icon>print</mat-icon>
-            </button>
-            @if (authService.isAdmin() && isTableUnsettled(bill)) {
-              <button mat-icon-button color="accent" 
-                      (click)="settleTableFromBill(bill); $event.stopPropagation()"
-                      matTooltip="Settle Table">
-                <mat-icon>check_circle</mat-icon>
+            @if (authService.isAdmin()) {
+              <button mat-icon-button color="primary"
+                      (click)="openTableActionDialog(bill, $event)"
+                      matTooltip="Actions">
+                <mat-icon>receipt_long</mat-icon>
+              </button>
+            } @else {
+              <button mat-icon-button (click)="printBill(bill); $event.stopPropagation()" matTooltip="Print">
+                <mat-icon>print</mat-icon>
               </button>
             }
           </td>

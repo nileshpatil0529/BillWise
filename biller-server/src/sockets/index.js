@@ -22,7 +22,9 @@ export const initializeSocketIO = (httpServer) => {
       methods: ['GET', 'POST'],
       credentials: true
     },
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'],
+    pingInterval: 25000,   // how often to ping clients
+    pingTimeout: 60000,    // wait up to 60s for pong — tolerates PWA timer throttling
   });
 
   io.on('connection', (socket) => {
@@ -69,6 +71,7 @@ export const initializeSocketIO = (httpServer) => {
     socket.on('print-job-result', ({ requestId, success, error, type }) => {
       const pending = pendingPrintJobs.get(requestId);
       if (!pending) return;
+      clearTimeout(pending.timer); // cancel the stale-job timeout
       pendingPrintJobs.delete(requestId);
 
       // For KOT: mark items as printed in DB on success
@@ -129,6 +132,53 @@ export const initializeSocketIO = (httpServer) => {
   return io;
 };
 
+const PRINT_JOB_TIMEOUT_MS = 30_000;
+const MAX_PRINT_RETRIES = 3;
+
+/** Returns the first connected printer socket, pruning stale entries. */
+const findConnectedPrinter = () => {
+  for (const [uid, sid] of printerUsers.entries()) {
+    const sock = io.sockets.sockets.get(sid);
+    if (sock?.connected) return { socketId: sid, userId: uid };
+    printerUsers.delete(uid); // stale — clean up
+  }
+  return { socketId: null, userId: null };
+};
+
+/** Dispatch a job to the printer and arm a timeout that auto-retries silently. */
+const dispatchPrintJob = (requestId, payload, requesterUserId, retryCount) => {
+  const timer = setTimeout(() => {
+    if (!pendingPrintJobs.has(requestId)) return;
+    pendingPrintJobs.delete(requestId);
+
+    if (retryCount < MAX_PRINT_RETRIES) {
+      const { socketId, userId } = findConnectedPrinter();
+      if (socketId) {
+        const newId = uuidv4();
+        console.warn(`⚠️ Print job timed out, auto-retry ${retryCount + 1}/${MAX_PRINT_RETRIES}: ${newId}`);
+        dispatchPrintJob(newId, payload, requesterUserId, retryCount + 1);
+        io.to(socketId).emit('print-job', { requestId: newId, ...payload });
+        return;
+      }
+    }
+
+    // All retries exhausted — only now tell the requester
+    console.warn(`❌ Print job failed after ${retryCount} retries: requestId=${requestId}`);
+    if (requesterUserId) {
+      io.to(`user:${requesterUserId}`).emit('print-response', {
+        requestId, success: false,
+        error: 'Printer unavailable after multiple attempts — please check the printer and try again.',
+        type: payload.type
+      });
+    }
+  }, PRINT_JOB_TIMEOUT_MS);
+
+  pendingPrintJobs.set(requestId, {
+    requesterUserId, billId: payload.bill?.billId || null,
+    type: payload.type, payload, timer
+  });
+};
+
 /**
  * Route a print job to any online user who has a printer registered.
  * Returns { success, message, requestId? }
@@ -136,14 +186,7 @@ export const initializeSocketIO = (httpServer) => {
 export const routePrintJob = (payload, requesterUserId) => {
   if (!io) return { success: false, message: 'Socket server not initialized' };
 
-  // Find any registered printer user
-  let printerSocketId = null;
-  let printerUserId = null;
-  for (const [uid, sid] of printerUsers.entries()) {
-    printerSocketId = sid;
-    printerUserId = uid;
-    break;
-  }
+  const { socketId: printerSocketId, userId: printerUserId } = findConnectedPrinter();
 
   if (!printerSocketId) {
     return {
@@ -153,8 +196,7 @@ export const routePrintJob = (payload, requesterUserId) => {
   }
 
   const requestId = uuidv4();
-  const billId = payload.bill?.billId || null;
-  pendingPrintJobs.set(requestId, { requesterUserId, billId, type: payload.type });
+  dispatchPrintJob(requestId, payload, requesterUserId, 0);
 
   io.to(printerSocketId).emit('print-job', { requestId, ...payload });
   console.log(`🖨️ Print job routed: requestId=${requestId}, type=${payload.type}, printer user=${printerUserId}`);

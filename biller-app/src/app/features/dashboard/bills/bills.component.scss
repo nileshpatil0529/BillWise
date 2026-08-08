@@ -595,6 +595,16 @@
         }
       }
 
+      &.status-unsettled {
+        --mdc-chip-elevated-container-color: rgba(245, 127, 23, 0.15);
+        --mdc-chip-label-text-color: #e65100;
+
+        @include m.dark-theme {
+          --mdc-chip-elevated-container-color: rgba(245, 127, 23, 0.25);
+          --mdc-chip-label-text-color: #ffb74d;
+        }
+      }
+
       &.status-partial {
         --mdc-chip-elevated-container-color: #{rgba(v.$light-primary, 0.15)};
         --mdc-chip-label-text-color: #{v.$light-primary};

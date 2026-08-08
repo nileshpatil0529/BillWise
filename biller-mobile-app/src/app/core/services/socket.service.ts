@@ -56,14 +56,22 @@ export class SocketService {
       return;
     }
 
+    // Clean up any stale disconnected socket before creating a new one
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     const socketUrl = environment.apiUrl.replace('/api', '');
-    
+
     this.socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-      timeout: 10000
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: Infinity, // never give up — prevents permanent print failure
+      timeout: 20000
     });
 
     this.socket.on('connect', () => {
@@ -97,6 +105,14 @@ export class SocketService {
       this.ngZone.run(() => {
         this.connected.set(false);
         console.error('❌ Socket connection error:', error);
+      });
+    });
+
+    // Safety net: if socket.io ever stops retrying (shouldn't happen with Infinity), force a fresh connection
+    this.socket.on('reconnect_failed', () => {
+      this.ngZone.run(() => {
+        console.warn('⚠️ Socket reconnect_failed — forcing fresh connection in 5s');
+        setTimeout(() => this.connect(), 5000);
       });
     });
 
