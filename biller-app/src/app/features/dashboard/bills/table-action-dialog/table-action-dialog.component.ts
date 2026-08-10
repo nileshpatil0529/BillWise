@@ -261,11 +261,27 @@ export class TableActionDialogComponent implements OnInit {
   printBill(): void {
     const b = this.bill();
     if (!b) return;
+    const isPending = this.tableStatus === 'pending';
     this.saving.set(true);
     this.billService.printBill(b.billId).subscribe({
       next: () => {
-        this.saving.set(false);
-        this.snackBar.open('Bill sent to printer', 'OK', { duration: 2000 });
+        if (isPending) {
+          // Mark bill as completed so the table transitions to 'unsettled' on the server
+          this.billService.updateBill(b.billId, { billStatus: 'completed' }).subscribe({
+            next: () => {
+              this.saving.set(false);
+              this.dialogRef.close({ saved: true });
+            },
+            error: () => {
+              this.saving.set(false);
+              this.snackBar.open('Bill printed. Failed to update status.', 'OK', { duration: 3000 });
+              this.dialogRef.close({ saved: true });
+            }
+          });
+        } else {
+          this.saving.set(false);
+          this.snackBar.open('Bill sent to printer', 'OK', { duration: 2000 });
+        }
       },
       error: (err: any) => {
         this.saving.set(false);

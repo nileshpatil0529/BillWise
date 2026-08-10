@@ -648,9 +648,7 @@ export class BillsComponent implements OnInit, OnDestroy {
       if (result?.settled || result?.saved) {
         this.loadBills(true);
         this.loadReport();
-        if (result.settled) {
-          this.hotelService.loadTables().subscribe();
-        }
+        this.hotelService.loadTables().subscribe();
       }
     });
   }
