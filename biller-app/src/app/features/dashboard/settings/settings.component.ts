@@ -91,8 +91,10 @@ export class SettingsComponent implements OnInit {
   // Hotel Management
   newTableStartNumber = signal<number>(1);
   newTableEndNumber = signal<number>(10);
-  newTableType = signal<'dine-in' | 'parcel' | 'garden'>('dine-in');
+  newTableType = signal<string>('dine-in');
   customTableName = signal<string>('');
+  tableTypes = signal<string[]>(['dine-in', 'parcel', 'garden']);
+  newTypeName = signal<string>('');
   
   // Grocery Management - Units
   units = signal<Unit[]>([]);
@@ -241,6 +243,16 @@ export class SettingsComponent implements OnInit {
     this.translateService.initLanguage(lang);
 
     this.internetStatusCheckEnabled.set(settings.internetStatusCheckEnabled ?? true);
+
+    const defaultTableTypes = ['dine-in', 'parcel', 'garden'];
+    const rawTypes = (settings as any).tableTypes;
+    const parsedTypes = Array.isArray(rawTypes)
+      ? rawTypes
+      : (typeof rawTypes === 'string' ? (() => { try { return JSON.parse(rawTypes); } catch { return null; } })() : null);
+    this.tableTypes.set(parsedTypes?.length ? parsedTypes : defaultTableTypes);
+    if (!this.tableTypes().includes(this.newTableType())) {
+      this.newTableType.set(this.tableTypes()[0]);
+    }
   }
 
   onInternetStatusCheckToggle(enabled: boolean): void {
@@ -462,6 +474,46 @@ export class SettingsComponent implements OnInit {
 
   // ==================== HOTEL MANAGEMENT ====================
 
+  addTableType(): void {
+    const name = this.newTypeName().trim();
+    if (!name) {
+      this.snackBar.open('Please enter a type name', 'Close', { duration: 3000 });
+      return;
+    }
+    if (this.tableTypes().includes(name)) {
+      this.snackBar.open('Type already exists', 'Close', { duration: 3000 });
+      return;
+    }
+    const updated = [...this.tableTypes(), name];
+    this.tableTypes.set(updated);
+    this.newTableType.set(name);
+    this.newTypeName.set('');
+    this.settingsService.updateSettings({ tableTypes: updated }).subscribe();
+  }
+
+  removeTableType(type: string): void {
+    const hasTablesOfType = this.hotelService.tables().some(t => t.tableType === type);
+    if (hasTablesOfType) {
+      this.snackBar.open(`Cannot remove type '${type}' — it has existing tables`, 'Close', { duration: 3000 });
+      return;
+    }
+    const updated = this.tableTypes().filter(t => t !== type);
+    this.tableTypes.set(updated);
+    if (this.newTableType() === type) {
+      this.newTableType.set(updated[0] || '');
+    }
+    this.settingsService.updateSettings({ tableTypes: updated }).subscribe();
+  }
+
+  getTableTypeLabel(type: string): string {
+    const labels: Record<string, string> = { 'dine-in': 'Dine-In', 'parcel': 'Parcel / Takeaway' };
+    return labels[type] ?? type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  getTablesByType(type: string): import('../../../core/models/hotel.model').RestaurantTable[] {
+    return this.hotelService.tables().filter(t => t.tableType === type);
+  }
+
   // Tables Management
   addTables(): void {
     const start = this.newTableStartNumber();
@@ -517,10 +569,6 @@ export class SettingsComponent implements OnInit {
     });
   }
 
-  getGardenTables(): RestaurantTable[] {
-    return this.hotelService.tables().filter(t => t.tableType === 'garden');
-  }
-
   deleteTable(table: RestaurantTable): void {
     if (table.status === 'occupied') {
       this.snackBar.open('Cannot delete occupied table', 'Close', { duration: 3000 });
@@ -537,14 +585,6 @@ export class SettingsComponent implements OnInit {
         }
       });
     }
-  }
-
-  getDineInTables(): RestaurantTable[] {
-    return this.hotelService.tables().filter(t => t.tableType === 'dine-in');
-  }
-
-  getParcelTables(): RestaurantTable[] {
-    return this.hotelService.tables().filter(t => t.tableType === 'parcel');
   }
 
   // ==================== GROCERY UNIT MANAGEMENT ====================

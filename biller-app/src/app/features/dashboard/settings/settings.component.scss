@@ -1056,6 +1056,36 @@ mat-tab-group {
 
 // Hotel Tables Management Section
 .hotel-tables-section {
+  .section-subtitle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: v.$light-text-secondary;
+    margin-bottom: v.$spacing-sm;
+
+    mat-icon { font-size: 18px; height: 18px; width: 18px; }
+
+    @include m.dark-theme { color: rgba(255, 255, 255, 0.6); }
+  }
+
+  // remove subscript gap from form fields in this section
+  mat-form-field {
+    ::ng-deep .mat-mdc-form-field-subscript-wrapper {
+      display: none;
+    }
+  }
+
+  .type-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: v.$spacing-sm;
+  }
+
   .add-tables-form {
     display: flex;
     gap: v.$spacing-sm;

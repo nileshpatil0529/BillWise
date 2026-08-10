@@ -520,6 +520,18 @@ const initializeDatabase = () => {
     // Column might already exist
   }
 
+  // Migration: Add tableTypes to settings (custom table type registry)
+  try {
+    const settingsColumns = db.prepare('PRAGMA table_info(settings)').all();
+    const hasTableTypes = settingsColumns.some(col => col.name === 'tableTypes');
+    if (!hasTableTypes) {
+      const defaultTypes = JSON.stringify(['dine-in', 'parcel', 'garden']);
+      db.exec(`ALTER TABLE settings ADD COLUMN tableTypes TEXT DEFAULT '${defaultTypes}'`);
+    }
+  } catch (e) {
+    // Column might already exist
+  }
+
   // Update existing admin users to have all permissions if they don't have any
   try {
     const allPermissions = JSON.stringify(['dashboard', 'products', 'bills', 'customers', 'settings']);

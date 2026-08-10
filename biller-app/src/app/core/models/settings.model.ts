@@ -55,6 +55,7 @@ export interface Settings {
   kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
   internetStatusCheckEnabled?: boolean;
   units?: Unit[]; // Units for loose items (grocery mode)
+  tableTypes?: string[]; // Custom table type registry
   updatedAt: string;
 }
 

@@ -62,7 +62,7 @@ export const createTables = async (req, res) => {
   try {
     const { startNumber, endNumber, tableType = 'dine-in', capacity = 4, customTableName } = req.body;
 
-    const type = ['dine-in', 'parcel', 'garden'].includes(tableType) ? tableType : 'dine-in';
+    const type = (typeof tableType === 'string' && tableType.trim()) ? tableType.trim() : 'dine-in';
 
     if (customTableName && String(customTableName).trim()) {
       const manualName = String(customTableName).trim();
@@ -112,8 +112,16 @@ export const createTables = async (req, res) => {
     const createdTables = [];
     const skippedTables = [];
 
+    // Derive prefix: P for parcel, T for dine-in, first-letter(s) of each word for custom types
+    const getPrefix = (t) => {
+      if (t === 'parcel') return 'P';
+      if (t === 'dine-in') return 'T';
+      return t.split(/[\s-]+/).map(w => (w[0] || '').toUpperCase()).join('') || 'X';
+    };
+    const prefix = getPrefix(type);
+
     for (let i = start; i <= end; i++) {
-      const tableNumber = type === 'parcel' ? `P${i}` : (type === 'garden' ? `G${i}` : `T${i}`);
+      const tableNumber = `${prefix}${i}`;
       
       try {
         insertTable.run(tableNumber, type, capacity);

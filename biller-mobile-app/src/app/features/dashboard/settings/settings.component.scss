@@ -590,6 +590,43 @@
 // ============================================
 // TABLES SECTION (HOTEL)
 // ============================================
+.tables-section-subtitle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: v.$light-text-secondary;
+  padding: v.$spacing-sm v.$spacing-md 0;
+
+  mat-icon { font-size: 16px; height: 16px; width: 16px; }
+
+  @include m.dark-theme { color: rgba(255, 255, 255, 0.6); }
+}
+
+.type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: v.$spacing-xs v.$spacing-md;
+
+  .type-chip {
+    background: transparent;
+    border: 1px solid v.$light-divider;
+    padding: 2px 4px 2px 10px;
+    border-radius: 16px;
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+
+    @include m.dark-theme { border-color: v.$dark-divider; }
+
+    button { width: 20px; height: 20px; line-height: 20px; mat-icon { font-size: 14px; } }
+  }
+}
+
 .tables-add-row {
   display: flex;
   gap: v.$spacing-sm;
@@ -617,6 +654,13 @@
   width: calc(100% - #{v.$spacing-md * 2});
   margin: v.$spacing-xs v.$spacing-md v.$spacing-md;
   height: 44px;
+}
+
+.type-add-btn {
+  flex-shrink: 0;
+  height: 56px; // match mat-form-field height
+  margin-bottom: 4px;
+  white-space: nowrap;
 }
 
 .tables-group {

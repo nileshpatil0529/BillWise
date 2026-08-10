@@ -322,13 +322,53 @@
     </mat-expansion-panel-header>
 
     <div class="settings-card">
+      <!-- Step 1: Add a new table type -->
+      <div class="tables-section-subtitle">
+        <mat-icon>category</mat-icon>
+        <span>Table Types</span>
+      </div>
+      <div class="tables-add-row">
+        <mat-form-field appearance="outline" class="type-field">
+          <mat-label>New Type Name (e.g. Rooftop, VIP Room)</mat-label>
+          <input matInput [value]="newTypeName()" (input)="newTypeName.set($any($event.target).value)"
+                 (keydown.enter)="addTableType()" placeholder="Enter type name">
+        </mat-form-field>
+        <button mat-flat-button color="accent" class="type-add-btn" (click)="addTableType()" [disabled]="saving()">
+          <mat-icon>add</mat-icon>
+          Add Type
+        </button>
+      </div>
+
+      <!-- Existing types chips -->
+      @if (tableTypes().length > 0) {
+      <div class="type-chips">
+        @for (type of tableTypes(); track type) {
+          <div class="table-chip type-chip" style="white-space:nowrap">
+            <span>{{ getTableTypeLabel(type) }}</span>
+            @if (!['dine-in','parcel'].includes(type)) {
+              <button mat-icon-button (click)="removeTableType(type)">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+          </div>
+        }
+      </div>
+      }
+
+      <hr style="border:none;border-top:1px solid rgba(0,0,0,0.12);margin:16px">
+
+      <!-- Step 2: Select type and add tables by range -->
+      <div class="tables-section-subtitle">
+        <mat-icon>table_restaurant</mat-icon>
+        <span>Add Tables</span>
+      </div>
       <div class="tables-add-row">
         <mat-form-field appearance="outline" class="type-field">
           <mat-label>{{ translateService.t('settings.type') }}</mat-label>
           <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
-            <mat-option value="dine-in">{{ translateService.t('settings.dineInTables') }}</mat-option>
-            <mat-option value="parcel">{{ translateService.t('settings.parcelTakeaway') }}</mat-option>
-            <mat-option value="garden">Garden Table</mat-option>
+            @for (type of tableTypes(); track type) {
+              <mat-option [value]="type">{{ getTableTypeLabel(type) }}</mat-option>
+            }
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" class="number-field">
@@ -347,71 +387,25 @@
         {{ translateService.t('common.add') }}
       </button>
 
-      <div class="tables-add-row">
-        <mat-form-field appearance="outline" class="type-field">
-          <mat-label>Manual Table Name</mat-label>
-          <input matInput [value]="customTableName()" (input)="customTableName.set($any($event.target).value)" placeholder="e.g., Garden Table A1">
-        </mat-form-field>
-      </div>
-      <button mat-flat-button color="accent" class="add-tables-btn" (click)="addCustomTable()" [disabled]="saving()">
-        <mat-icon>playlist_add</mat-icon>
-        Add Manual
-      </button>
-
-      <!-- Dine-In Tables -->
-      @if (getDineInTables().length > 0) {
-      <div class="tables-group">
-        <span class="group-label">{{ translateService.t('settings.dineInTables') }} ({{ getDineInTables().length }})</span>
-        <div class="tables-chips">
-          @for (table of getDineInTables(); track table.id) {
-            <div class="table-chip" [class.occupied]="table.status === 'occupied'">
-              <span>{{ table.tableNumber }}</span>
-              @if (table.status !== 'occupied') {
-                <button mat-icon-button (click)="deleteTable(table)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </div>
-          }
+      <!-- Dynamic tables list grouped by type -->
+      @for (type of tableTypes(); track type) {
+        @if (getTablesByType(type).length > 0) {
+        <div class="tables-group">
+          <span class="group-label">{{ getTableTypeLabel(type) }} ({{ getTablesByType(type).length }})</span>
+          <div class="tables-chips">
+            @for (table of getTablesByType(type); track table.id) {
+              <div class="table-chip" [class.occupied]="table.status === 'occupied'">
+                <span>{{ table.tableNumber }}</span>
+                @if (table.status !== 'occupied') {
+                  <button mat-icon-button (click)="deleteTable(table)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+            }
+          </div>
         </div>
-      </div>
-      }
-
-      <!-- Parcel Numbers -->
-      @if (getParcelTables().length > 0) {
-      <div class="tables-group">
-        <span class="group-label">{{ translateService.t('settings.parcelNumbers') }} ({{ getParcelTables().length }})</span>
-        <div class="tables-chips">
-          @for (table of getParcelTables(); track table.id) {
-            <div class="table-chip parcel" [class.occupied]="table.status === 'occupied'">
-              <span>{{ table.tableNumber }}</span>
-              @if (table.status !== 'occupied') {
-                <button mat-icon-button (click)="deleteTable(table)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </div>
-          }
-        </div>
-      </div>
-      }
-
-      @if (getGardenTables().length > 0) {
-      <div class="tables-group">
-        <span class="group-label">Garden Tables ({{ getGardenTables().length }})</span>
-        <div class="tables-chips">
-          @for (table of getGardenTables(); track table.id) {
-            <div class="table-chip" [class.occupied]="table.status === 'occupied'">
-              <span>{{ table.tableNumber }}</span>
-              @if (table.status !== 'occupied') {
-                <button mat-icon-button (click)="deleteTable(table)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </div>
-          }
-        </div>
-      </div>
+        }
       }
     </div>
   </mat-expansion-panel>

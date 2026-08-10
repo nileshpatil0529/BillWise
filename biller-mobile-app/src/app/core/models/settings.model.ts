@@ -68,6 +68,7 @@ export interface Settings {
     bills?: TableColumn[];
     customers?: TableColumn[];
   };
+  tableTypes?: string[]; // Custom table type registry
   updatedAt: string;
 }
 

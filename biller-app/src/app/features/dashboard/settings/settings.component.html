@@ -244,13 +244,53 @@
               </div>
 
               <div class="hotel-tables-section">
+                <!-- Step 1: Add a new table type -->
+                <div class="section-subtitle">
+                  <mat-icon>category</mat-icon>
+                  <span>Table Types</span>
+                </div>
+                <div class="add-tables-form">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>New Type Name (e.g. Rooftop, VIP Room)</mat-label>
+                    <input matInput [value]="newTypeName()" (input)="newTypeName.set($any($event.target).value)"
+                           (keydown.enter)="addTableType()" placeholder="Enter type name">
+                  </mat-form-field>
+                  <button mat-raised-button color="accent" (click)="addTableType()" [disabled]="saving()" style="margin-bottom:8px">
+                    <mat-icon>add</mat-icon>
+                    Add Type
+                  </button>
+                </div>
+
+                <!-- Existing types chips -->
+                @if (tableTypes().length > 0) {
+                <div class="tables-chips type-chips">
+                  @for (type of tableTypes(); track type) {
+                    <mat-chip>
+                      <span>{{ getTableTypeLabel(type) }}</span>
+                      @if (!['dine-in','parcel'].includes(type)) {
+                        <button matChipRemove (click)="removeTableType(type)">
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      }
+                    </mat-chip>
+                  }
+                </div>
+                }
+
+                <mat-divider style="margin: 16px 0"></mat-divider>
+
+                <!-- Step 2: Select type and add tables by range -->
+                <div class="section-subtitle">
+                  <mat-icon>table_restaurant</mat-icon>
+                  <span>Add Tables</span>
+                </div>
                 <div class="add-tables-form">
                   <mat-form-field appearance="outline" class="table-type-select">
                     <mat-label>{{ translateService.t('settings.type') }}</mat-label>
                     <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
-                      <mat-option value="dine-in">{{ translateService.t('settings.dineInTables') }}</mat-option>
-                      <mat-option value="parcel">{{ translateService.t('settings.parcelTakeaway') }}</mat-option>
-                      <mat-option value="garden">Garden Table</mat-option>
+                      @for (type of tableTypes(); track type) {
+                        <mat-option [value]="type">{{ getTableTypeLabel(type) }}</mat-option>
+                      }
                     </mat-select>
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="number-input">
@@ -269,71 +309,25 @@
                   </button>
                 </div>
 
-                <div class="add-tables-form">
-                  <mat-form-field appearance="outline" class="full-width">
-                    <mat-label>Manual Table Name</mat-label>
-                    <input matInput [value]="customTableName()" (input)="customTableName.set($any($event.target).value)" placeholder="e.g., Garden Table A1">
-                  </mat-form-field>
-                  <button mat-raised-button color="accent" (click)="addCustomTable()" [disabled]="saving()">
-                    <mat-icon>playlist_add</mat-icon>
-                    Add Manual
-                  </button>
-                </div>
-
-                <!-- Dine-In Tables List -->
-                @if (getDineInTables().length > 0) {
-                <div class="tables-list">
-                  <h4>{{ translateService.t('settings.dineInTables') }} ({{ getDineInTables().length }})</h4>
-                  <div class="tables-chips">
-                    @for (table of getDineInTables(); track table.id) {
-                      <mat-chip [class.occupied]="table.status === 'occupied'">
-                        {{ table.tableNumber }}
-                        @if (table.status !== 'occupied') {
-                          <button matChipRemove (click)="deleteTable(table)">
-                            <mat-icon>cancel</mat-icon>
-                          </button>
-                        }
-                      </mat-chip>
-                    }
+                <!-- Dynamic tables list grouped by type -->
+                @for (type of tableTypes(); track type) {
+                  @if (getTablesByType(type).length > 0) {
+                  <div class="tables-list">
+                    <h4>{{ getTableTypeLabel(type) }} ({{ getTablesByType(type).length }})</h4>
+                    <div class="tables-chips">
+                      @for (table of getTablesByType(type); track table.id) {
+                        <mat-chip [class.occupied]="table.status === 'occupied'">
+                          {{ table.tableNumber }}
+                          @if (table.status !== 'occupied') {
+                            <button matChipRemove (click)="deleteTable(table)">
+                              <mat-icon>cancel</mat-icon>
+                            </button>
+                          }
+                        </mat-chip>
+                      }
+                    </div>
                   </div>
-                </div>
-                }
-
-                <!-- Parcel List -->
-                @if (getParcelTables().length > 0) {
-                <div class="tables-list">
-                  <h4>{{ translateService.t('settings.parcelNumbers') }} ({{ getParcelTables().length }})</h4>
-                  <div class="tables-chips">
-                    @for (table of getParcelTables(); track table.id) {
-                      <mat-chip [class.occupied]="table.status === 'occupied'">
-                        {{ table.tableNumber }}
-                        @if (table.status !== 'occupied') {
-                          <button matChipRemove (click)="deleteTable(table)">
-                            <mat-icon>cancel</mat-icon>
-                          </button>
-                        }
-                      </mat-chip>
-                    }
-                  </div>
-                </div>
-                }
-
-                @if (getGardenTables().length > 0) {
-                <div class="tables-list">
-                  <h4>Garden Tables ({{ getGardenTables().length }})</h4>
-                  <div class="tables-chips">
-                    @for (table of getGardenTables(); track table.id) {
-                      <mat-chip [class.occupied]="table.status === 'occupied'">
-                        {{ table.tableNumber }}
-                        @if (table.status !== 'occupied') {
-                          <button matChipRemove (click)="deleteTable(table)">
-                            <mat-icon>cancel</mat-icon>
-                          </button>
-                        }
-                      </mat-chip>
-                    }
-                  </div>
-                </div>
+                  }
                 }
               </div>
 
