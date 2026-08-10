@@ -63,10 +63,12 @@
           <mat-icon>arrow_back</mat-icon>
           Back
         </button>
-        <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
-          <mat-icon>print</mat-icon>
-          Print
-        </button>
+        @if (authService.isAdmin()) {
+          <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
+            <mat-icon>print</mat-icon>
+            Print
+          </button>
+        }
       </div>
     </div>
   } @else {

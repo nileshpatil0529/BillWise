@@ -92,10 +92,12 @@
           <mat-icon>arrow_back</mat-icon>
           Back to Bills
         </button>
-        <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
-          <mat-icon>print</mat-icon>
-          Print Bill
-        </button>
+        @if (authService.isAdmin()) {
+          <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
+            <mat-icon>print</mat-icon>
+            Print Bill
+          </button>
+        }
         @if (authService.isAdmin() && isTableUnsettled(selectedBill()!)) {
           <button mat-flat-button color="accent" (click)="settleTableFromBill(selectedBill()!)">
             <mat-icon>check_circle</mat-icon>

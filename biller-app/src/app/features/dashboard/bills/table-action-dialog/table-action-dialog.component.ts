@@ -264,21 +264,8 @@ export class TableActionDialogComponent implements OnInit {
     this.saving.set(true);
     this.billService.printBill(b.billId).subscribe({
       next: () => {
-        this.billService.updateBill(b.billId, {
-          paymentMethod: this.selectedPaymentMethod as any,
-          paymentStatus: 'paid',
-          amountPaid: b.grandTotal,
-          billStatus: 'completed'
-        }).subscribe({
-          next: () => {
-            this.saving.set(false);
-            this.dialogRef.close({ saved: true });
-          },
-          error: (err: any) => {
-            this.saving.set(false);
-            this.snackBar.open(err.error?.message || 'Bill printed but failed to save', 'OK', { duration: 3000 });
-          }
-        });
+        this.saving.set(false);
+        this.snackBar.open('Bill sent to printer', 'OK', { duration: 2000 });
       },
       error: (err: any) => {
         this.saving.set(false);
