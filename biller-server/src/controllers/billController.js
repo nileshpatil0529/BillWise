@@ -462,6 +462,18 @@ export const updateBill = async (req, res) => {
       // Note: kotItems marking is handled by printKOT endpoint after successful printing
     }
 
+    // Persist tableId when switching tables
+    if (updates.tableId !== undefined) {
+      db.prepare('UPDATE bills SET tableId = ?, updatedAt = ? WHERE billId = ?')
+        .run(updates.tableId, now, id);
+    }
+
+    // Persist businessTypeData when switching tables
+    if (updates.businessTypeData !== undefined) {
+      db.prepare('UPDATE bills SET businessTypeData = ?, updatedAt = ? WHERE billId = ?')
+        .run(JSON.stringify(updates.businessTypeData), now, id);
+    }
+
     // Update other allowed fields
     const allowedUpdates = ['paymentStatus', 'paymentMethod', 'amountPaid', 'notes', 'customerName', 'customerPhone', 'tipAmount'];
 
