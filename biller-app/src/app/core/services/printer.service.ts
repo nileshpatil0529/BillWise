@@ -345,9 +345,9 @@ export class PrinterService {
     m.font = `400 ${bodySize}px ${fontFamily}`;
     const itemNameLines = newItems.map((item: any) => this.wrapText(m, this.pickItemName(item, isHindi), colItemW - 6));
 
-    let height = padding + titleSize + 6 + (smallSize + 4) * 2 + rowHeight * 2;
+    let height = padding + titleSize + 6 + (smallSize + 4) * 2 + rowHeight;
     itemNameLines.forEach((lines: string[]) => { height += Math.max(1, lines.length) * rowHeight; });
-    height += rowHeight + padding;
+    height += padding * 2; // inner bottom padding + outer bottom margin
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -455,26 +455,24 @@ export class PrinterService {
     let height = 0;
     height += padding;
     height += titleSize + 6;
-    height += (smallSize + 4) * 2;
-    height += rowHeight + 4;
-    height += rowHeight;
-    height += rowHeight;
+    height += rowHeight * 2; // two date/table header rows
+    height += rowHeight; // col header
 
     itemNameLines.forEach(lines => {
       height += Math.max(1, lines.length) * rowHeight;
     });
 
-    height += rowHeight;
+    height += rowHeight; // TOTAL
     if (Number(bill.taxTotal || 0) > 0) height += rowHeight;
     if (Number(bill.discountTotal || 0) > 0) height += rowHeight;
-    height += rowHeight + 6;
+    height += rowHeight; // NET AMT
     if (settings?.taxNumber) height += smallSize + 4;
     // Reserve space for QR code when online payment + UPI configured
     const showQr = bill.paymentMethod === 'online' && !!settings?.upiId;
     const qrDisplaySize = paperSize === '2inch' ? 120 : 160;
     if (showQr) height += qrDisplaySize + smallSize + 18;
-    height += smallSize + 4;
-    height += padding * 2; // top padding (outside) + bottom padding (inside + outside)
+    height += smallSize + 4; // footer text
+    height += padding * 2; // inner bottom padding + outer bottom margin
 
     const scale = 2;
     const canvas = document.createElement('canvas');

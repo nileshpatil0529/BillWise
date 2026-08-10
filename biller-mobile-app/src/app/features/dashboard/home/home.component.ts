@@ -33,6 +33,7 @@ import { Product, CartItem } from '../../../core/models/product.model';
 import { Customer } from '../../../core/models/customer.model';
 import { RestaurantTable } from '../../../core/models/hotel.model';
 import { Unit } from '../../../core/models/settings.model';
+import { ConfirmDialogComponent, ConfirmDialogData } from './confirm-dialog/confirm-dialog.component';
 
 // Interface for tracking attended table state
 interface AttendedTableState {
@@ -785,6 +786,39 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   clearCart(): void {
+    const isHotel = this.isHotelMode();
+    const table = this.selectedTable();
+    const hasItems = this.billService.cartItems().length > 0;
+
+    const dialogData: ConfirmDialogData = isHotel && table
+      ? {
+          title: 'Clear Cart & Free Table?',
+          message: `All items for Table ${table.tableNumber} will be removed and the table will be marked as available.`,
+          detail: 'This action cannot be undone.',
+          confirmLabel: 'Yes, Clear Cart'
+        }
+      : {
+          title: 'Clear Cart?',
+          message: hasItems
+            ? 'All items in the cart will be permanently removed.'
+            : 'Are you sure you want to reset the current order?',
+          detail: 'This action cannot be undone.',
+          confirmLabel: 'Yes, Clear Cart'
+        };
+
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '400px',
+      maxWidth: '95vw',
+      data: dialogData
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.executeCartClear();
+    });
+  }
+
+  private executeCartClear(): void {
     const billId = this.currentBillId();
     
     // Delete bill from database if it exists (for pending/draft bills)
@@ -1619,6 +1653,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (this.kotPrinting()) return; // Guard against double-click
     if (this.billService.cartItems().length === 0) {
       this.snackBar.open('No items to print', 'Close', { duration: 3000 });
+      return;
+    }
+    // For existing bills, block if no new items have been added since last KOT
+    if (this.currentBillId() && !this.hasUnsavedChanges()) {
+      this.snackBar.open('No new items to print. Add items to the cart first.', 'Close', {
+        duration: 4000,
+        panelClass: ['warning-snackbar']
+      });
       return;
     }
 

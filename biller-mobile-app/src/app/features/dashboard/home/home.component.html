@@ -469,7 +469,7 @@
           @if (isHotelMode()) {
             <div class="action-buttons">
               <button mat-flat-button color="accent" (click)="printKOT(); $event.stopPropagation()" 
-                      [disabled]="billService.cartItems().length === 0 || kotPrinting()" class="kot-btn">
+                      [disabled]="billService.cartItems().length === 0 || kotPrinting() || (currentBillId() !== null && !hasUnsavedChanges())" class="kot-btn">
                 <mat-icon>restaurant</mat-icon>
                 <span>KOT</span>
               </button>

@@ -615,7 +615,8 @@
             <div class="hotel-actions-grid">
               <div class="actions-row">
                 <button mat-raised-button color="accent" (click)="printKOT()" 
-                        [disabled]="billService.cartItems().length === 0 || kotPrinting()" class="action-btn kot-btn">
+                        [disabled]="billService.cartItems().length === 0 || kotPrinting() || (currentBillId() !== null && !hasUnsavedChanges())" class="action-btn kot-btn"
+                        [matTooltip]="currentBillId() && !hasUnsavedChanges() ? 'No new items to print' : ''">
                   <mat-icon>restaurant</mat-icon>
                   KOT
                 </button>
