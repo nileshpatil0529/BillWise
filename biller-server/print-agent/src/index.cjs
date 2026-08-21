@@ -12,7 +12,7 @@ const STARTUP_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
 const STARTUP_APPROVED_RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run';
 const STARTUP_VALUE = 'BillWisePrintAgent';
 const LEGACY_STARTUP_VALUES = ['BillWiseStartup', 'BillWiseStartupAgent'];
-const AGENT_VERSION = '1.1.0';
+const AGENT_VERSION = '1.2.0';
 const STARTUP_SCRIPT_NAME = 'BillWisePrintAgent-startup.vbs';
 
 function getInstallContext() {
@@ -113,21 +113,57 @@ function runPowerShell(command) {
   });
 }
 
-function listWindowsPrinters() {
+// Async PowerShell executor — keeps the event loop free during print jobs.
+function spawnPowerShell(command, timeoutMs = 30_000) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command], {
+      windowsHide: true
+    });
+
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      proc.kill();
+      reject(new Error(`PowerShell timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    proc.stdout.on('data', d => { stdout += d.toString(); });
+    proc.stderr.on('data', d => { stderr += d.toString(); });
+
+    proc.on('close', code => {
+      clearTimeout(timer);
+      if (timedOut) return;
+      if (code !== 0) reject(new Error(stderr.trim() || 'PowerShell command failed'));
+      else resolve(stdout);
+    });
+
+    proc.on('error', err => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+// Serialises all print jobs so concurrent requests never spawn two printers at once.
+let printQueue = Promise.resolve();
+function enqueuePrint(fn) {
+  const job = printQueue.then(fn);
+  printQueue = job.then(() => {}, () => {});
+  return job;
+}
+
+async function listWindowsPrinters() {
   const ps = "$ErrorActionPreference = 'Stop'; $names = Get-Printer | Select-Object -ExpandProperty Name; $names | ConvertTo-Json -Compress";
-  const result = runPowerShell(ps);
-  if (result.status !== 0) {
-    throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Unable to read printers');
-  }
-
-  const out = (result.stdout || '').trim();
+  const out = (await spawnPowerShell(ps, 15_000)).trim();
   if (!out) return [];
-
   const parsed = JSON.parse(out);
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
-function sendRawToPrinter(printerName, data) {
+async function sendRawToPrinter(printerName, data) {
   const escapedPrinter = escapeSingleQuotes(printerName);
   const payload = Buffer.from(data, 'utf8').toString('base64');
 
@@ -211,13 +247,10 @@ finally {
 }
 `;
 
-  const result = runPowerShell(ps);
-  if (result.status !== 0) {
-    throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Raw print failed');
-  }
+  return enqueuePrint(() => spawnPowerShell(ps));
 }
 
-function sendImageToPrinter(printerName, imageBase64, paperSize = '3inch') {
+async function sendImageToPrinter(printerName, imageBase64, paperSize = '3inch') {
   const escapedPrinter = escapeSingleQuotes(printerName);
   const paperWidth = paperSize === '2inch' ? 190 : 286;
   const tmpFile = path.join(os.tmpdir(), `billwise-print-${Date.now()}-${Math.random().toString(16).slice(2)}.b64`);
@@ -286,18 +319,13 @@ finally {
 }
 `;
 
-  try {
-    const result = runPowerShell(ps);
-    if (result.status !== 0) {
-      throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Image print failed');
-    }
-  } finally {
+  return enqueuePrint(async () => {
     try {
-      fs.unlinkSync(tmpFile);
-    } catch {
-      // Best effort cleanup.
+      await spawnPowerShell(ps);
+    } finally {
+      try { fs.unlinkSync(tmpFile); } catch {}
     }
-  }
+  });
 }
 
 function preventSystemSleep() {
@@ -355,16 +383,16 @@ async function startService() {
     });
   });
 
-  app.get('/printers', (_req, res) => {
+  app.get('/printers', async (_req, res) => {
     try {
-      const printers = listWindowsPrinters();
+      const printers = await listWindowsPrinters();
       res.json({ success: true, printers });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message, printers: [] });
     }
   });
 
-  app.post('/print', (req, res) => {
+  app.post('/print', async (req, res) => {
     const body = req.body || {};
     const printerName = body.printerName;
     const data = body.data;
@@ -374,14 +402,14 @@ async function startService() {
     }
 
     try {
-      sendRawToPrinter(printerName, data);
+      await sendRawToPrinter(printerName, data);
       return res.json({ success: true, message: 'Print sent' });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message || 'Print failed' });
     }
   });
 
-  app.post('/print-image', (req, res) => {
+  app.post('/print-image', async (req, res) => {
     const body = req.body || {};
     const printerName = body.printerName;
     const imageBase64 = body.imageBase64;
@@ -392,7 +420,7 @@ async function startService() {
     }
 
     try {
-      sendImageToPrinter(printerName, imageBase64, paperSize);
+      await sendImageToPrinter(printerName, imageBase64, paperSize);
       return res.json({ success: true, message: 'Image print sent' });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message || 'Image print failed' });

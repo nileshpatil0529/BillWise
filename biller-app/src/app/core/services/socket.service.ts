@@ -36,6 +36,13 @@ export class SocketService {
       }
     });
 
+    // Keep server registration in sync when print agent goes offline
+    effect(() => {
+      if (this.printerService.agentStatus() === 'disconnected') {
+        this.refreshPrinterRegistration();
+      }
+    });
+
     // PWA: Reconnect when app comes to foreground
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !this.socket?.connected && this.authService.currentUser()) {
@@ -160,12 +167,14 @@ export class SocketService {
 
     this.printerRuntimeInitInFlight = (async () => {
       if (!this.printerConfigLoadAttempted) {
-        this.printerConfigLoadAttempted = true;
         await new Promise<void>((resolve) => {
           this.printerService.loadConfig().subscribe({
-            next: () => resolve(),
+            next: () => {
+              this.printerConfigLoadAttempted = true;
+              resolve();
+            },
             error: (err) => {
-              console.warn('Printer config load failed:', err);
+              console.warn('Printer config load failed, will retry on next connect:', err);
               resolve();
             }
           });
@@ -195,8 +204,7 @@ export class SocketService {
   refreshPrinterRegistration(): void {
     const user = this.authService.currentUser();
     if (!user?.uid || !this.socket?.connected) return;
-    const cfg = this.printerService.config();
-    if (cfg.enabled && cfg.printerName) {
+    if (this.printerService.isReady()) {
       this.socket.emit('register-printer', { userId: user.uid });
     } else {
       this.socket.emit('unregister-printer', { userId: user.uid });

@@ -145,7 +145,8 @@ export class PrinterConfigComponent implements OnInit {
       taxNumber: 'TESTGST123',
       footerText: 'Thank you!',
       taxRates: [{ name: 'GST', rate: 18 }],
-      receiptLanguage: 'en'
+      receiptLanguage: 'en',
+      kotLanguage: 'en'
     };
   }
 }

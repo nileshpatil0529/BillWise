@@ -21,6 +21,7 @@ export class PrinterService {
   agentStatus = signal<'unchecked' | 'connected' | 'disconnected' | 'loading'>('unchecked');
   availablePrinters = signal<string[]>([]);
   private healthCheckInterval: ReturnType<typeof setInterval> | null = null;
+  private wakeListenerAttached = false;
 
   // ─── Config API ────────────────────────────────────────────────────────────
 
@@ -58,6 +59,7 @@ export class PrinterService {
       this.agentStatus.set('connected');
       await this.refreshPrinters();
       this.startHealthCheck();
+      this.setupWakeListener();
     } catch (err: any) {
       this.agentStatus.set('disconnected');
       throw new Error(err?.message || 'BillWise Print Agent is not running');
@@ -87,6 +89,16 @@ export class PrinterService {
       clearInterval(this.healthCheckInterval);
       this.healthCheckInterval = null;
     }
+  }
+
+  private setupWakeListener(): void {
+    if (!this.isBrowser || this.wakeListenerAttached) return;
+    this.wakeListenerAttached = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible' && this.agentStatus() !== 'connected') {
+        this.connectAgent().catch(() => {});
+      }
+    });
   }
 
   async refreshPrinters(): Promise<string[]> {

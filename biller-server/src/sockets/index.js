@@ -67,6 +67,17 @@ export const initializeSocketIO = (httpServer) => {
       clearTimeout(pending.timer); // cancel the stale-job timeout
       pendingPrintJobs.delete(requestId);
 
+      // Retry on fast failure the same way the timeout-based retry works
+      if (!success && pending.retryCount < MAX_PRINT_RETRIES) {
+        const { socketId } = findConnectedPrinter();
+        if (socketId) {
+          const newId = uuidv4();
+          dispatchPrintJob(newId, pending.payload, pending.requesterUserId, pending.retryCount + 1);
+          io.to(socketId).emit('print-job', { requestId: newId, ...pending.payload });
+          return;
+        }
+      }
+
       // For KOT: mark items as printed in DB on success
       if (type === 'kot' && success && pending.billId) {
         try {
@@ -164,7 +175,7 @@ const dispatchPrintJob = (requestId, payload, requesterUserId, retryCount) => {
 
   pendingPrintJobs.set(requestId, {
     requesterUserId, billId: payload.bill?.billId || null,
-    type: payload.type, payload, timer
+    type: payload.type, payload, timer, retryCount
   });
 };
 

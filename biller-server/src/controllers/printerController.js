@@ -88,7 +88,8 @@ export const requestPrint = async (req, res) => {
       upiId: settings?.upiId,
       footerText: settings?.footerText,
       taxRates: settings?.taxRates ? JSON.parse(settings.taxRates) : [],
-      receiptLanguage: settings?.receiptLanguage || 'en'
+      receiptLanguage: settings?.receiptLanguage || 'en',
+      kotLanguage: settings?.kotLanguage || 'en'
     };
 
     const result = routePrintJob({ bill: billData, settings: settingsData, type }, requesterUserId);

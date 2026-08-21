@@ -252,8 +252,8 @@
               </span>
             </div>
             <div class="bill-actions">
-              <span class="status-badge" [class]="getPaymentStatusClass(bill.paymentStatus)">
-                {{ bill.paymentStatus | titlecase }}
+              <span class="status-badge" [class]="getDisplayStatusClass(bill)">
+                {{ getDisplayStatusLabel(bill) }}
               </span>
               @if (authService.isAdmin()) {
                 <button mat-icon-button class="print-btn" (click)="printBill(bill); $event.stopPropagation()">

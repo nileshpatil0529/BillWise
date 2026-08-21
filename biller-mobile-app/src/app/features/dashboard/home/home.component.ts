@@ -189,6 +189,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       this.socketService.off('tables-refresh-needed');
       this.socketService.off('bill-created');
       this.socketService.off('bill-updated');
+      this.socketService.off('print-response');
       this.socketService.off('kot-printed');
     }
   }
@@ -1714,7 +1715,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             // Now try to print KOT via thermal printer
             this.billService.printKOT(this.currentBillId()!).subscribe({
               next: (printResponse) => {
-                if (printResponse.success) {
+                // requestId means job was queued via server; billStatus set by kot-printed socket event
+                if (printResponse.success && !printResponse.requestId) {
                   this.billStatus.set('kot-printed');
                 }
                 this.kotPrinting.set(false);
@@ -1726,6 +1728,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                 this.kotPrinting.set(false);
               }
             });
+          } else {
+            this.kotPrinting.set(false);
           }
         },
         error: () => {
@@ -1752,7 +1756,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
             // Now try to print KOT via thermal printer
             this.billService.printKOT(response.data.billId).subscribe({
               next: (printResponse) => {
-                if (printResponse.success) {
+                // requestId means job was queued via server; billStatus set by kot-printed socket event
+                if (printResponse.success && !printResponse.requestId) {
                   this.billStatus.set('kot-printed');
                 }
                 this.kotPrinting.set(false);
@@ -1764,6 +1769,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                 this.kotPrinting.set(false);
               }
             });
+          } else {
+            this.kotPrinting.set(false);
           }
         },
         error: () => {
@@ -2000,6 +2007,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.socketService.on('kot-printed', (data: any) => {
       this.handleKOTPrinted(data);
     });
+
+    // Reset billStatus if server-routed KOT print fails after optimistic queuing
+    this.socketService.on('print-response', (data: any) => {
+      if (!data.success && data.type === 'kot' && this.currentBillId()) {
+        this.billStatus.set('draft');
+      }
+    });
   }
 
   private handleTableUpdate(data: any): void {
@@ -2096,13 +2110,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   private handleKOTPrinted(data: any): void {
-    // Reload tables to show KOT printed status
     this.hotelService.loadTables().subscribe({
       next: () => {
-        // Show notification if this is the currently selected table
         const currentTable = this.selectedTable();
         if (currentTable && data.tableId === currentTable.id && data.billId === this.currentBillId()) {
-          const message = data.printError ? 'KOT print failed for this table' : 'KOT printed for this table';
+          this.billStatus.set('kot-printed');
+          if (data.printError) {
+            this.snackBar.open('KOT print failed for this table', 'OK', { duration: 3000 });
+          }
         }
       }
     });
