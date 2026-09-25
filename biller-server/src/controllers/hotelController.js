@@ -9,8 +9,8 @@ export const getTables = async (req, res) => {
     const tables = db.prepare(`
       SELECT rt.*, b.billNumber, b.grandTotal
       FROM restaurant_tables rt
-      LEFT JOIN bills b ON rt.currentBillId = b.billId AND b.billStatus != 'completed'
-      ORDER BY rt.tableType, CAST(SUBSTR(rt.tableNumber, 2) AS INTEGER)
+      LEFT JOIN bills b ON rt.currentBillId = b.billId
+      ORDER BY rt.id ASC
     `).all();
     
     res.json({
@@ -60,7 +60,32 @@ export const getTable = async (req, res) => {
 // Create tables in range
 export const createTables = async (req, res) => {
   try {
-    const { startNumber, endNumber, tableType = 'dine-in', capacity = 4 } = req.body;
+    const { startNumber, endNumber, tableType = 'dine-in', capacity = 4, customTableName } = req.body;
+
+    const type = (typeof tableType === 'string' && tableType.trim()) ? tableType.trim() : 'dine-in';
+
+    if (customTableName && String(customTableName).trim()) {
+      const manualName = String(customTableName).trim();
+      const existing = db.prepare('SELECT id FROM restaurant_tables WHERE LOWER(tableNumber) = LOWER(?)').get(manualName);
+      if (existing) {
+        return res.status(400).json({
+          success: false,
+          message: 'Table name already exists'
+        });
+      }
+
+      db.prepare(`
+        INSERT INTO restaurant_tables (tableNumber, tableType, capacity, status)
+        VALUES (?, ?, ?, 'available')
+      `).run(manualName, type, capacity);
+
+      emitTablesRefresh();
+      return res.status(201).json({
+        success: true,
+        message: 'Table created successfully',
+        data: { created: [manualName], skipped: [] }
+      });
+    }
 
     if (!startNumber || !endNumber) {
       return res.status(400).json({
@@ -87,11 +112,19 @@ export const createTables = async (req, res) => {
     const createdTables = [];
     const skippedTables = [];
 
+    // Derive prefix: P for parcel, T for dine-in, first-letter(s) of each word for custom types
+    const getPrefix = (t) => {
+      if (t === 'parcel') return 'P';
+      if (t === 'dine-in') return 'T';
+      return t.split(/[\s-]+/).map(w => (w[0] || '').toUpperCase()).join('') || 'X';
+    };
+    const prefix = getPrefix(type);
+
     for (let i = start; i <= end; i++) {
-      const tableNumber = tableType === 'parcel' ? `P${i}` : `T${i}`;
+      const tableNumber = `${prefix}${i}`;
       
       try {
-        insertTable.run(tableNumber, tableType, capacity);
+        insertTable.run(tableNumber, type, capacity);
         createdTables.push(tableNumber);
       } catch (e) {
         // Table already exists
@@ -101,7 +134,6 @@ export const createTables = async (req, res) => {
 
     // Emit WebSocket event if tables were created
     if (createdTables.length > 0) {
-      console.log('📤 Emitting tables-refresh after creating', createdTables.length, 'tables');
       emitTablesRefresh();
     }
 
@@ -147,7 +179,6 @@ export const updateTable = async (req, res) => {
     );
 
     // Emit WebSocket events for real-time updates
-    console.log('📤 Emitting table update for table:', id);
     emitTablesRefresh(); // Refresh all table grids
 
     res.json({
@@ -186,7 +217,6 @@ export const deleteTable = async (req, res) => {
     db.prepare('DELETE FROM restaurant_tables WHERE id = ?').run(id);
 
     // Emit WebSocket event for real-time updates
-    console.log('📤 Emitting tables-refresh after deleting table:', id);
     emitTablesRefresh();
 
     res.json({
@@ -215,7 +245,6 @@ export const updateTableStatus = async (req, res) => {
     `).run(status, currentBillId || null, new Date().toISOString(), id);
 
     // Emit WebSocket events for real-time updates
-    console.log('📤 Emitting table status update for table:', id, 'status:', status);
     emitTableUpdate({ tableId: parseInt(id), status, currentBillId: currentBillId || null });
     emitTablesRefresh(); // Refresh all table grids
 
@@ -229,6 +258,34 @@ export const updateTableStatus = async (req, res) => {
       success: false,
       message: 'Failed to update table status'
     });
+  }
+};
+
+// Settle table (Admin only) — marks an unsettled table as available
+export const settleTable = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const table = db.prepare('SELECT * FROM restaurant_tables WHERE id = ?').get(id);
+    if (!table) {
+      return res.status(404).json({ success: false, message: 'Table not found' });
+    }
+
+    if (table.status !== 'unsettled') {
+      return res.status(400).json({ success: false, message: 'Table is not in unsettled state' });
+    }
+
+    const now = new Date().toISOString();
+    db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL, updatedAt = ? WHERE id = ?')
+      .run('available', now, id);
+
+    emitTableUpdate({ tableId: parseInt(id), status: 'available', currentBillId: null });
+    emitTablesRefresh();
+
+    res.json({ success: true, message: 'Table settled successfully' });
+  } catch (error) {
+    console.error('Settle table error:', error);
+    res.status(500).json({ success: false, message: 'Failed to settle table' });
   }
 };
 

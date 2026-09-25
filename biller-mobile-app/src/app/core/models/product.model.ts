@@ -2,6 +2,7 @@ export interface Product {
   productId: string;
   name: string;
   nameHi?: string;  // Hindi name (optional) - used when receipt language is Hindi
+  isStockTracked?: boolean; // Whether stock should be enforced for this item
   category: string;
   description?: string;
   unitPrice: number;

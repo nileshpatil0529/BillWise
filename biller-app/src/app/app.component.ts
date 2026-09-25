@@ -2,6 +2,7 @@ import { Component, effect, inject } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
 import { SettingsService } from './core/services/settings.service';
 import { AutoBlurService } from './core/services/auto-blur.service';
+import { InternetConnectivityService } from './core/services/internet-connectivity.service';
 
 @Component({
   selector: 'app-root',
@@ -12,8 +13,9 @@ import { AutoBlurService } from './core/services/auto-blur.service';
 })
 export class AppComponent {
   title = 'biller-app';
-  private settingsService = inject(SettingsService);
+  settingsService = inject(SettingsService);
   private autoBlurService = inject(AutoBlurService);
+  connectivityService = inject(InternetConnectivityService);
 
   constructor() {
     // Initialize auto-blur service to prevent barcode scanner triggering buttons
@@ -23,6 +25,11 @@ export class AppComponent {
     effect(() => {
       const isDark = this.settingsService.currentTheme() === 'dark';
       document.body.classList.toggle('dark-theme', isDark);
+    });
+
+    effect(() => {
+      const isEnabled = this.settingsService.settings().internetStatusCheckEnabled ?? true;
+      this.connectivityService.setEnabled(isEnabled);
     });
   }
 }

@@ -244,12 +244,53 @@
               </div>
 
               <div class="hotel-tables-section">
+                <!-- Step 1: Add a new table type -->
+                <div class="section-subtitle">
+                  <mat-icon>category</mat-icon>
+                  <span>Table Types</span>
+                </div>
+                <div class="add-tables-form">
+                  <mat-form-field appearance="outline" class="full-width">
+                    <mat-label>New Type Name (e.g. Rooftop, VIP Room)</mat-label>
+                    <input matInput [value]="newTypeName()" (input)="newTypeName.set($any($event.target).value)"
+                           (keydown.enter)="addTableType()" placeholder="Enter type name">
+                  </mat-form-field>
+                  <button mat-raised-button color="accent" (click)="addTableType()" [disabled]="saving()" style="margin-bottom:8px">
+                    <mat-icon>add</mat-icon>
+                    Add Type
+                  </button>
+                </div>
+
+                <!-- Existing types chips -->
+                @if (tableTypes().length > 0) {
+                <div class="tables-chips type-chips">
+                  @for (type of tableTypes(); track type) {
+                    <mat-chip>
+                      <span>{{ getTableTypeLabel(type) }}</span>
+                      @if (!['dine-in','parcel'].includes(type)) {
+                        <button matChipRemove (click)="removeTableType(type)">
+                          <mat-icon>cancel</mat-icon>
+                        </button>
+                      }
+                    </mat-chip>
+                  }
+                </div>
+                }
+
+                <mat-divider style="margin: 16px 0"></mat-divider>
+
+                <!-- Step 2: Select type and add tables by range -->
+                <div class="section-subtitle">
+                  <mat-icon>table_restaurant</mat-icon>
+                  <span>Add Tables</span>
+                </div>
                 <div class="add-tables-form">
                   <mat-form-field appearance="outline" class="table-type-select">
                     <mat-label>{{ translateService.t('settings.type') }}</mat-label>
                     <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
-                      <mat-option value="dine-in">{{ translateService.t('settings.dineInTables') }}</mat-option>
-                      <mat-option value="parcel">{{ translateService.t('settings.parcelTakeaway') }}</mat-option>
+                      @for (type of tableTypes(); track type) {
+                        <mat-option [value]="type">{{ getTableTypeLabel(type) }}</mat-option>
+                      }
                     </mat-select>
                   </mat-form-field>
                   <mat-form-field appearance="outline" class="number-input">
@@ -268,84 +309,29 @@
                   </button>
                 </div>
 
-                <!-- Dine-In Tables List -->
-                @if (getDineInTables().length > 0) {
-                <div class="tables-list">
-                  <h4>{{ translateService.t('settings.dineInTables') }} ({{ getDineInTables().length }})</h4>
-                  <div class="tables-chips">
-                    @for (table of getDineInTables(); track table.id) {
-                      <mat-chip [class.occupied]="table.status === 'occupied'">
-                        {{ table.tableNumber }}
-                        @if (table.status !== 'occupied') {
-                          <button matChipRemove (click)="deleteTable(table)">
-                            <mat-icon>cancel</mat-icon>
-                          </button>
-                        }
-                      </mat-chip>
-                    }
+                <!-- Dynamic tables list grouped by type -->
+                @for (type of tableTypes(); track type) {
+                  @if (getTablesByType(type).length > 0) {
+                  <div class="tables-list">
+                    <h4>{{ getTableTypeLabel(type) }} ({{ getTablesByType(type).length }})</h4>
+                    <div class="tables-chips">
+                      @for (table of getTablesByType(type); track table.id) {
+                        <mat-chip [class.occupied]="table.status === 'occupied'">
+                          {{ table.tableNumber }}
+                          @if (table.status !== 'occupied') {
+                            <button matChipRemove (click)="deleteTable(table)">
+                              <mat-icon>cancel</mat-icon>
+                            </button>
+                          }
+                        </mat-chip>
+                      }
+                    </div>
                   </div>
-                </div>
-                }
-
-                <!-- Parcel List -->
-                @if (getParcelTables().length > 0) {
-                <div class="tables-list">
-                  <h4>{{ translateService.t('settings.parcelNumbers') }} ({{ getParcelTables().length }})</h4>
-                  <div class="tables-chips">
-                    @for (table of getParcelTables(); track table.id) {
-                      <mat-chip [class.occupied]="table.status === 'occupied'">
-                        {{ table.tableNumber }}
-                        @if (table.status !== 'occupied') {
-                          <button matChipRemove (click)="deleteTable(table)">
-                            <mat-icon>cancel</mat-icon>
-                          </button>
-                        }
-                      </mat-chip>
-                    }
-                  </div>
-                </div>
+                  }
                 }
               </div>
 
               <mat-divider></mat-divider>
-
-              <!-- Item Notes Section -->
-              <div class="section-title">
-                <mat-icon>note_add</mat-icon>
-                <span>{{ translateService.t('settings.itemNotes') }}</span>
-              </div>
-
-              <div class="notes-section">
-                <div class="add-note-form">
-                  <mat-form-field appearance="outline" class="note-input">
-                    <mat-label>{{ translateService.t('settings.noteLabel') }}</mat-label>
-                    <input matInput [value]="newNoteLabel()" 
-                           (input)="newNoteLabel.set($any($event.target).value)"
-                           (keyup.enter)="addItemNote()"
-                           placeholder="e.g., Spicy, No salt, No sugar">
-                  </mat-form-field>
-                  <button mat-raised-button color="primary" (click)="addItemNote()" [disabled]="saving()">
-                    <mat-icon>add</mat-icon>
-                    {{ translateService.t('settings.addNote') }}
-                  </button>
-                </div>
-
-                @if (hotelService.itemNotes().length > 0) {
-                <div class="notes-list">
-                  <div class="notes-chips">
-                    @for (note of hotelService.itemNotes(); track note.id) {
-                      <mat-chip>
-                        {{ note.label }}
-                        <button matChipRemove (click)="deleteItemNote(note)">
-                          <mat-icon>cancel</mat-icon>
-                        </button>
-                      </mat-chip>
-                    }
-                  </div>
-                </div>
-                }
-              </div>
-
 
               }
             </form>
@@ -453,6 +439,23 @@
                 </button>
               </div>
               <p class="hint-text">{{ translateService.t('settings.languageHint') }}</p>
+            </div>
+
+            <mat-divider></mat-divider>
+
+            <!-- Internet Status Check Section -->
+            <div class="account-section">
+              <label>{{ translateService.t('settings.internetStatusCheck') }}</label>
+              <div class="theme-toggle">
+                <span class="toggle-label">
+                  <mat-icon>wifi</mat-icon>
+                  {{ translateService.t('settings.internetStatusCheckHint') }}
+                </span>
+                <mat-slide-toggle
+                  [checked]="internetStatusCheckEnabled()"
+                  (change)="onInternetStatusCheckToggle($event.checked)">
+                </mat-slide-toggle>
+              </div>
             </div>
 
             <mat-divider></mat-divider>
@@ -634,6 +637,27 @@
 
               <mat-divider></mat-divider>
 
+              <!-- KOT Language Toggle -->
+              <div class="language-section">
+                <div class="section-title">
+                  <mat-icon>restaurant_menu</mat-icon>
+                  <span>KOT Language</span>
+                </div>
+                <p class="section-hint">Language used when printing Kitchen Order Tickets (KOT)</p>
+                <div class="language-toggle">
+                  <button mat-stroked-button (click)="receiptForm.patchValue({ kotLanguage: 'en' })" [class.active]="receiptForm.get('kotLanguage')?.value === 'en'">
+                    <mat-icon>language</mat-icon>
+                    English
+                  </button>
+                  <button mat-stroked-button (click)="receiptForm.patchValue({ kotLanguage: 'hi' })" [class.active]="receiptForm.get('kotLanguage')?.value === 'hi'">
+                    <mat-icon>translate</mat-icon>
+                    हिंदी (Hindi)
+                  </button>
+                </div>
+              </div>
+
+              <mat-divider></mat-divider>
+
               <div class="form-row two-col">
                 <mat-form-field appearance="outline">
                   <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>
@@ -679,98 +703,7 @@
     </mat-tab>
     }
 
-    <!-- Categories Tab (Admin Only) -->
-    @if (authService.isAdmin()) {
-    <mat-tab>
-      <ng-template mat-tab-label>
-        <mat-icon>category</mat-icon>
-        <span>{{ translateService.t('settings.categories') }}</span>
-      </ng-template>
 
-      <div class="tab-content">
-        <mat-card class="settings-card">
-          <mat-card-header>
-            <mat-icon mat-card-avatar>category</mat-icon>
-            <mat-card-title>{{ translateService.t('settings.productCategories') }}</mat-card-title>
-            <mat-card-subtitle>{{ translateService.t('settings.categoriesHint') }}</mat-card-subtitle>
-          </mat-card-header>
-
-          <mat-card-content>
-            <!-- Add New Category -->
-            <div class="category-add-section">
-              <mat-form-field appearance="outline" class="category-input">
-                <mat-label>{{ translateService.t('settings.newCategory') }}</mat-label>
-                <input matInput 
-                       [value]="newCategoryName()" 
-                       (input)="newCategoryName.set($any($event.target).value)"
-                       (keyup.enter)="addCategory()"
-                       placeholder="Enter category name">
-                <mat-icon matPrefix>add</mat-icon>
-              </mat-form-field>
-              <button mat-raised-button color="primary" (click)="addCategory()">
-                <mat-icon>add</mat-icon>
-                {{ translateService.t('settings.addCategory') }}
-              </button>
-            </div>
-
-            <mat-divider></mat-divider>
-
-            <!-- Categories List -->
-            <div class="categories-list">
-              <h3>{{ translateService.t('settings.categories') }}</h3>
-              <p class="hint">{{ translateService.t('settings.categoryHint') }}</p>
-              
-              @if (categories().length === 0) {
-                <div class="empty-state">
-                  <mat-icon>category</mat-icon>
-                  <p>No categories yet. Add your first category above.</p>
-                </div>
-              } @else {
-                <mat-list>
-                  @for (category of categories(); track $index) {
-                    <mat-list-item>
-                      <div class="category-item">
-                        <mat-checkbox 
-                          [checked]="category.enabled"
-                          (change)="toggleCategory($index)">
-                          <span class="category-name">{{ category.name }}</span>
-                        </mat-checkbox>
-                        @if (category.name !== 'General') {
-                          <button mat-icon-button 
-                                  color="warn" 
-                                  (click)="removeCategory($index)"
-                                  matTooltip="Remove category">
-                            <mat-icon>delete</mat-icon>
-                          </button>
-                        }
-                      </div>
-                    </mat-list-item>
-                    <mat-divider></mat-divider>
-                  }
-                </mat-list>
-              }
-            </div>
-          </mat-card-content>
-
-          <mat-card-actions align="end">
-            <button mat-flat-button color="primary" (click)="saveCategories()" [disabled]="saving()">
-              @if (saving()) {
-                <span class="button-content">
-                  <mat-spinner diameter="20"></mat-spinner>
-                  {{ translateService.t('settings.saving') }}
-                </span>
-              } @else {
-                <span class="button-content">
-                  <mat-icon>save</mat-icon>
-                  {{ translateService.t('settings.saveChanges') }}
-                </span>
-              }
-            </button>
-          </mat-card-actions>
-        </mat-card>
-      </div>
-    </mat-tab>
-    }
 
     <!-- Printer Config Tab (All Users) -->
     <mat-tab>

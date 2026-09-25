@@ -84,6 +84,22 @@
           </div>
           <mat-icon class="chevron">chevron_right</mat-icon>
         </div>
+
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon language">
+              <mat-icon>wifi</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">{{ translateService.t('settings.internetStatusCheck') }}</span>
+              <span class="setting-value">{{ translateService.t('settings.internetStatusCheckHint') }}</span>
+            </div>
+          </div>
+          <mat-slide-toggle
+            [checked]="internetStatusCheckEnabled()"
+            (change)="onInternetStatusCheckToggle($event.checked)">
+          </mat-slide-toggle>
+        </div>
       </div>
     </mat-expansion-panel>
 
@@ -306,12 +322,53 @@
     </mat-expansion-panel-header>
 
     <div class="settings-card">
+      <!-- Step 1: Add a new table type -->
+      <div class="tables-section-subtitle">
+        <mat-icon>category</mat-icon>
+        <span>Table Types</span>
+      </div>
+      <div class="tables-add-row">
+        <mat-form-field appearance="outline" class="type-field">
+          <mat-label>New Type Name (e.g. Rooftop, VIP Room)</mat-label>
+          <input matInput [value]="newTypeName()" (input)="newTypeName.set($any($event.target).value)"
+                 (keydown.enter)="addTableType()" placeholder="Enter type name">
+        </mat-form-field>
+        <button mat-flat-button color="accent" class="type-add-btn" (click)="addTableType()" [disabled]="saving()">
+          <mat-icon>add</mat-icon>
+          Add Type
+        </button>
+      </div>
+
+      <!-- Existing types chips -->
+      @if (tableTypes().length > 0) {
+      <div class="type-chips">
+        @for (type of tableTypes(); track type) {
+          <div class="table-chip type-chip" style="white-space:nowrap">
+            <span>{{ getTableTypeLabel(type) }}</span>
+            @if (!['dine-in','parcel'].includes(type)) {
+              <button mat-icon-button (click)="removeTableType(type)">
+                <mat-icon>close</mat-icon>
+              </button>
+            }
+          </div>
+        }
+      </div>
+      }
+
+      <hr style="border:none;border-top:1px solid rgba(0,0,0,0.12);margin:16px">
+
+      <!-- Step 2: Select type and add tables by range -->
+      <div class="tables-section-subtitle">
+        <mat-icon>table_restaurant</mat-icon>
+        <span>Add Tables</span>
+      </div>
       <div class="tables-add-row">
         <mat-form-field appearance="outline" class="type-field">
           <mat-label>{{ translateService.t('settings.type') }}</mat-label>
           <mat-select [value]="newTableType()" (selectionChange)="newTableType.set($event.value)">
-            <mat-option value="dine-in">{{ translateService.t('settings.dineInTables') }}</mat-option>
-            <mat-option value="parcel">{{ translateService.t('settings.parcelTakeaway') }}</mat-option>
+            @for (type of tableTypes(); track type) {
+              <mat-option [value]="type">{{ getTableTypeLabel(type) }}</mat-option>
+            }
           </mat-select>
         </mat-form-field>
         <mat-form-field appearance="outline" class="number-field">
@@ -330,83 +387,29 @@
         {{ translateService.t('common.add') }}
       </button>
 
-      <!-- Dine-In Tables -->
-      @if (getDineInTables().length > 0) {
-      <div class="tables-group">
-        <span class="group-label">{{ translateService.t('settings.dineInTables') }} ({{ getDineInTables().length }})</span>
-        <div class="tables-chips">
-          @for (table of getDineInTables(); track table.id) {
-            <div class="table-chip" [class.occupied]="table.status === 'occupied'">
-              <span>{{ table.tableNumber }}</span>
-              @if (table.status !== 'occupied') {
-                <button mat-icon-button (click)="deleteTable(table)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </div>
-          }
-        </div>
-      </div>
-      }
-
-      <!-- Parcel Numbers -->
-      @if (getParcelTables().length > 0) {
-      <div class="tables-group">
-        <span class="group-label">{{ translateService.t('settings.parcelNumbers') }} ({{ getParcelTables().length }})</span>
-        <div class="tables-chips">
-          @for (table of getParcelTables(); track table.id) {
-            <div class="table-chip parcel" [class.occupied]="table.status === 'occupied'">
-              <span>{{ table.tableNumber }}</span>
-              @if (table.status !== 'occupied') {
-                <button mat-icon-button (click)="deleteTable(table)">
-                  <mat-icon>close</mat-icon>
-                </button>
-              }
-            </div>
-          }
-        </div>
-      </div>
-      }
-    </div>
-  </mat-expansion-panel>
-
-  <!-- Item Notes Section (Hotel Only) -->
-  <mat-expansion-panel>
-    <mat-expansion-panel-header>
-      <mat-panel-title>
-        <mat-icon>note_add</mat-icon>
-        <span>{{ translateService.t('settings.itemNotes') }}</span>
-      </mat-panel-title>
-    </mat-expansion-panel-header>
-
-    <div class="settings-card">
-      <div class="notes-add-row">
-        <mat-form-field appearance="outline" class="note-field">
-          <mat-label>{{ translateService.t('settings.noteLabel') }}</mat-label>
-          <input matInput [value]="newNoteLabel()" 
-                 (input)="newNoteLabel.set($any($event.target).value)"
-                 (keyup.enter)="addItemNote()"
-                 placeholder="e.g., Spicy, No salt">
-        </mat-form-field>
-        <button mat-flat-button color="primary" (click)="addItemNote()" [disabled]="saving()">
-          <mat-icon>add</mat-icon>
-        </button>
-      </div>
-
-      @if (hotelService.itemNotes().length > 0) {
-      <div class="notes-chips">
-        @for (note of hotelService.itemNotes(); track note.id) {
-          <div class="note-chip">
-            <span>{{ note.label }}</span>
-            <button mat-icon-button (click)="deleteItemNote(note)">
-              <mat-icon>close</mat-icon>
-            </button>
+      <!-- Dynamic tables list grouped by type -->
+      @for (type of tableTypes(); track type) {
+        @if (getTablesByType(type).length > 0) {
+        <div class="tables-group">
+          <span class="group-label">{{ getTableTypeLabel(type) }} ({{ getTablesByType(type).length }})</span>
+          <div class="tables-chips">
+            @for (table of getTablesByType(type); track table.id) {
+              <div class="table-chip" [class.occupied]="table.status === 'occupied'">
+                <span>{{ table.tableNumber }}</span>
+                @if (table.status !== 'occupied') {
+                  <button mat-icon-button (click)="deleteTable(table)">
+                    <mat-icon>close</mat-icon>
+                  </button>
+                }
+              </div>
+            }
           </div>
+        </div>
         }
-      </div>
       }
     </div>
   </mat-expansion-panel>
+
   }
 
   <!-- Tax Settings Section (Admin Only) -->
@@ -542,6 +545,26 @@
           </div>
         </div>
 
+        <!-- KOT Language -->
+        <div class="setting-item language-setting">
+          <div class="setting-left">
+            <div class="setting-icon">
+              <mat-icon>restaurant_menu</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">KOT Language</span>
+            </div>
+          </div>
+          <div class="language-buttons">
+            <button mat-stroked-button 
+                    [class.active]="receiptForm.get('kotLanguage')?.value === 'en'"
+                    (click)="receiptForm.patchValue({ kotLanguage: 'en' })">EN</button>
+            <button mat-stroked-button 
+                    [class.active]="receiptForm.get('kotLanguage')?.value === 'hi'"
+                    (click)="receiptForm.patchValue({ kotLanguage: 'hi' })">हि</button>
+          </div>
+        </div>
+
         <div class="receipt-fields">
           <mat-form-field appearance="outline">
             <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>
@@ -576,78 +599,8 @@
     </div>
   </mat-expansion-panel>
 
-  <!-- Categories Section (Admin Only) -->
-  <mat-expansion-panel>
-    <mat-expansion-panel-header>
-      <mat-panel-title>
-        <mat-icon>category</mat-icon>
-        <span>{{ translateService.t('settings.categories') }}</span>
-      </mat-panel-title>
-    </mat-expansion-panel-header>
 
-    <div class="settings-card">
-      <div class="category-add-row">
-        <mat-form-field appearance="outline" class="category-field">
-          <mat-label>{{ translateService.t('settings.newCategory') }}</mat-label>
-          <input matInput 
-                 [value]="newCategoryName()" 
-                 (input)="newCategoryName.set($any($event.target).value)"
-                 (keyup.enter)="addCategory()"
-                 placeholder="Category name">
-        </mat-form-field>
-        <button mat-flat-button color="primary" (click)="addCategory()">
-          <mat-icon>add</mat-icon>
-        </button>
-      </div>
-
-      @if (categories().length === 0) {
-        <div class="empty-categories">
-          <mat-icon>category</mat-icon>
-          <span>No categories yet</span>
-        </div>
-      } @else {
-        <div class="categories-list">
-          @for (category of categories(); track $index) {
-            <div class="category-item">
-              <mat-checkbox 
-                [checked]="category.enabled"
-                (change)="toggleCategory($index)">
-                {{ category.name }}
-              </mat-checkbox>
-              @if (category.name !== 'General') {
-                <button mat-icon-button color="warn" (click)="removeCategory($index)">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              }
-            </div>
-          }
-        </div>
-      }
-
-      <button mat-flat-button color="primary" class="save-btn" (click)="saveCategories()" [disabled]="saving()">
-        @if (saving()) {
-          <mat-spinner diameter="20"></mat-spinner>
-        } @else {
-          <ng-container>
-            <mat-icon>save</mat-icon>
-            {{ translateService.t('settings.saveChanges') }}
-          </ng-container>
-        }
-      </button>
-    </div>
-  </mat-expansion-panel>
   }
-
-  <!-- Printer Config Section (All Users) -->
-  <mat-expansion-panel>
-    <mat-expansion-panel-header>
-      <mat-panel-title>
-        <mat-icon>print</mat-icon>
-        <span>Printer Config</span>
-      </mat-panel-title>
-    </mat-expansion-panel-header>
-    <app-printer-config></app-printer-config>
-  </mat-expansion-panel>
 
   <!-- App Info Section -->
   <mat-expansion-panel>

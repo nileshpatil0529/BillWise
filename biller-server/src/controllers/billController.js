@@ -27,6 +27,35 @@ const generateBillNumber = () => {
   return `${prefix}${dateStr}${nextNumber.toString().padStart(4, '0')}`;
 };
 
+const ensureDebtCustomer = (name, phone, now) => {
+  const customerName = String(name || '').trim();
+  const customerPhone = String(phone || '').trim();
+  if (!customerPhone) return;
+
+  const existing = db.prepare('SELECT * FROM customers WHERE phone = ?').get(customerPhone);
+  if (existing) {
+    if (customerName && customerName !== existing.name) {
+      db.prepare('UPDATE customers SET name = ?, updatedAt = ? WHERE customerId = ?')
+        .run(customerName, now, existing.customerId);
+    }
+    return;
+  }
+
+  const customerId = `CUST-${uuidv4().slice(0, 8).toUpperCase()}`;
+  db.prepare(`
+    INSERT INTO customers (customerId, name, phone, createdAt, updatedAt)
+    VALUES (?, ?, ?, ?, ?)
+  `).run(customerId, customerName || customerPhone, customerPhone, now, now);
+};
+
+const isStockTrackedProduct = (product, isHotelMode) => {
+  if (!product) return !isHotelMode;
+  if (product.isStockTracked === null || product.isStockTracked === undefined) {
+    return !isHotelMode;
+  }
+  return Boolean(product.isStockTracked);
+};
+
 export const getAllBills = async (req, res) => {
   try {
     const { 
@@ -75,7 +104,12 @@ export const getAllBills = async (req, res) => {
 
     // Get items for each bill
     const billsWithItems = bills.map(bill => {
-      const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(bill.billId);
+      const items = db.prepare(`
+        SELECT bi.*, p.nameHi, p.isLooseItem, p.stockQuantity, p.isStockTracked
+        FROM bill_items bi
+        LEFT JOIN products p ON p.productId = bi.productId
+        WHERE bi.billId = ?
+      `).all(bill.billId);
       return {
         ...bill,
         items,
@@ -114,7 +148,12 @@ export const getBillById = async (req, res) => {
     }
 
     // Get items for this bill
-    const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+    const items = db.prepare(`
+      SELECT bi.*, p.nameHi, p.isLooseItem, p.stockQuantity, p.isStockTracked
+      FROM bill_items bi
+      LEFT JOIN products p ON p.productId = bi.productId
+      WHERE bi.billId = ?
+    `).all(id);
 
     res.json({
       success: true,
@@ -187,6 +226,10 @@ export const createBill = async (req, res) => {
 
     // Use transaction for inserting bill and items
     const insertBillAndItems = db.transaction(() => {
+      if ((billData.paymentMethod || 'cash') === 'debt') {
+        ensureDebtCustomer(billData.customerName, billData.customerPhone, now);
+      }
+
       // Generate bill number inside transaction to prevent race conditions
       const billNumber = generateBillNumber();
       
@@ -218,9 +261,10 @@ export const createBill = async (req, res) => {
         tipAmount
       );
 
-      // Get settings to check if stock tracking is enabled
+      // Determine default stock behavior when product-level flag is absent
       const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
       const isHotelMode = settings?.applicationType === 'hotel';
+      const getProduct = db.prepare('SELECT productId, isStockTracked FROM products WHERE productId = ?');
 
       // Insert items
       const insertItem = db.prepare(`
@@ -243,10 +287,13 @@ export const createBill = async (req, res) => {
           item.note || null
         );
 
-        // Update product stock if productId exists (skip for hotel mode)
-        if (item.productId && !isHotelMode) {
-          db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
-            .run(item.quantity, item.productId);
+        // Update product stock only for stock-tracked products
+        if (item.productId) {
+          const product = getProduct.get(item.productId);
+          if (isStockTrackedProduct(product, isHotelMode)) {
+            db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+              .run(item.quantity, item.productId);
+          }
         }
       }
     });
@@ -298,6 +345,13 @@ export const updateBill = async (req, res) => {
     }
 
     const now = new Date().toISOString();
+    const finalPaymentMethod = updates.paymentMethod ?? bill.paymentMethod;
+    const finalCustomerName = updates.customerName ?? bill.customerName;
+    const finalCustomerPhone = updates.customerPhone ?? bill.customerPhone;
+
+    if (finalPaymentMethod === 'debt') {
+      ensureDebtCustomer(finalCustomerName, finalCustomerPhone, now);
+    }
 
     // Handle hotel mode updates
     if (updates.billStatus !== undefined || updates.kotItems !== undefined || updates.items !== undefined) {
@@ -306,23 +360,24 @@ export const updateBill = async (req, res) => {
         db.prepare('UPDATE bills SET billStatus = ?, updatedAt = ? WHERE billId = ?')
           .run(updates.billStatus, now, id);
         
-        // If bill is being completed and has a table, mark table as available
+        // If bill is being completed and has a table, mark table as unsettled (pending admin settlement)
         if (updates.billStatus === 'completed' && bill.tableId) {
           try {
-            db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL WHERE id = ?')
-              .run('available', bill.tableId);
-            console.log('✅ Table marked as available after bill completion:', bill.tableId);
+            const now2 = new Date().toISOString();
+            db.prepare('UPDATE restaurant_tables SET status = ?, updatedAt = ? WHERE id = ?')
+              .run('unsettled', now2, bill.tableId);
           } catch (tableError) {
-            console.log('⚠️ Could not update table status (table might not exist):', tableError.message);
+            // Ignore table update failures to avoid blocking bill completion.
           }
         }
       }
 
       // Handle items update - Replace all items with new cart state
       if (updates.items !== undefined) {
-        // Get settings to check if stock tracking is enabled
+        // Determine default stock behavior when product-level flag is absent
         const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
         const isHotelMode = settings?.applicationType === 'hotel';
+        const getProduct = db.prepare('SELECT productId, isStockTracked FROM products WHERE productId = ?');
         
         // Get existing items before deletion
         const existingItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
@@ -337,10 +392,11 @@ export const updateBill = async (req, res) => {
           };
         });
         
-        // Restore stock for all existing items (skip for hotel mode)
-        if (!isHotelMode) {
-          for (const existingItem of existingItems) {
-            if (existingItem.productId) {
+        // Restore stock for stock-tracked products
+        for (const existingItem of existingItems) {
+          if (existingItem.productId) {
+            const product = getProduct.get(existingItem.productId);
+            if (isStockTrackedProduct(product, isHotelMode)) {
               db.prepare('UPDATE products SET stockQuantity = stockQuantity + ? WHERE productId = ?')
                 .run(existingItem.quantity, existingItem.productId);
             }
@@ -375,10 +431,13 @@ export const updateBill = async (req, res) => {
             
             insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus, kotPrintedQty, item.note || null);
             
-            // Deduct stock for new quantities (skip for hotel mode)
-            if (item.productId && !isHotelMode) {
-              db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
-                .run(item.quantity, item.productId);
+            // Deduct stock for stock-tracked products
+            if (item.productId) {
+              const product = getProduct.get(item.productId);
+              if (isStockTrackedProduct(product, isHotelMode)) {
+                db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+                  .run(item.quantity, item.productId);
+              }
             }
           }
         }
@@ -401,6 +460,18 @@ export const updateBill = async (req, res) => {
       }
       
       // Note: kotItems marking is handled by printKOT endpoint after successful printing
+    }
+
+    // Persist tableId when switching tables
+    if (updates.tableId !== undefined) {
+      db.prepare('UPDATE bills SET tableId = ?, updatedAt = ? WHERE billId = ?')
+        .run(updates.tableId, now, id);
+    }
+
+    // Persist businessTypeData when switching tables
+    if (updates.businessTypeData !== undefined) {
+      db.prepare('UPDATE bills SET businessTypeData = ?, updatedAt = ? WHERE billId = ?')
+        .run(JSON.stringify(updates.businessTypeData), now, id);
     }
 
     // Update other allowed fields
@@ -434,19 +505,19 @@ export const updateBill = async (req, res) => {
     // Emit WebSocket event for real-time updates
     emitBillUpdate(billData);
     if (updatedBill.tableId) {
-      // If bill is completed, emit table-updated with status 'available'
+      // When bill is completed the table is marked 'unsettled' (awaiting admin settlement)
       if (updatedBill.billStatus === 'completed') {
-        emitTableUpdate({ 
-          tableId: updatedBill.tableId, 
-          billId: null, 
-          status: 'available',
-          billStatus: 'completed' 
+        emitTableUpdate({
+          tableId: updatedBill.tableId,
+          billId: updatedBill.billId,
+          status: 'unsettled',
+          billStatus: 'completed'
         });
       } else {
-        emitTableUpdate({ 
-          tableId: updatedBill.tableId, 
-          billId: updatedBill.billId, 
-          billStatus: updatedBill.billStatus 
+        emitTableUpdate({
+          tableId: updatedBill.tableId,
+          billId: updatedBill.billId,
+          billStatus: updatedBill.billStatus
         });
       }
     }
@@ -1035,30 +1106,28 @@ export const printKOT = async (req, res) => {
 export const deleteBill = async (req, res) => {
   try {
     const { id } = req.params;
-    console.log('🗑️  deleteBill called for billId:', id);
     
     // Check if bill exists
     const bill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
     
     if (!bill) {
-      console.log('❌ Bill not found in database:', id);
       return res.status(404).json({
         success: false,
         message: 'Bill not found'
       });
     }
-    
-    console.log('✅ Bill found, proceeding with deletion:', bill.billNumber);
 
-    // Get settings to check if stock tracking is enabled
+    // Determine default stock behavior when product-level flag is absent
     const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
     const isHotelMode = settings?.applicationType === 'hotel';
+    const getProduct = db.prepare('SELECT productId, isStockTracked FROM products WHERE productId = ?');
 
-    // Restore stock before deleting (skip for hotel mode)
-    if (!isHotelMode) {
-      const billItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
-      for (const item of billItems) {
-        if (item.productId) {
+    // Restore stock before deleting only for stock-tracked products
+    const billItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+    for (const item of billItems) {
+      if (item.productId) {
+        const product = getProduct.get(item.productId);
+        if (isStockTrackedProduct(product, isHotelMode)) {
           db.prepare('UPDATE products SET stockQuantity = stockQuantity + ? WHERE productId = ?')
             .run(item.quantity, item.productId);
         }
@@ -1070,25 +1139,20 @@ export const deleteBill = async (req, res) => {
       try {
         db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL WHERE id = ?')
           .run('available', bill.tableId);
-        console.log('✅ Table marked as available:', bill.tableId);
         // Emit table update
         emitTableUpdate({ tableId: bill.tableId, billId: null, status: 'available' });
       } catch (tableError) {
-        console.log('⚠️ Could not update table (table may not exist):', tableError.message);
         // Continue with bill deletion even if table update fails
       }
     }
 
     // Delete bill items first (foreign key constraint)
     db.prepare('DELETE FROM bill_items WHERE billId = ?').run(id);
-    console.log('✅ Deleted bill items for billId:', id);
     
     // Delete the bill
     db.prepare('DELETE FROM bills WHERE billId = ?').run(id);
-    console.log('✅ Deleted bill from database, billId:', id);
 
     // Emit WebSocket event for real-time updates
-    console.log('📡 Emitting bill-deleted WebSocket event for billId:', id);
     emitBillDeleted(id);
 
     res.json({
@@ -1096,7 +1160,6 @@ export const deleteBill = async (req, res) => {
       message: 'Bill deleted successfully',
       data: { billId: id }
     });
-    console.log('✅ Delete bill response sent successfully');
   } catch (error) {
     console.error('❌ Delete bill error:', error);
     console.error('❌ Error stack:', error.stack);

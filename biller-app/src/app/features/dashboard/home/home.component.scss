@@ -1793,13 +1793,31 @@
   }
   
   &.occupied {
-    background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%) !important;
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%) !important;
     color: white !important;
     cursor: pointer;
     
     &:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(33, 150, 243, 0.4);
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+    }
+    
+    .table-status {
+      background: rgba(255, 255, 255, 0.2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 0.65rem;
+    }
+  }
+  
+  &.unsettled {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%) !important;
+    color: white !important;
+    cursor: not-allowed;
+    
+    &:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
     }
     
     .table-status {
@@ -1811,18 +1829,26 @@
   }
   
   &.parcel.available {
-    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%) !important;
+    background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%) !important;
     
     &:hover {
-      box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
+      box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
     }
   }
   
   &.parcel.occupied {
-    background: linear-gradient(135deg, #9c27b0 0%, #7b1fa2 100%) !important;
+    background: linear-gradient(135deg, #f44336 0%, #d32f2f 100%) !important;
     
     &:hover {
-      box-shadow: 0 4px 12px rgba(156, 39, 176, 0.4);
+      box-shadow: 0 4px 12px rgba(244, 67, 54, 0.4);
+    }
+  }
+  
+  &.parcel.unsettled {
+    background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%) !important;
+    
+    &:hover {
+      box-shadow: 0 4px 12px rgba(255, 152, 0, 0.4);
     }
   }
   
@@ -1855,7 +1881,7 @@
   }
   
   &.current {
-    background: linear-gradient(135deg, #607d8b 0%, #455a64 100%) !important;
+    background: linear-gradient(135deg, #1565c0 0%, #0d47a1 100%) !important;
     color: white !important;
     cursor: default;
     border: 2px solid white;
@@ -2198,6 +2224,87 @@
         width: 18px;
         height: 18px;
       }
+    }
+  }
+}
+
+
+// Note text input replaces note dropdown in cart
+.note-text-input {
+  width: 130px;
+  padding: 5px 10px;
+  font-size: 12px;
+  background: rgba(255, 255, 255, 0.06);
+  color: inherit;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 20px;
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+
+  &:hover { border-color: rgba(255, 255, 255, 0.3); }
+  &:focus {
+    border-color: #42a5f5;
+    background: rgba(66, 165, 245, 0.08);
+  }
+  &::placeholder { color: rgba(255, 255, 255, 0.35); font-style: italic; }
+}
+
+// Table card wrapper — admin action bar overlays bottom of card
+.table-card-wrap {
+  position: relative;
+  display: inline-block;
+
+  .admin-table-actions {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: rgba(0, 0, 0, 0.62);
+    padding: 2px 5px 2px 6px;
+    border-radius: 0 0 6px 6px;
+    pointer-events: auto;
+    z-index: 2;
+    min-height: 22px;
+
+    .table-bill-amt {
+      font-size: 10px;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1;
+      letter-spacing: 0.01em;
+    }
+
+    .btn-group {
+      display: flex;
+      align-items: center;
+      gap: 0;
+    }
+
+    .settle-btn {
+      width: 22px;
+      height: 22px;
+      padding: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      color: #69f0ae;
+      --mdc-icon-button-state-layer-size: 22px;
+      mat-icon { font-size: 15px; width: 15px; height: 15px; line-height: 15px; }
+    }
+
+    .print-bill-btn {
+      width: 22px;
+      height: 22px;
+      padding: 0 !important;
+      display: inline-flex !important;
+      align-items: center !important;
+      justify-content: center !important;
+      color: #fff;
+      --mdc-icon-button-state-layer-size: 22px;
+      mat-icon { font-size: 15px; width: 15px; height: 15px; line-height: 15px; }
     }
   }
 }

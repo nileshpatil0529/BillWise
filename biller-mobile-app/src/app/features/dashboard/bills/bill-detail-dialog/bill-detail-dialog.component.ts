@@ -52,7 +52,7 @@ import { SettingsService } from '../../../../core/services/settings.service';
         </div>
         <div class="bill-row">
           <span class="bill-label">Date</span>
-          <span class="bill-value">{{ data.createdAt | date:'dd MMM yyyy, HH:mm' }}</span>
+          <span class="bill-value">{{ data.createdAt | date:'dd MMM yyyy, hh:mm a' }}</span>
         </div>
         <div class="bill-row">
           <span class="bill-label">Payment</span>
@@ -623,7 +623,7 @@ export class BillDetailDialogComponent {
       error: (error: any) => {
         this.printing = false;
         const message = error.error?.message || 'Failed to print bill';
-        // Info snack bar removed
+        this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
   }

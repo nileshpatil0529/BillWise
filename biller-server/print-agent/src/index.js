@@ -129,7 +129,25 @@ finally {
   }
 }
 
+function preventSystemSleep() {
+  // write to a temp file — here-strings and double-quotes break under -Command tokenization
+  const tmpScript = path.join(os.tmpdir(), 'bw_nosleep.ps1');
+  const script = [
+    '$sig = \'[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);\'',
+    'Add-Type -MemberDefinition $sig -Name PM -Namespace BW -ErrorAction SilentlyContinue',
+    'while ($true) { [BW.PM]::SetThreadExecutionState(0x80000001) | Out-Null; Start-Sleep -Seconds 30 }'
+  ].join('\r\n');
+  try { fs.writeFileSync(tmpScript, script, 'utf8'); } catch { return; }
+  const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tmpScript], {
+    windowsHide: true,
+    stdio: 'ignore'
+  });
+  proc.unref();
+}
+
 function startService() {
+  if (process.platform === 'win32') preventSystemSleep();
+
   const app = express();
   app.use(cors({ origin: true }));
   app.use(express.json({ limit: '2mb' }));
@@ -162,7 +180,6 @@ function startService() {
   });
 
   app.listen(AGENT_PORT, AGENT_HOST, () => {
-    console.log(`BillWise Print Agent listening on http://${AGENT_HOST}:${AGENT_PORT}`);
   });
 }
 
@@ -203,7 +220,6 @@ function installAndStart() {
   });
   child.unref();
 
-  console.log('BillWise Print Agent installed and added to Windows startup.');
 }
 
 const args = new Set(process.argv.slice(2));

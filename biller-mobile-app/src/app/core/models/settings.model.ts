@@ -59,6 +59,8 @@ export interface Settings {
   lowStockThreshold: number;
   language?: LanguageType;
   receiptLanguage?: LanguageType;
+  kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
+  internetStatusCheckEnabled?: boolean;
   units?: Unit[];
   viewMode?: ViewMode;
   tableColumns?: {
@@ -66,6 +68,7 @@ export interface Settings {
     bills?: TableColumn[];
     customers?: TableColumn[];
   };
+  tableTypes?: string[]; // Custom table type registry
   updatedAt: string;
 }
 

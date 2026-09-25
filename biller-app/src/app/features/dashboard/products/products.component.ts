@@ -61,14 +61,14 @@ export class ProductsComponent implements OnInit, OnDestroy {
   @ViewChild('searchInput') searchInput!: ElementRef<HTMLInputElement>;
 
   // All available columns
-  private allColumns = ['productId', 'name', 'barcode', 'category', 'unitPrice', 'stockQuantity', 'warranty', 'status', 'actions'];
+  private allColumns = ['productId', 'name', 'barcode', 'unitPrice', 'stockQuantity', 'warranty', 'status', 'actions'];
   displayedColumns: string[] = [];
   
   dataSource = new MatTableDataSource<Product>([]);
   loading = signal(false);
   loadingMore = signal(false);
   searchQuery = signal('');
-  selectedCategory = signal('');
+  selectedStockFilter = signal<'all' | 'tracked' | 'untracked'>('all');
 
   // Lazy loading state
   currentPage = signal(1);
@@ -99,11 +99,15 @@ export class ProductsComponent implements OnInit, OnDestroy {
       this.displayedColumns = this.allColumns.filter(col => {
         // Hide warranty for non-electronics
         if (col === 'warranty' && !isElectronics) return false;
-        // Hide barcode and stock columns for hotels
-        if (isHotel && (col === 'barcode' || col === 'stockQuantity')) return false;
+        // Hide barcode column for hotels
+        if (isHotel && col === 'barcode') return false;
         return true;
       });
     });
+  }
+
+  isStockTracked(product: Product): boolean {
+    return product.isStockTracked !== false;
   }
 
   // Get formatted product ID
@@ -121,8 +125,7 @@ export class ProductsComponent implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
-    // Load categories and initial products
-    this.productService.getCategories().subscribe();
+    // Load initial products
     this.loadProducts(true);
     
     // Setup search with debounce
@@ -190,8 +193,11 @@ export class ProductsComponent implements OnInit, OnDestroy {
       this.loadingMore.set(true);
     }
 
+    const selectedStockFilter = this.selectedStockFilter();
+    const stockFilter = selectedStockFilter === 'all' ? undefined : selectedStockFilter;
+
     this.productService.getProducts({
-      category: this.selectedCategory() || undefined,
+      stockFilter,
       search: this.searchQuery() || undefined,
       page: this.currentPage(),
       limit: this.pageSize
@@ -229,7 +235,8 @@ export class ProductsComponent implements OnInit, OnDestroy {
     this.searchSubject.next(filterValue.trim());
   }
 
-  onCategoryChange(): void {
+  onStockFilterChange(filter: 'all' | 'tracked' | 'untracked'): void {
+    this.selectedStockFilter.set(filter);
     this.loadProducts(true); // Reset and reload
   }
 

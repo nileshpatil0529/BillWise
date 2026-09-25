@@ -21,6 +21,7 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { SocketService } from '../../../core/services/socket.service';
+import { HotelService } from '../../../core/services/hotel.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
 
 // jsPDF import for PDF generation
@@ -106,7 +107,8 @@ export class BillsComponent implements OnInit, OnDestroy {
     public authService: AuthService,
     public translateService: TranslateService,
     private snackBar: MatSnackBar,
-    private socketService: SocketService
+    private socketService: SocketService,
+    public hotelService: HotelService
   ) {}
 
   // Get formatted bill number (truncated for mobile)
@@ -120,7 +122,12 @@ export class BillsComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     // setDatePreset already calls loadBills() and loadReport() internally
     this.setDatePreset('today');
-    
+
+    // Load tables for hotel mode so getDisplayStatusLabel can resolve Pending/Unsettled
+    if (this.settingsService.settings().applicationType === 'hotel') {
+      this.hotelService.loadTables().subscribe();
+    }
+
     // Setup socket listeners for real-time updates (after socket connects)
     this.trySetupSocketListeners();
   }
@@ -128,16 +135,13 @@ export class BillsComponent implements OnInit, OnDestroy {
   // Try to setup socket listeners, will retry when socket connects
   private trySetupSocketListeners(): void {
     if (this.socketListenersSetup) {
-      console.log('⚠️ Bills: Socket listeners already set up, skipping');
       return;
     }
 
     if (this.socketService.connected()) {
-      console.log('✅ Bills: Socket is connected, setting up listeners now...');
       this.setupSocketListeners();
       this.socketListenersSetup = true;
     } else {
-      console.log('⏳ Bills: Socket not connected yet, will retry in 1 second...');
       setTimeout(() => this.trySetupSocketListeners(), 1000);
     }
   }
@@ -147,53 +151,52 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.socketService.off('bill-created');
     this.socketService.off('bill-updated');
     this.socketService.off('bill-deleted');
+    this.socketService.off('table-updated');
+    this.socketService.off('tables-refresh-needed');
     
     this.destroy$.next();
     this.destroy$.complete();
   }
 
   private setupSocketListeners(): void {
-    console.log('🔌 Bills: Setting up socket listeners for real-time updates');
-    
     this.socketService.on('bill-created', (data: any) => {
-      console.log('📡 Bills: bill-created received', data);
       this.handleBillCreated(data);
     });
 
     this.socketService.on('bill-updated', (data: any) => {
-      console.log('📡 Bills: bill-updated received', data);
       this.handleBillUpdated(data);
     });
 
     this.socketService.on('bill-deleted', (data: any) => {
-      console.log('📡 Bills: bill-deleted received', data);
       this.handleBillDeleted(data);
     });
-    
-    console.log('✅ Bills: Socket listeners registered');
+
+    // Refresh table status column when tables change on any client
+    this.socketService.on('table-updated', () => {
+      this.hotelService.loadTables().subscribe();
+    });
+
+    this.socketService.on('tables-refresh-needed', () => {
+      this.hotelService.loadTables().subscribe();
+    });
   }
 
   private handleBillCreated(billData: any): void {
-    console.log('✅ Bills: Handling bill created, reloading data...');
     // Reload bills and report to show new bill
     this.loadBills(true);
     this.loadReport();
   }
 
   private handleBillUpdated(billData: any): void {
-    console.log('✅ Bills: Handling bill updated, reloading data...');
     // Reload bills and report to show updated bill
     this.loadBills(true);
     this.loadReport();
   }
 
   private handleBillDeleted(data: any): void {
-    console.log('✅ Bills: Handling bill deleted event, billId:', data.billId);
-    console.log('📊 Bills: Current bills count before reload:', this.allBills().length);
     // Reload bills and report to reflect deletion
     this.loadBills(true);
     this.loadReport();
-    console.log('🔄 Bills: Triggered reload after bill deletion');
   }
 
   ngAfterViewInit(): void {
@@ -364,7 +367,7 @@ export class BillsComponent implements OnInit, OnDestroy {
       error: (error: any) => {
         this.loading.set(false);
         const message = error.error?.message || 'Failed to print bill';
-        // Info snack bar removed
+        this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
   }
@@ -548,5 +551,27 @@ export class BillsComponent implements OnInit, OnDestroy {
       case 'partial': return 'status-partial';
       default: return '';
     }
+  }
+
+  getDisplayStatusLabel(bill: Bill): string {
+    if (this.settingsService.settings().applicationType === 'hotel' && bill.tableId) {
+      const table = this.hotelService.tables().find(
+        t => t.id === bill.tableId && t.currentBillId === bill.billId
+      );
+      if (table?.status === 'occupied')  return 'Pending';
+      if (table?.status === 'unsettled') return 'Unsettled';
+    }
+    return bill.paymentStatus.charAt(0).toUpperCase() + bill.paymentStatus.slice(1);
+  }
+
+  getDisplayStatusClass(bill: Bill): string {
+    if (this.settingsService.settings().applicationType === 'hotel' && bill.tableId) {
+      const table = this.hotelService.tables().find(
+        t => t.id === bill.tableId && t.currentBillId === bill.billId
+      );
+      if (table?.status === 'occupied')  return 'status-pending';
+      if (table?.status === 'unsettled') return 'status-unsettled';
+    }
+    return this.getPaymentStatusClass(bill.paymentStatus);
   }
 }

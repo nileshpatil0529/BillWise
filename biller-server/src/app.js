@@ -36,13 +36,6 @@ app.use(cors({
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging (development only)
-if (config.nodeEnv === 'development') {
-  app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-    next();
-  });
-}
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -88,6 +81,21 @@ const downloadsPath = path.join(__dirname, '..', 'public', 'downloads');
 app.use('/desktop', express.static(desktopPath));
 app.use('/mobile',  express.static(mobilePath));
 app.use('/downloads', express.static(downloadsPath));
+
+// Handle first-hit root route before desktop static middleware.
+// Without this, '/' can be served directly from desktop index.html,
+// bypassing device detection for mobile users.
+app.get('/', (req, res) => {
+  const ua = req.headers['user-agent'] || '';
+  const override = req.query.app; // ?app=desktop or ?app=mobile
+  const serveMobile = override === 'mobile' || (override !== 'desktop' && isMobileDevice(ua));
+
+  if (serveMobile) {
+    return res.redirect(302, '/mobile/');
+  }
+
+  return res.sendFile(path.join(desktopPath, 'index.html'));
+});
 
 // Root static - desktop assets only at root; mobile assets are scoped to /mobile/
 // (avoids SW scope collision: desktop SW registers at /, mobile SW at /mobile/)
@@ -143,30 +151,8 @@ initializeSocketIO(httpServer);
 
 httpServer.listen(PORT, HOST, () => {
   const localIP = getLocalIP();
-  const ipUrl       = `http://${localIP}:${PORT}`.padEnd(38);
-  const localUrl    = `http://localhost:${PORT}`.padEnd(38);
-  const networkName = `http://local.billwise:${PORT}`.padEnd(38);
-
-  console.log(`
-  ╔══════════════════════════════════════════════════════════════╗
-  ║                                                              ║
-  ║   🚀 BillWise Server Started Successfully!                   ║
-  ║                                                              ║
-  ║   📍 Local:        ${localUrl}║
-  ║   🌐 Network IP:   ${ipUrl}║
-  ║   🏷️  Network Name: ${networkName}║
-  ║                                                              ║
-  ║   📱 Mobile/Tablet → mobile app served automatically         ║
-  ║   🖥️  Desktop/Laptop → desktop app served automatically      ║
-  ║                                                              ║
-  ║   🌍 Environment: ${config.nodeEnv.padEnd(41)}║
-  ║   📅 Started:     ${new Date().toLocaleString().padEnd(41)}║
-  ║                                                              ║
-  ║   💡 To use local.billwise on devices:                       ║
-  ║      Add to each device's hosts file:                        ║
-  ║      ${`${localIP}  local.billwise`.padEnd(54)}║
-  ╚══════════════════════════════════════════════════════════════╝
-  `);
+  console.log(`Backend: http://localhost:${PORT}`);
+  console.log(`Backend (IP): http://${localIP}:${PORT}`);
 });
 
 export default app;

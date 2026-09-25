@@ -12,6 +12,8 @@ export class SocketService {
   private socket: Socket | null = null;
   public connected = signal(false);
   private snackBar = inject(MatSnackBar);
+  private printerConfigLoadAttempted = false;
+  private printerRuntimeInitInFlight: Promise<void> | null = null;
 
   // Lazily injected to avoid circular dependency (PrinterService → SocketService → PrinterService)
   private get printerService(): PrinterService {
@@ -27,16 +29,23 @@ export class SocketService {
     effect(() => {
       const user = this.authService.currentUser();
       if (user) {
+        void this.ensurePrinterRuntimeReady();
         this.connect();
       } else {
         this.disconnect();
       }
     });
 
+    // Keep server registration in sync when print agent goes offline
+    effect(() => {
+      if (this.printerService.agentStatus() === 'disconnected') {
+        this.refreshPrinterRegistration();
+      }
+    });
+
     // PWA: Reconnect when app comes to foreground
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'visible' && !this.socket?.connected && this.authService.currentUser()) {
-        console.log('📱 App resumed, reconnecting socket...');
         this.connect();
       }
     });
@@ -44,7 +53,6 @@ export class SocketService {
     // PWA: Handle network changes
     window.addEventListener('online', () => {
       if (this.authService.currentUser()) {
-        console.log('🌐 Network online, reconnecting socket...');
         this.connect();
       }
     });
@@ -55,21 +63,27 @@ export class SocketService {
       return;
     }
 
+    // Clean up any stale disconnected socket before creating a new one
+    if (this.socket) {
+      this.socket.removeAllListeners();
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     const socketUrl = environment.apiUrl.replace('/api', '');
-    
+
     this.socket = io(socketUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,
-      reconnectionAttempts: 5,
-      timeout: 10000
+      reconnectionDelayMax: 10000,
+      reconnectionAttempts: Infinity, // never give up — prevents permanent print failure
+      timeout: 20000
     });
 
     this.socket.on('connect', () => {
       this.ngZone.run(() => {
         this.connected.set(true);
-        console.log('✅ Socket connected:', this.socket?.id);
-        
         this.socket?.emit('join-tables-room');
         this.socket?.emit('join-bills-room');
         this.socket?.emit('join-products-room');
@@ -78,12 +92,10 @@ export class SocketService {
         const user = this.authService.currentUser();
         if (user?.uid) {
           this.socket?.emit('identify', { userId: user.uid });
-          // Register printer if enabled
-          const cfg = this.printerService.config();
-          if (cfg.enabled && cfg.printerName) {
-            this.socket?.emit('register-printer', { userId: user.uid });
-          }
         }
+
+        // Ensure config + agent are available, then refresh server printer mapping.
+        void this.ensurePrinterRuntimeReady();
       });
     });
 
@@ -103,6 +115,14 @@ export class SocketService {
       });
     });
 
+    // Safety net: if socket.io ever stops retrying (shouldn't happen with Infinity), force a fresh connection
+    this.socket.on('reconnect_failed', () => {
+      this.ngZone.run(() => {
+        console.warn('⚠️ Socket reconnect_failed — forcing fresh connection in 5s');
+        setTimeout(() => this.connect(), 5000);
+      });
+    });
+
     this.socket.on('connected', (data) => {
       this.ngZone.run(() => console.log('📨 Received from server:', data));
     });
@@ -111,6 +131,7 @@ export class SocketService {
     this.socket.on('print-job', async (payload: any) => {
       const { requestId, bill, settings, type } = payload;
       try {
+        await this.ensurePrinterRuntimeReady();
         if (!this.printerService.isReady()) {
           throw new Error('Local printer not ready');
         }
@@ -120,7 +141,6 @@ export class SocketService {
           await this.printerService.printReceipt(bill, settings);
         }
         this.socket?.emit('print-job-result', { requestId, success: true, type });
-        this.ngZone.run(() => this.snackBar.open('Print completed', 'OK', { duration: 3000 }));
       } catch (err: any) {
         this.socket?.emit('print-job-result', { requestId, success: false, error: err?.message, type });
         this.ngZone.run(() =>
@@ -132,22 +152,59 @@ export class SocketService {
     // Result of a print request we initiated via server routing
     this.socket.on('print-response', ({ success, error, type }: any) => {
       this.ngZone.run(() => {
-        if (success) {
-          const label = type === 'kot' ? 'KOT' : 'Bill';
-          this.snackBar.open(`${label} printed successfully`, 'OK', { duration: 3000 });
-        } else {
+        if (!success) {
           this.snackBar.open('Print failed: ' + (error || 'Unknown error'), 'OK', { duration: 5000 });
         }
       });
     });
   }
 
+  private async ensurePrinterRuntimeReady(): Promise<void> {
+    if (this.printerRuntimeInitInFlight) {
+      await this.printerRuntimeInitInFlight;
+      return;
+    }
+
+    this.printerRuntimeInitInFlight = (async () => {
+      if (!this.printerConfigLoadAttempted) {
+        await new Promise<void>((resolve) => {
+          this.printerService.loadConfig().subscribe({
+            next: () => {
+              this.printerConfigLoadAttempted = true;
+              resolve();
+            },
+            error: (err) => {
+              console.warn('Printer config load failed, will retry on next connect:', err);
+              resolve();
+            }
+          });
+        });
+      }
+
+      const cfg = this.printerService.config();
+      if (cfg.enabled && cfg.printerName && this.printerService.agentStatus() !== 'connected') {
+        try {
+          await this.printerService.connectAgent();
+        } catch (err) {
+          console.warn('Auto-connect to print agent failed:', err);
+        }
+      }
+
+      this.refreshPrinterRegistration();
+    })();
+
+    try {
+      await this.printerRuntimeInitInFlight;
+    } finally {
+      this.printerRuntimeInitInFlight = null;
+    }
+  }
+
   /** Call after saving printer config to update server registration */
   refreshPrinterRegistration(): void {
     const user = this.authService.currentUser();
     if (!user?.uid || !this.socket?.connected) return;
-    const cfg = this.printerService.config();
-    if (cfg.enabled && cfg.printerName) {
+    if (this.printerService.isReady()) {
       this.socket.emit('register-printer', { userId: user.uid });
     } else {
       this.socket.emit('unregister-printer', { userId: user.uid });

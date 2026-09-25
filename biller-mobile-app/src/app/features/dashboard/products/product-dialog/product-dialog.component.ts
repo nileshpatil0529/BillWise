@@ -1,7 +1,7 @@
 import { Component, Inject, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, Validators, ReactiveFormsModule, AbstractControl, ValidationErrors } from '@angular/forms';
-import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule, MatDialog } from '@angular/material/dialog';
+import { MatDialogRef, MAT_DIALOG_DATA, MatDialogModule } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
@@ -12,7 +12,6 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { Product } from '../../../../core/models/product.model';
 import { SettingsService } from '../../../../core/services/settings.service';
-import { ProductService } from '../../../../core/services/product.service';
 import { Unit } from '../../../../core/models/settings.model';
 
 interface DialogData {
@@ -48,15 +47,6 @@ interface DialogData {
             @if (productForm.get('name')?.hasError('required')) {
               <mat-error>Name is required</mat-error>
             }
-          </mat-form-field>
-
-          <mat-form-field appearance="outline">
-            <mat-label>Category</mat-label>
-            <mat-select formControlName="category">
-              @for (category of productService.categories(); track category) {
-                <mat-option [value]="category">{{ category }}</mat-option>
-              }
-            </mat-select>
           </mat-form-field>
         </div>
 
@@ -100,7 +90,17 @@ interface DialogData {
           }
         </div>
 
-        @if (!isHotelMode()) {
+        @if (isHotelMode()) {
+          <div class="form-row">
+            <div class="checkbox-field">
+              <mat-checkbox formControlName="isStockTracked" color="primary" (change)="onStockTrackingChange($event.checked)">
+                Track Stock For This Item
+              </mat-checkbox>
+            </div>
+          </div>
+        }
+
+        @if (!isHotelMode() || productForm.get('isStockTracked')?.value) {
           <div class="form-row">
             <mat-form-field appearance="outline">
               <mat-label>Stock Quantity</mat-label>
@@ -257,20 +257,13 @@ interface DialogData {
 export class ProductDialogComponent {
   productForm: FormGroup;
   settingsService = inject(SettingsService);
-  productService = inject(ProductService);
   units = signal<Unit[]>([]);
 
   constructor(
     private fb: FormBuilder,
     public dialogRef: MatDialogRef<ProductDialogComponent>,
-    @Inject(MAT_DIALOG_DATA) public data: DialogData,
-    private dialog: MatDialog
+    @Inject(MAT_DIALOG_DATA) public data: DialogData
   ) {
-    // Load categories if not already loaded
-    if (this.productService.categories().length === 0) {
-      this.productService.getCategories().subscribe();
-    }
-    
     // Load units for grocery mode
     const settings = this.settingsService.settings();
     if (settings.units) {
@@ -279,23 +272,26 @@ export class ProductDialogComponent {
     
     const product = data.product;
     const isHotel = settings.applicationType === 'hotel';
+    const isStockTracked = product?.isStockTracked ?? !isHotel;
     
     this.productForm = this.fb.group({
       name: [product?.name || '', Validators.required],
       nameHi: [product?.nameHi || ''],
-      category: [product?.category || 'General'],
       description: [product?.description || ''],
       barcode: [product?.barcode || ''],
       confirmBarcode: [product?.barcode || ''],
       unitPrice: [product?.unitPrice || '', [Validators.required, Validators.min(1)]],
       costPrice: [product?.costPrice || 0, Validators.min(0)],
-      stockQuantity: [product?.stockQuantity || (isHotel ? 9999 : ''), isHotel ? [] : [Validators.required, Validators.min(1)]],
+      isStockTracked: [isStockTracked],
+      stockQuantity: [product?.stockQuantity ?? (isHotel ? 0 : ''), []],
       lowStockAlert: [product?.lowStockAlert || 10, Validators.min(0)],
       status: [product?.status !== 'inactive'], // Default to active for new products
       isLooseItem: [product?.isLooseItem || false],
       unit: [product?.unit || 'pcs'],
       warrantyMonths: [product?.warrantyMonths || 0, Validators.min(0)]
     });
+
+    this.updateStockValidators(isStockTracked);
 
     // Add barcode match validator
     this.productForm.get('confirmBarcode')?.setValidators([this.barcodeMatchValidator.bind(this)]);
@@ -332,6 +328,25 @@ export class ProductDialogComponent {
     }
   }
 
+  onStockTrackingChange(isTracked: boolean): void {
+    this.updateStockValidators(isTracked);
+    if (!isTracked) {
+      this.productForm.patchValue({ stockQuantity: 0, lowStockAlert: 0 });
+    }
+  }
+
+  private updateStockValidators(isTracked: boolean): void {
+    const stockControl = this.productForm.get('stockQuantity');
+    if (!stockControl) return;
+
+    if (isTracked) {
+      stockControl.setValidators([Validators.required, Validators.min(1)]);
+    } else {
+      stockControl.clearValidators();
+    }
+    stockControl.updateValueAndValidity();
+  }
+
   onCancel(): void {
     this.dialogRef.close();
   }
@@ -341,8 +356,12 @@ export class ProductDialogComponent {
       const formValue = this.productForm.value;
       // Remove confirmBarcode from the data sent to backend
       const { confirmBarcode, ...productData } = formValue;
+      const isStockTracked = this.isHotelMode() ? !!formValue.isStockTracked : true;
       this.dialogRef.close({
         ...productData,
+        isStockTracked,
+        stockQuantity: isStockTracked ? formValue.stockQuantity : 0,
+        lowStockAlert: isStockTracked ? formValue.lowStockAlert : 0,
         status: formValue.status ? 'active' : 'inactive',
         // Include loose item fields for grocery mode
         isLooseItem: this.isGroceryMode() ? formValue.isLooseItem : false,

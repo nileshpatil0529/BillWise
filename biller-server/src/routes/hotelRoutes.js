@@ -6,6 +6,7 @@ import {
   updateTable,
   deleteTable,
   updateTableStatus,
+  settleTable,
   getTipOptions,
   createTipOption,
   updateTipOption,
@@ -15,7 +16,7 @@ import {
   updateItemNote,
   deleteItemNote
 } from '../controllers/hotelController.js';
-import { authenticate } from '../middleware/auth.js';
+import { authenticate, requireAdmin } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -29,6 +30,7 @@ router.post('/tables', createTables);
 router.put('/tables/:id', updateTable);
 router.delete('/tables/:id', deleteTable);
 router.patch('/tables/:id/status', updateTableStatus);
+router.patch('/tables/:id/settle', requireAdmin, settleTable);
 
 // Tip Options routes
 router.get('/tips', getTipOptions);

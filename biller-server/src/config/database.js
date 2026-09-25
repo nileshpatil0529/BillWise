@@ -23,8 +23,6 @@ db.pragma('foreign_keys = ON');
 
 // Initialize database schema
 const initializeDatabase = () => {
-  console.log('📦 Initializing SQLite database...');
-
   // Users table
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -49,6 +47,7 @@ const initializeDatabase = () => {
       productId TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       nameHi TEXT,
+      isStockTracked INTEGER DEFAULT 1,
       category TEXT DEFAULT 'General',
       description TEXT,
       barcode TEXT,
@@ -70,7 +69,6 @@ const initializeDatabase = () => {
     const hasNameHi = productColumns.some(col => col.name === 'nameHi');
     if (!hasNameHi) {
       db.exec('ALTER TABLE products ADD COLUMN nameHi TEXT');
-      console.log('✅ Migration: Added nameHi column to products');
     }
   } catch (e) {
     // Column might already exist
@@ -126,9 +124,7 @@ const initializeDatabase = () => {
     const ftsCount = db.prepare('SELECT COUNT(*) as count FROM products_fts').get();
     const productsCount = db.prepare('SELECT COUNT(*) as count FROM products').get();
     if (ftsCount.count !== productsCount.count) {
-      console.log('🔄 Rebuilding FTS index...');
       db.exec(`INSERT INTO products_fts(products_fts) VALUES('rebuild')`);
-      console.log('✅ FTS index rebuilt');
     }
   } catch (e) {
     // FTS table might be new, rebuild it
@@ -209,7 +205,7 @@ const initializeDatabase = () => {
       applicationType TEXT DEFAULT 'general',
       theme TEXT DEFAULT 'dark',
       scannerType TEXT DEFAULT 'usb',
-      taxEnabled INTEGER DEFAULT 1,
+      taxEnabled INTEGER DEFAULT 0,
       taxRates TEXT DEFAULT '[{"name":"GST 5%","rate":5},{"name":"GST 12%","rate":12},{"name":"GST 18%","rate":18}]',
       discountEnabled INTEGER DEFAULT 1,
       debtEnabled INTEGER DEFAULT 1,
@@ -217,6 +213,7 @@ const initializeDatabase = () => {
       tableColumns TEXT,
       viewMode TEXT DEFAULT 'desktop',
       language TEXT DEFAULT 'en',
+      internetStatusCheckEnabled INTEGER DEFAULT 1,
       invoicePrefix TEXT DEFAULT 'INV',
       invoiceStartNumber INTEGER DEFAULT 1,
       footerText TEXT DEFAULT 'Thank you for your business!',
@@ -295,37 +292,34 @@ const initializeDatabase = () => {
     const hasDiscountEnabled = columns.some(col => col.name === 'discountEnabled');
     if (!hasDiscountEnabled) {
       db.exec('ALTER TABLE settings ADD COLUMN discountEnabled INTEGER DEFAULT 1');
-      console.log('✅ Migration: Added discountEnabled column');
     }
     const hasDebtEnabled = columns.some(col => col.name === 'debtEnabled');
     if (!hasDebtEnabled) {
       db.exec('ALTER TABLE settings ADD COLUMN debtEnabled INTEGER DEFAULT 1');
-      console.log('✅ Migration: Added debtEnabled column');
     }
     const hasCategories = columns.some(col => col.name === 'categories');
     if (!hasCategories) {
       db.exec('ALTER TABLE settings ADD COLUMN categories TEXT DEFAULT \'[{"name":"General","enabled":true}]\'');
-      console.log('✅ Migration: Added categories column');
     }
     const hasTableColumns = columns.some(col => col.name === 'tableColumns');
     if (!hasTableColumns) {
       db.exec('ALTER TABLE settings ADD COLUMN tableColumns TEXT');
-      console.log('✅ Migration: Added tableColumns column');
     }
     const hasViewMode = columns.some(col => col.name === 'viewMode');
     if (!hasViewMode) {
       db.exec("ALTER TABLE settings ADD COLUMN viewMode TEXT DEFAULT 'desktop'");
-      console.log('✅ Migration: Added viewMode column');
     }
     const hasLanguage = columns.some(col => col.name === 'language');
     if (!hasLanguage) {
       db.exec("ALTER TABLE settings ADD COLUMN language TEXT DEFAULT 'en'");
-      console.log('✅ Migration: Added language column');
+    }
+    const hasInternetStatusCheckEnabled = columns.some(col => col.name === 'internetStatusCheckEnabled');
+    if (!hasInternetStatusCheckEnabled) {
+      db.exec('ALTER TABLE settings ADD COLUMN internetStatusCheckEnabled INTEGER DEFAULT 1');
     }
     const hasUpiId = columns.some(col => col.name === 'upiId');
     if (!hasUpiId) {
       db.exec('ALTER TABLE settings ADD COLUMN upiId TEXT');
-      console.log('✅ Migration: Added upiId column');
     }
   } catch (e) {
     // Column might already exist
@@ -339,7 +333,6 @@ const initializeDatabase = () => {
       db.exec('ALTER TABLE users ADD COLUMN phone TEXT');
       // Create unique index separately (ALTER TABLE doesn't support inline UNIQUE)
       db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_phone ON users(phone) WHERE phone IS NOT NULL');
-      console.log('✅ Migration: Added phone column to users');
     } else {
       // Ensure unique index exists even if column was added before
       try {
@@ -351,17 +344,14 @@ const initializeDatabase = () => {
     const hasRequirePasswordChange = userColumns.some(col => col.name === 'requirePasswordChange');
     if (!hasRequirePasswordChange) {
       db.exec('ALTER TABLE users ADD COLUMN requirePasswordChange INTEGER DEFAULT 0');
-      console.log('✅ Migration: Added requirePasswordChange column to users');
     }
     const hasPermissions = userColumns.some(col => col.name === 'permissions');
     if (!hasPermissions) {
       db.exec('ALTER TABLE users ADD COLUMN permissions TEXT');
-      console.log('✅ Migration: Added permissions column to users');
     }
     const hasProfilePhoto = userColumns.some(col => col.name === 'profilePhoto');
     if (!hasProfilePhoto) {
       db.exec('ALTER TABLE users ADD COLUMN profilePhoto TEXT');
-      console.log('✅ Migration: Added profilePhoto column to users');
     }
   } catch (e) {
     // Columns might already exist
@@ -373,22 +363,18 @@ const initializeDatabase = () => {
     const hasBillStatus = billColumns.some(col => col.name === 'billStatus');
     if (!hasBillStatus) {
       db.exec("ALTER TABLE bills ADD COLUMN billStatus TEXT DEFAULT 'completed'");
-      console.log('✅ Migration: Added billStatus column to bills');
     }
     const hasTableId = billColumns.some(col => col.name === 'tableId');
     if (!hasTableId) {
       db.exec('ALTER TABLE bills ADD COLUMN tableId INTEGER');
-      console.log('✅ Migration: Added tableId column to bills');
     }
     const hasKotPrintedAt = billColumns.some(col => col.name === 'kotPrintedAt');
     if (!hasKotPrintedAt) {
       db.exec('ALTER TABLE bills ADD COLUMN kotPrintedAt TEXT');
-      console.log('✅ Migration: Added kotPrintedAt column to bills');
     }
     const hasTipAmount = billColumns.some(col => col.name === 'tipAmount');
     if (!hasTipAmount) {
       db.exec('ALTER TABLE bills ADD COLUMN tipAmount REAL DEFAULT 0');
-      console.log('✅ Migration: Added tipAmount column to bills');
     }
   } catch (e) {
     // Columns might already exist
@@ -400,17 +386,14 @@ const initializeDatabase = () => {
     const hasKotPrinted = itemColumns.some(col => col.name === 'kotPrinted');
     if (!hasKotPrinted) {
       db.exec('ALTER TABLE bill_items ADD COLUMN kotPrinted INTEGER DEFAULT 0');
-      console.log('✅ Migration: Added kotPrinted column to bill_items');
     }
     const hasNote = itemColumns.some(col => col.name === 'note');
     if (!hasNote) {
       db.exec('ALTER TABLE bill_items ADD COLUMN note TEXT');
-      console.log('✅ Migration: Added note column to bill_items');
     }
     const hasKotPrintedQuantity = itemColumns.some(col => col.name === 'kotPrintedQuantity');
     if (!hasKotPrintedQuantity) {
       db.exec('ALTER TABLE bill_items ADD COLUMN kotPrintedQuantity REAL DEFAULT 0');
-      console.log('✅ Migration: Added kotPrintedQuantity column to bill_items');
     }
   } catch (e) {
     // Column might already exist
@@ -429,7 +412,6 @@ const initializeDatabase = () => {
         { id: 5, name: 'Piece', symbol: 'pcs', allowDecimal: false }
       ]);
       db.exec(`ALTER TABLE settings ADD COLUMN units TEXT DEFAULT '${defaultUnits}'`);
-      console.log('✅ Migration: Added units column to settings');
     }
   } catch (e) {
     // Column might already exist
@@ -438,21 +420,26 @@ const initializeDatabase = () => {
   // Migration: Add loose item fields to products table (for grocery)
   try {
     const productColumns = db.prepare('PRAGMA table_info(products)').all();
+    const hasIsStockTracked = productColumns.some(col => col.name === 'isStockTracked');
+    if (!hasIsStockTracked) {
+      db.exec('ALTER TABLE products ADD COLUMN isStockTracked INTEGER DEFAULT 1');
+      const currentSettings = db.prepare('SELECT applicationType FROM settings WHERE id = 1').get();
+      if (currentSettings?.applicationType === 'hotel') {
+        db.exec('UPDATE products SET isStockTracked = 0');
+      }
+    }
     const hasIsLooseItem = productColumns.some(col => col.name === 'isLooseItem');
     if (!hasIsLooseItem) {
       db.exec('ALTER TABLE products ADD COLUMN isLooseItem INTEGER DEFAULT 0');
-      console.log('✅ Migration: Added isLooseItem column to products');
     }
     const hasUnit = productColumns.some(col => col.name === 'unit');
     if (!hasUnit) {
       db.exec('ALTER TABLE products ADD COLUMN unit TEXT');
-      console.log('✅ Migration: Added unit column to products');
     }
     // Electronics mode: warranty in months
     const hasWarrantyMonths = productColumns.some(col => col.name === 'warrantyMonths');
     if (!hasWarrantyMonths) {
       db.exec('ALTER TABLE products ADD COLUMN warrantyMonths INTEGER DEFAULT 0');
-      console.log('✅ Migration: Added warrantyMonths column to products');
     }
   } catch (e) {
     // Columns might already exist
@@ -470,8 +457,6 @@ const initializeDatabase = () => {
     }
     
     if (needsRebuild) {
-      console.log('🔄 Upgrading FTS index to include Hindi names...');
-      
       // Drop old triggers
       db.exec('DROP TRIGGER IF EXISTS products_ai');
       db.exec('DROP TRIGGER IF EXISTS products_ad');
@@ -519,7 +504,6 @@ const initializeDatabase = () => {
       
       // Rebuild index with all existing data
       db.exec(`INSERT INTO products_fts(products_fts) VALUES('rebuild')`);
-      console.log('✅ Migration: FTS index upgraded to include Hindi names');
     }
   } catch (e) {
     console.error('FTS migration error:', e.message);
@@ -531,7 +515,18 @@ const initializeDatabase = () => {
     const hasReceiptLanguage = settingsColumns.some(col => col.name === 'receiptLanguage');
     if (!hasReceiptLanguage) {
       db.exec("ALTER TABLE settings ADD COLUMN receiptLanguage TEXT DEFAULT 'en'");
-      console.log('✅ Migration: Added receiptLanguage column to settings');
+    }
+  } catch (e) {
+    // Column might already exist
+  }
+
+  // Migration: Add tableTypes to settings (custom table type registry)
+  try {
+    const settingsColumns = db.prepare('PRAGMA table_info(settings)').all();
+    const hasTableTypes = settingsColumns.some(col => col.name === 'tableTypes');
+    if (!hasTableTypes) {
+      const defaultTypes = JSON.stringify(['dine-in', 'parcel', 'garden']);
+      db.exec(`ALTER TABLE settings ADD COLUMN tableTypes TEXT DEFAULT '${defaultTypes}'`);
     }
   } catch (e) {
     // Column might already exist
@@ -545,7 +540,6 @@ const initializeDatabase = () => {
       SET permissions = ?
       WHERE role = 'admin' AND (permissions IS NULL OR permissions = '')
     `).run(allPermissions);
-    console.log('✅ Migration: Updated admin users with default permissions');
   } catch (e) {
     // Already updated
   }
@@ -570,11 +564,7 @@ const initializeDatabase = () => {
       INSERT INTO users (uid, email, phone, password, displayName, role, isActive, requirePasswordChange, permissions)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `).run('admin-001', config.admin.email, null, config.admin.password, 'Administrator', 'admin', 1, 0, allPermissions);
-    console.log('✅ Default admin user created');
   }
-
-  console.log('✅ SQLite database initialized successfully');
-  console.log(`📁 Database location: ${dbPath}`);
 };
 
 // Initialize on import

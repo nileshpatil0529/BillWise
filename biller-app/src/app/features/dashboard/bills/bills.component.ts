@@ -18,15 +18,18 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatExpansionModule } from '@angular/material/expansion';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { ScrollingModule } from '@angular/cdk/scrolling';
 import { fromEvent, debounceTime, takeUntil, Subject } from 'rxjs';
 
 import { BillService } from '../../../core/services/bill.service';
 import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
+import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
 import { SocketService } from '../../../core/services/socket.service';
 import { Bill, ReportData, ReportSummary } from '../../../core/models/bill.model';
+import { TableActionDialogComponent } from './table-action-dialog/table-action-dialog.component';
 
 // jsPDF import for PDF generation
 declare var jspdf: any;
@@ -53,6 +56,7 @@ declare var jspdf: any;
     MatTabsModule,
     MatProgressSpinnerModule,
     MatSnackBarModule,
+    MatDialogModule,
     MatExpansionModule,
     ScrollingModule
   ],
@@ -126,17 +130,22 @@ export class BillsComponent implements OnInit, OnDestroy {
     public authService: AuthService,
     public translateService: TranslateService,
     private snackBar: MatSnackBar,
-    private socketService: SocketService
+    private dialog: MatDialog,
+    private socketService: SocketService,
+    public hotelService: HotelService
   ) {
     // Update displayedColumns based on settings
     effect(() => {
       const settings = this.settingsService.settings();
       const isHotelMode = settings.applicationType === 'hotel';
+      const isAdmin = this.authService.isAdmin();
       
       // Start with all columns, but filter out 'table' if not hotel mode
-      this.displayedColumns = isHotelMode 
-        ? [...this.allColumns] 
-        : this.allColumns.filter(col => col !== 'table');
+      this.displayedColumns = this.allColumns.filter(col => {
+        if (!isHotelMode && col === 'table') return false;
+        if (!isAdmin && col === 'actions') return false;
+        return true;
+      });
     });
   }
 
@@ -149,6 +158,11 @@ export class BillsComponent implements OnInit, OnDestroy {
     // setDatePreset already calls loadBills() and loadReport() internally
     this.setDatePreset('today');
     
+    // Load tables for hotel mode (for settle table functionality)
+    if (this.settingsService.settings().applicationType === 'hotel') {
+      this.hotelService.loadTables().subscribe();
+    }
+    
     // Setup socket listeners for real-time updates (after socket connects)
     this.trySetupSocketListeners();
   }
@@ -156,16 +170,13 @@ export class BillsComponent implements OnInit, OnDestroy {
   // Try to setup socket listeners, will retry when socket connects
   private trySetupSocketListeners(): void {
     if (this.socketListenersSetup) {
-      console.log('⚠️ Bills: Socket listeners already set up, skipping');
       return;
     }
 
     if (this.socketService.connected()) {
-      console.log('✅ Bills: Socket is connected, setting up listeners now...');
       this.setupSocketListeners();
       this.socketListenersSetup = true;
     } else {
-      console.log('⏳ Bills: Socket not connected yet, will retry in 1 second...');
       setTimeout(() => this.trySetupSocketListeners(), 1000);
     }
   }
@@ -175,53 +186,53 @@ export class BillsComponent implements OnInit, OnDestroy {
     this.socketService.off('bill-created');
     this.socketService.off('bill-updated');
     this.socketService.off('bill-deleted');
+    this.socketService.off('table-updated');
+    this.socketService.off('tables-refresh-needed');
     
     this.destroy$.next();
     this.destroy$.complete();
   }
 
   private setupSocketListeners(): void {
-    console.log('🔌 Bills: Setting up socket listeners for real-time updates');
     
     this.socketService.on('bill-created', (data: any) => {
-      console.log('📡 Bills: bill-created received', data);
       this.handleBillCreated(data);
     });
 
     this.socketService.on('bill-updated', (data: any) => {
-      console.log('📡 Bills: bill-updated received', data);
       this.handleBillUpdated(data);
     });
 
     this.socketService.on('bill-deleted', (data: any) => {
-      console.log('📡 Bills: bill-deleted received', data);
       this.handleBillDeleted(data);
     });
-    
-    console.log('✅ Bills: Socket listeners registered');
+
+    // Refresh table status column when tables change on any client
+    this.socketService.on('table-updated', () => {
+      this.hotelService.loadTables().subscribe();
+    });
+
+    this.socketService.on('tables-refresh-needed', () => {
+      this.hotelService.loadTables().subscribe();
+    });
   }
 
   private handleBillCreated(billData: any): void {
-    console.log('✅ Bills: Handling bill created, reloading data...');
     // Reload bills and report to show new bill
     this.loadBills(true);
     this.loadReport();
   }
 
   private handleBillUpdated(billData: any): void {
-    console.log('✅ Bills: Handling bill updated, reloading data...');
     // Reload bills and report to show updated bill
     this.loadBills(true);
     this.loadReport();
   }
 
   private handleBillDeleted(data: any): void {
-    console.log('✅ Bills: Handling bill deleted event, billId:', data.billId);
-    console.log('📊 Bills: Current bills count before reload:', this.allBills().length);
     // Reload bills and report to reflect deletion
     this.loadBills(true);
     this.loadReport();
-    console.log('🔄 Bills: Triggered reload after bill deletion');
   }
 
   ngAfterViewInit(): void {
@@ -390,6 +401,29 @@ export class BillsComponent implements OnInit, OnDestroy {
         this.snackBar.open(message, 'Close', { duration: 5000 });
       }
     });
+  }
+
+  // Settle table from bills page (Admin only)
+  isTableUnsettled(bill: Bill): boolean {
+    if (!bill.tableId) return false;
+    const table = this.hotelService.tables().find(t => t.id === bill.tableId);
+    return table?.status === 'unsettled';
+  }
+
+  settleTableFromBill(bill: Bill): void {
+    if (!bill.tableId) return;
+    if (confirm('Mark this table as settled? It will become available for new orders.')) {
+      this.hotelService.settleTable(bill.tableId).subscribe({
+        next: () => {
+          this.hotelService.loadTables().subscribe();
+          this.loadBills(true);
+        },
+        error: (err: any) => {
+          const message = err.error?.message || 'Failed to settle table';
+          this.snackBar.open(message, 'Close', { duration: 3000 });
+        }
+      });
+    }
   }
 
   downloadReport(): void {
@@ -571,5 +605,51 @@ export class BillsComponent implements OnInit, OnDestroy {
       case 'partial': return 'status-partial';
       default: return '';
     }
+  }
+
+  // Returns the effective display status for hotel-mode bills (Pending / Unsettled / Paid)
+  getDisplayStatusLabel(bill: Bill): string {
+    if (this.settingsService.settings().applicationType === 'hotel' && bill.tableId) {
+      const table = this.hotelService.tables().find(
+        t => t.id === bill.tableId && t.currentBillId === bill.billId
+      );
+      if (table?.status === 'occupied')   return 'Pending';
+      if (table?.status === 'unsettled')  return 'Unsettled';
+    }
+    return bill.paymentStatus.charAt(0).toUpperCase() + bill.paymentStatus.slice(1);
+  }
+
+  getDisplayStatusClass(bill: Bill): string {
+    if (this.settingsService.settings().applicationType === 'hotel' && bill.tableId) {
+      const table = this.hotelService.tables().find(
+        t => t.id === bill.tableId && t.currentBillId === bill.billId
+      );
+      if (table?.status === 'occupied')  return 'status-pending';
+      if (table?.status === 'unsettled') return 'status-unsettled';
+    }
+    return this.getPaymentStatusClass(bill.paymentStatus);
+  }
+
+  // Admin-only: open the table action dialog for any bill
+  openTableActionDialog(bill: Bill, event: Event): void {
+    event.stopPropagation();
+    // Only treat the table as live if this bill is still the active bill on it
+    const table = bill.tableId
+      ? this.hotelService.tables().find(
+          t => t.id === bill.tableId && t.currentBillId === bill.billId
+        )
+      : undefined;
+    const dialogRef = this.dialog.open(TableActionDialogComponent, {
+      width: '480px',
+      maxWidth: '95vw',
+      data: { bill, table }
+    });
+    dialogRef.afterClosed().subscribe((result: any) => {
+      if (result?.settled || result?.saved) {
+        this.loadBills(true);
+        this.loadReport();
+        this.hotelService.loadTables().subscribe();
+      }
+    });
   }
 }

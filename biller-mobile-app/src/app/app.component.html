@@ -1,1 +1,22 @@
-﻿<router-outlet></router-outlet>
+﻿<div class="app-shell" [class.blocked]="connectivityService.enabled() && connectivityService.isOffline()">
+	<router-outlet></router-outlet>
+</div>
+
+@if (connectivityService.enabled() && connectivityService.isOffline()) {
+	<div class="internet-blocker" role="alert" aria-live="assertive">
+		<div class="internet-blocker-card">
+			<h2>{{ settingsService.settings().language === 'hi' ? 'इंटरनेट डिस्कनेक्ट है' : 'Internet Disconnected' }}</h2>
+			<p>{{ settingsService.settings().language === 'hi' ? 'नेटवर्क वापस आने तक ऐप रोक दिया गया है।' : 'App is temporarily blocked until internet connectivity is restored.' }}</p>
+			<p class="internet-reason">
+				@if (settingsService.settings().language === 'hi') {
+					{{ connectivityService.offlineReason() === 'browser-offline' ? 'डिवाइस ऑफलाइन है। कृपया वाई-फाई/डेटा चालू करें।' : 'इंटरनेट पहुंच नहीं मिली। नेटवर्क स्थिर होने पर फिर से जांचें।' }}
+				} @else {
+					{{ connectivityService.offlineReason() === 'browser-offline' ? 'Device is offline. Please enable Wi-Fi or mobile data.' : 'Internet access could not be verified. Recheck after network is stable.' }}
+				}
+			</p>
+			<button type="button" (click)="connectivityService.recheckNow()" [disabled]="connectivityService.checking()">
+				{{ connectivityService.checking() ? (settingsService.settings().language === 'hi' ? 'जांच रहा है...' : 'Rechecking...') : (settingsService.settings().language === 'hi' ? 'फिर से जांचें' : 'Recheck') }}
+			</button>
+		</div>
+	</div>
+}

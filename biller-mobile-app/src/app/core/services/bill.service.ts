@@ -266,7 +266,8 @@ export class BillService {
       upiId: s.upiId,
       footerText: s.footerText,
       taxRates: s.taxRates,
-      receiptLanguage: s.receiptLanguage
+      receiptLanguage: s.receiptLanguage,
+      kotLanguage: s.kotLanguage
     };
   }
 }

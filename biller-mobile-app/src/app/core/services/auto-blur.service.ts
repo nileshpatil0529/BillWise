@@ -72,7 +72,6 @@ export class AutoBlurService {
     }, true);
 
     this.initialized = true;
-    console.log('AutoBlurService initialized - buttons will auto-blur after click');
   }
 }
 

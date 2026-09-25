@@ -403,6 +403,11 @@
         color: v.$light-warning;
       }
 
+      &.status-unsettled {
+        background: rgba(245, 127, 23, 0.15);
+        color: #e65100;
+      }
+
       &.status-partial {
         background: rgba(v.$light-primary, 0.15);
         color: v.$light-primary;
@@ -560,6 +565,9 @@
     }
     &.status-pending {
       background: rgba(255, 152, 0, 0.9);
+    }
+    &.status-unsettled {
+      background: rgba(230, 81, 0, 0.85);
     }
     &.status-partial {
       background: rgba(33, 150, 243, 0.9);

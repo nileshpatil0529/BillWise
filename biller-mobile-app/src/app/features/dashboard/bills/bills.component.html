@@ -63,10 +63,12 @@
           <mat-icon>arrow_back</mat-icon>
           Back
         </button>
-        <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
-          <mat-icon>print</mat-icon>
-          Print
-        </button>
+        @if (authService.isAdmin()) {
+          <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
+            <mat-icon>print</mat-icon>
+            Print
+          </button>
+        }
       </div>
     </div>
   } @else {
@@ -226,7 +228,7 @@
           <div class="bill-main">
             <div class="bill-info">
               <span class="bill-number">#{{ formatBillNumber(bill.billNumber) }}</span>
-              <span class="bill-date">{{ bill.createdAt | date:'dd MMM, HH:mm' }}</span>
+              <span class="bill-date">{{ bill.createdAt | date:'dd MMM, hh:mm a' }}</span>
             </div>
             <div class="bill-amount">
               <span class="amount">{{ formatCurrency(bill.grandTotal) }}</span>
@@ -250,12 +252,14 @@
               </span>
             </div>
             <div class="bill-actions">
-              <span class="status-badge" [class]="getPaymentStatusClass(bill.paymentStatus)">
-                {{ bill.paymentStatus | titlecase }}
+              <span class="status-badge" [class]="getDisplayStatusClass(bill)">
+                {{ getDisplayStatusLabel(bill) }}
               </span>
-              <button mat-icon-button class="print-btn" (click)="printBill(bill); $event.stopPropagation()">
-                <mat-icon>local_printshop</mat-icon>
-              </button>
+              @if (authService.isAdmin()) {
+                <button mat-icon-button class="print-btn" (click)="printBill(bill); $event.stopPropagation()">
+                  <mat-icon>local_printshop</mat-icon>
+                </button>
+              }
             </div>
           </div>
         </div>

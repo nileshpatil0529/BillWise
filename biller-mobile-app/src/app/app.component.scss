@@ -1,0 +1,59 @@
+.app-shell.blocked {
+	pointer-events: none;
+	user-select: none;
+}
+
+.internet-blocker {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 16px;
+	background: rgba(15, 23, 42, 0.7);
+}
+
+.internet-blocker-card {
+	width: min(420px, 100%);
+	border-radius: 16px;
+	background: #ffffff;
+	color: #1f2937;
+	box-shadow: 0 20px 45px rgba(0, 0, 0, 0.3);
+	padding: 18px;
+	text-align: center;
+}
+
+.internet-blocker-card h2 {
+	margin: 0 0 8px;
+	font-size: 1.2rem;
+	font-weight: 700;
+}
+
+.internet-blocker-card p {
+	margin: 0 0 16px;
+	font-size: 0.94rem;
+}
+
+.internet-blocker-card .internet-reason {
+	margin-top: -4px;
+	color: #7f1d1d;
+	font-size: 0.86rem;
+	font-weight: 500;
+}
+
+.internet-blocker-card button {
+	border: 0;
+	border-radius: 10px;
+	background: #0f766e;
+	color: #fff;
+	padding: 10px 18px;
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+}
+
+.internet-blocker-card button:disabled {
+	opacity: 0.7;
+	cursor: not-allowed;
+}

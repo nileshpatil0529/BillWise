@@ -12,7 +12,7 @@ const STARTUP_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
 const STARTUP_APPROVED_RUN_KEY = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run';
 const STARTUP_VALUE = 'BillWisePrintAgent';
 const LEGACY_STARTUP_VALUES = ['BillWiseStartup', 'BillWiseStartupAgent'];
-const AGENT_VERSION = '1.1.0';
+const AGENT_VERSION = '1.2.0';
 const STARTUP_SCRIPT_NAME = 'BillWisePrintAgent-startup.vbs';
 
 function getInstallContext() {
@@ -113,21 +113,57 @@ function runPowerShell(command) {
   });
 }
 
-function listWindowsPrinters() {
+// Async PowerShell executor — keeps the event loop free during print jobs.
+function spawnPowerShell(command, timeoutMs = 30_000) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', command], {
+      windowsHide: true
+    });
+
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      proc.kill();
+      reject(new Error(`PowerShell timed out after ${timeoutMs}ms`));
+    }, timeoutMs);
+
+    proc.stdout.on('data', d => { stdout += d.toString(); });
+    proc.stderr.on('data', d => { stderr += d.toString(); });
+
+    proc.on('close', code => {
+      clearTimeout(timer);
+      if (timedOut) return;
+      if (code !== 0) reject(new Error(stderr.trim() || 'PowerShell command failed'));
+      else resolve(stdout);
+    });
+
+    proc.on('error', err => {
+      clearTimeout(timer);
+      reject(err);
+    });
+  });
+}
+
+// Serialises all print jobs so concurrent requests never spawn two printers at once.
+let printQueue = Promise.resolve();
+function enqueuePrint(fn) {
+  const job = printQueue.then(fn);
+  printQueue = job.then(() => {}, () => {});
+  return job;
+}
+
+async function listWindowsPrinters() {
   const ps = "$ErrorActionPreference = 'Stop'; $names = Get-Printer | Select-Object -ExpandProperty Name; $names | ConvertTo-Json -Compress";
-  const result = runPowerShell(ps);
-  if (result.status !== 0) {
-    throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Unable to read printers');
-  }
-
-  const out = (result.stdout || '').trim();
+  const out = (await spawnPowerShell(ps, 15_000)).trim();
   if (!out) return [];
-
   const parsed = JSON.parse(out);
   return Array.isArray(parsed) ? parsed : [parsed];
 }
 
-function sendRawToPrinter(printerName, data) {
+async function sendRawToPrinter(printerName, data) {
   const escapedPrinter = escapeSingleQuotes(printerName);
   const payload = Buffer.from(data, 'utf8').toString('base64');
 
@@ -211,10 +247,101 @@ finally {
 }
 `;
 
-  const result = runPowerShell(ps);
-  if (result.status !== 0) {
-    throw new Error(result.stderr && result.stderr.trim() ? result.stderr.trim() : 'Raw print failed');
-  }
+  return enqueuePrint(() => spawnPowerShell(ps));
+}
+
+async function sendImageToPrinter(printerName, imageBase64, paperSize = '3inch') {
+  const escapedPrinter = escapeSingleQuotes(printerName);
+  const paperWidth = paperSize === '2inch' ? 190 : 286;
+  const tmpFile = path.join(os.tmpdir(), `billwise-print-${Date.now()}-${Math.random().toString(16).slice(2)}.b64`);
+  fs.writeFileSync(tmpFile, String(imageBase64), 'utf8');
+
+  const escapedTmpFile = escapeSingleQuotes(tmpFile);
+  const ps = `
+$ErrorActionPreference = 'Stop'
+$printerName = '${escapedPrinter}'
+$base64Path = '${escapedTmpFile}'
+$paperWidth = ${paperWidth}
+
+Add-Type -AssemblyName System.Drawing
+
+$base64 = Get-Content -Path $base64Path -Raw -Encoding UTF8
+$bytes = [System.Convert]::FromBase64String($base64)
+$ms = New-Object System.IO.MemoryStream(,$bytes)
+$image = [System.Drawing.Image]::FromStream($ms)
+
+$printDoc = New-Object System.Drawing.Printing.PrintDocument
+$printDoc.PrinterSettings.PrinterName = $printerName
+if (-not $printDoc.PrinterSettings.IsValid) {
+  throw "Invalid printer: $printerName"
+}
+
+$printDoc.PrintController = New-Object System.Drawing.Printing.StandardPrintController
+$printDoc.DefaultPageSettings.Margins = New-Object System.Drawing.Printing.Margins(0, 0, 0, 0)
+
+$paperHeight = [Math]::Max(200, [int]([Math]::Ceiling(($image.Height / [double]$image.Width) * $paperWidth)))
+$paper = New-Object System.Drawing.Printing.PaperSize('BillWiseCustom', $paperWidth, $paperHeight)
+$printDoc.DefaultPageSettings.PaperSize = $paper
+
+$handler = [System.Drawing.Printing.PrintPageEventHandler]{
+  param($sender, $e)
+
+  $dpiX = $e.Graphics.DpiX
+  if ($dpiX -le 0) { $dpiX = 203 }
+
+  $targetWidthPx = [int]([Math]::Round(($paperWidth / 100.0) * $dpiX))
+  if ($targetWidthPx -le 0) { $targetWidthPx = $image.Width }
+  $targetHeightPx = [int]([Math]::Round($image.Height * ($targetWidthPx / [double]$image.Width)))
+  if ($targetHeightPx -le 0) { $targetHeightPx = $image.Height }
+
+  $e.Graphics.PageUnit = [System.Drawing.GraphicsUnit]::Pixel
+  $e.Graphics.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::NearestNeighbor
+  $e.Graphics.SmoothingMode = [System.Drawing.Drawing2D.SmoothingMode]::None
+  $e.Graphics.PixelOffsetMode = [System.Drawing.Drawing2D.PixelOffsetMode]::Half
+  $e.Graphics.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighSpeed
+  $e.Graphics.TextRenderingHint = [System.Drawing.Text.TextRenderingHint]::SingleBitPerPixelGridFit
+
+  $rect = New-Object System.Drawing.Rectangle(0, 0, $targetWidthPx, $targetHeightPx)
+  $e.Graphics.Clear([System.Drawing.Color]::White)
+  $e.Graphics.DrawImage($image, $rect)
+  $e.HasMorePages = $false
+}
+
+$printDoc.add_PrintPage($handler)
+try {
+  $printDoc.Print()
+}
+finally {
+  $printDoc.remove_PrintPage($handler)
+  $printDoc.Dispose()
+  $image.Dispose()
+  $ms.Dispose()
+}
+`;
+
+  return enqueuePrint(async () => {
+    try {
+      await spawnPowerShell(ps);
+    } finally {
+      try { fs.unlinkSync(tmpFile); } catch {}
+    }
+  });
+}
+
+function preventSystemSleep() {
+  // write to a temp file — here-strings and double-quotes break under -Command tokenization
+  const tmpScript = path.join(os.tmpdir(), 'bw_nosleep.ps1');
+  const script = [
+    '$sig = \'[DllImport("kernel32.dll")] public static extern uint SetThreadExecutionState(uint f);\'',
+    'Add-Type -MemberDefinition $sig -Name PM -Namespace BW -ErrorAction SilentlyContinue',
+    'while ($true) { [BW.PM]::SetThreadExecutionState(0x80000001) | Out-Null; Start-Sleep -Seconds 30 }'
+  ].join('\r\n');
+  try { fs.writeFileSync(tmpScript, script, 'utf8'); } catch { return; }
+  const proc = spawn('powershell.exe', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tmpScript], {
+    windowsHide: true,
+    stdio: 'ignore'
+  });
+  proc.unref();
 }
 
 async function startService() {
@@ -244,7 +371,7 @@ async function startService() {
 
   const app = express();
   app.use(cors({ origin: true }));
-  app.use(express.json({ limit: '2mb' }));
+  app.use(express.json({ limit: '10mb' }));
 
   app.get('/health', (_req, res) => {
     res.json({
@@ -256,16 +383,16 @@ async function startService() {
     });
   });
 
-  app.get('/printers', (_req, res) => {
+  app.get('/printers', async (_req, res) => {
     try {
-      const printers = listWindowsPrinters();
+      const printers = await listWindowsPrinters();
       res.json({ success: true, printers });
     } catch (error) {
       res.status(500).json({ success: false, message: error.message, printers: [] });
     }
   });
 
-  app.post('/print', (req, res) => {
+  app.post('/print', async (req, res) => {
     const body = req.body || {};
     const printerName = body.printerName;
     const data = body.data;
@@ -275,15 +402,33 @@ async function startService() {
     }
 
     try {
-      sendRawToPrinter(printerName, data);
+      await sendRawToPrinter(printerName, data);
       return res.json({ success: true, message: 'Print sent' });
     } catch (error) {
       return res.status(500).json({ success: false, message: error.message || 'Print failed' });
     }
   });
 
+  app.post('/print-image', async (req, res) => {
+    const body = req.body || {};
+    const printerName = body.printerName;
+    const imageBase64 = body.imageBase64;
+    const paperSize = body.paperSize || '3inch';
+
+    if (!printerName || !imageBase64) {
+      return res.status(400).json({ success: false, message: 'printerName and imageBase64 are required' });
+    }
+
+    try {
+      await sendImageToPrinter(printerName, imageBase64, paperSize);
+      return res.json({ success: true, message: 'Image print sent' });
+    } catch (error) {
+      return res.status(500).json({ success: false, message: error.message || 'Image print failed' });
+    }
+  });
+
   app.listen(AGENT_PORT, AGENT_HOST, () => {
-    console.log(`BillWise Print Agent listening on http://${AGENT_HOST}:${AGENT_PORT}`);
+    if (process.platform === 'win32') preventSystemSleep();
   });
 }
 
@@ -327,7 +472,6 @@ function installAndStart() {
   });
   child.unref();
 
-  console.log('BillWise Print Agent installed and added to Windows startup.');
 }
 
 const args = new Set(process.argv.slice(2));

@@ -92,10 +92,18 @@
           <mat-icon>arrow_back</mat-icon>
           Back to Bills
         </button>
-        <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
-          <mat-icon>print</mat-icon>
-          Print Bill
-        </button>
+        @if (authService.isAdmin()) {
+          <button mat-flat-button color="primary" (click)="printBill(selectedBill()!)">
+            <mat-icon>print</mat-icon>
+            Print Bill
+          </button>
+        }
+        @if (authService.isAdmin() && isTableUnsettled(selectedBill()!)) {
+          <button mat-flat-button color="accent" (click)="settleTableFromBill(selectedBill()!)">
+            <mat-icon>check_circle</mat-icon>
+            Settle Table
+          </button>
+        }
       </div>
     </div>
   } @else {
@@ -285,7 +293,7 @@
         <ng-container matColumnDef="createdAt">
           <th mat-header-cell *matHeaderCellDef mat-sort-header>{{ translateService.t('bills.dateTime') }}</th>
           <td mat-cell *matCellDef="let bill">
-            {{ bill.createdAt | date:'dd/MM/yyyy HH:mm' }}
+            {{ bill.createdAt | date:'dd/MM/yyyy hh:mm a' }}
           </td>
         </ng-container>
 
@@ -340,8 +348,8 @@
         <ng-container matColumnDef="paymentStatus">
           <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.status') }}</th>
           <td mat-cell *matCellDef="let bill">
-            <mat-chip [class]="getPaymentStatusClass(bill.paymentStatus)">
-              {{ bill.paymentStatus | titlecase }}
+            <mat-chip [class]="getDisplayStatusClass(bill)">
+              {{ getDisplayStatusLabel(bill) }}
             </mat-chip>
           </td>
         </ng-container>
@@ -350,8 +358,10 @@
         <ng-container matColumnDef="actions">
           <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.actions') }}</th>
           <td mat-cell *matCellDef="let bill">
-            <button mat-icon-button (click)="printBill(bill); $event.stopPropagation()" matTooltip="Print">
-              <mat-icon>print</mat-icon>
+            <button mat-icon-button color="primary"
+                    (click)="openTableActionDialog(bill, $event)"
+                    matTooltip="Actions">
+              <mat-icon>receipt_long</mat-icon>
             </button>
           </td>
         </ng-container>
@@ -363,7 +373,7 @@
 
         <!-- No Data Row -->
         <tr class="no-data-row" *matNoDataRow>
-          <td colspan="7">
+          <td [attr.colspan]="displayedColumns.length">
             <div class="no-data">
               <mat-icon>receipt_long</mat-icon>
               <p>{{ translateService.t('bills.noBills') }}</p>

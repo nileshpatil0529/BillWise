@@ -52,7 +52,10 @@ export interface Settings {
   lowStockThreshold: number;
   language?: LanguageType; // 'en' or 'hi' - UI language
   receiptLanguage?: LanguageType; // 'en' or 'hi' - Receipt/Bill language
+  kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
+  internetStatusCheckEnabled?: boolean;
   units?: Unit[]; // Units for loose items (grocery mode)
+  tableTypes?: string[]; // Custom table type registry
   updatedAt: string;
 }
 

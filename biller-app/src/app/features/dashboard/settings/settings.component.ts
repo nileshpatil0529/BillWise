@@ -25,7 +25,8 @@ import { SettingsService } from '../../../core/services/settings.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { HotelService } from '../../../core/services/hotel.service';
 import { TranslateService } from '../../../core/services/translate.service';
-import { Settings, ApplicationType, ThemeType, ScannerType, Category, Unit, LanguageType } from '../../../core/models/settings.model';
+import { InternetConnectivityService } from '../../../core/services/internet-connectivity.service';
+import { Settings, ApplicationType, ThemeType, ScannerType, Unit, LanguageType } from '../../../core/models/settings.model';
 import { RestaurantTable, ItemNote } from '../../../core/models/hotel.model';
 import { ChangePasswordDialogComponent } from '../../auth/change-password-dialog/change-password-dialog.component';
 import { PrinterConfigComponent } from './printer-config/printer-config.component';
@@ -66,6 +67,7 @@ export class SettingsComponent implements OnInit {
   authService = inject(AuthService);
   hotelService = inject(HotelService);
   translateService = inject(TranslateService);
+  connectivityService = inject(InternetConnectivityService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
@@ -75,8 +77,6 @@ export class SettingsComponent implements OnInit {
 
   saving = signal(false);
   logoPreview = signal<string | null>(null);
-  categories = signal<Category[]>([]);
-  newCategoryName = signal<string>('');
   
   // Profile Photo
   profilePhotoPreview = signal<string | null>(null);
@@ -85,12 +85,16 @@ export class SettingsComponent implements OnInit {
   // Language
   selectedLanguage = signal<LanguageType>('en');
   selectedReceiptLanguage = signal<LanguageType>('en');
+  selectedKotLanguage = signal<LanguageType>('en');
+  internetStatusCheckEnabled = signal(true);
   
   // Hotel Management
   newTableStartNumber = signal<number>(1);
   newTableEndNumber = signal<number>(10);
-  newTableType = signal<'dine-in' | 'parcel'>('dine-in');
-  newNoteLabel = signal<string>('');
+  newTableType = signal<string>('dine-in');
+  customTableName = signal<string>('');
+  tableTypes = signal<string[]>(['dine-in', 'parcel', 'garden']);
+  newTypeName = signal<string>('');
   
   // Grocery Management - Units
   units = signal<Unit[]>([]);
@@ -135,9 +139,8 @@ export class SettingsComponent implements OnInit {
   }
 
   private loadHotelData(): void {
-    // Load hotel-specific data (tables and notes)
+    // Load hotel-specific data (tables)
     this.hotelService.loadTables().subscribe();
-    this.hotelService.loadItemNotes().subscribe();
   }
 
   // Check if current application type is hotel
@@ -164,7 +167,7 @@ export class SettingsComponent implements OnInit {
     });
 
     this.taxForm = this.fb.group({
-      taxEnabled: [true],
+      taxEnabled: [false],
       taxName: ['GST', Validators.required],
       taxRate: [18, [Validators.required, Validators.min(0), Validators.max(100)]],
       taxNumber: [''],
@@ -177,7 +180,8 @@ export class SettingsComponent implements OnInit {
       footerText: ['Thank you for your business!'],
       invoicePrefix: ['INV'],
       invoiceStartNumber: [1, [Validators.required, Validators.min(1)]],
-      receiptLanguage: ['en']
+      receiptLanguage: ['en'],
+      kotLanguage: ['en']
     });
   }
 
@@ -198,7 +202,7 @@ export class SettingsComponent implements OnInit {
 
     const taxRate = settings.taxRates?.length > 0 ? settings.taxRates[0] : { name: 'GST', rate: 18 };
     this.taxForm.patchValue({
-      taxEnabled: settings.taxEnabled ?? settings.taxRates?.length > 0,
+      taxEnabled: settings.taxEnabled ?? false,
       taxName: taxRate.name,
       taxRate: taxRate.rate,
       taxNumber: settings.taxNumber,
@@ -211,19 +215,18 @@ export class SettingsComponent implements OnInit {
       footerText: settings.footerText,
       invoicePrefix: settings.invoicePrefix,
       invoiceStartNumber: settings.invoiceStartNumber,
-      receiptLanguage: settings.receiptLanguage || 'en'
+      receiptLanguage: settings.receiptLanguage || 'en',
+      kotLanguage: settings.kotLanguage || 'en'
     });
 
-    // Load receipt language preference
+    // Load receipt/KOT language preferences
     this.selectedReceiptLanguage.set(settings.receiptLanguage || 'en');
+    this.selectedKotLanguage.set(settings.kotLanguage || 'en');
 
     if (settings.logo) {
       this.logoPreview.set(settings.logo);
     }
 
-    // Load categories
-    this.categories.set(settings.categories || [{ name: 'General', enabled: true }]);
-    
     // Load units (for grocery mode)
     const defaultUnits: Unit[] = [
       { id: 1, name: 'Kilogram', symbol: 'kg', allowDecimal: true },
@@ -238,6 +241,32 @@ export class SettingsComponent implements OnInit {
     const lang = settings.language || 'en';
     this.selectedLanguage.set(lang);
     this.translateService.initLanguage(lang);
+
+    this.internetStatusCheckEnabled.set(settings.internetStatusCheckEnabled ?? true);
+
+    const defaultTableTypes = ['dine-in', 'parcel', 'garden'];
+    const rawTypes = (settings as any).tableTypes;
+    const parsedTypes = Array.isArray(rawTypes)
+      ? rawTypes
+      : (typeof rawTypes === 'string' ? (() => { try { return JSON.parse(rawTypes); } catch { return null; } })() : null);
+    this.tableTypes.set(parsedTypes?.length ? parsedTypes : defaultTableTypes);
+    if (!this.tableTypes().includes(this.newTableType())) {
+      this.newTableType.set(this.tableTypes()[0]);
+    }
+  }
+
+  onInternetStatusCheckToggle(enabled: boolean): void {
+    this.internetStatusCheckEnabled.set(enabled);
+
+    this.settingsService.updateSettings({ internetStatusCheckEnabled: enabled }).subscribe({
+      next: () => {
+        this.connectivityService.setEnabled(enabled);
+      },
+      error: () => {
+        this.internetStatusCheckEnabled.set(!enabled);
+        this.snackBar.open('Failed to save internet status check setting', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   onThemeChange(isDark: boolean): void {
@@ -368,12 +397,14 @@ export class SettingsComponent implements OnInit {
       footerText: formValue.footerText,
       invoicePrefix: formValue.invoicePrefix,
       invoiceStartNumber: formValue.invoiceStartNumber,
-      receiptLanguage: formValue.receiptLanguage || 'en'
+      receiptLanguage: formValue.receiptLanguage || 'en',
+      kotLanguage: formValue.kotLanguage || 'en'
     };
 
     this.settingsService.updateSettings(settings).subscribe({
       next: () => {
         this.selectedReceiptLanguage.set(formValue.receiptLanguage || 'en');
+        this.selectedKotLanguage.set(formValue.kotLanguage || 'en');
         this.saving.set(false);
       },
       error: () => {
@@ -385,65 +416,6 @@ export class SettingsComponent implements OnInit {
 
   getAppTypeIcon(type: string): string {
     return this.applicationTypes.find(t => t.value === type)?.icon || 'store';
-  }
-
-  // Categories Management
-  addCategory(): void {
-    const name = this.newCategoryName().trim();
-    if (!name) {
-      this.snackBar.open('Please enter a category name', 'Close', { duration: 3000 });
-      return;
-    }
-
-    const currentCategories = this.categories();
-    if (currentCategories.some(c => c.name.toLowerCase() === name.toLowerCase())) {
-      this.snackBar.open('Category already exists', 'Close', { duration: 3000 });
-      return;
-    }
-
-    const newCategory: Category = { name, enabled: true };
-    this.categories.set([...currentCategories, newCategory]);
-    this.newCategoryName.set('');
-  }
-
-  toggleCategory(index: number): void {
-    const currentCategories = [...this.categories()];
-    currentCategories[index].enabled = !currentCategories[index].enabled;
-    this.categories.set(currentCategories);
-  }
-
-  removeCategory(index: number): void {
-    const categoryName = this.categories()[index].name;
-    
-    // Prevent removing 'General' category
-    if (categoryName === 'General') {
-      this.snackBar.open('Cannot remove General category', 'Close', { duration: 3000 });
-      return;
-    }
-
-    if (confirm(`Are you sure you want to remove "${categoryName}"?`)) {
-      const currentCategories = [...this.categories()];
-      currentCategories.splice(index, 1);
-      this.categories.set(currentCategories);
-    }
-  }
-
-  saveCategories(): void {
-    this.saving.set(true);
-    
-    const settings: Partial<Settings> = {
-      categories: this.categories()
-    };
-
-    this.settingsService.updateSettings(settings).subscribe({
-      next: () => {
-        this.saving.set(false);
-      },
-      error: () => {
-        this.snackBar.open('Failed to save categories', 'Close', { duration: 3000 });
-        this.saving.set(false);
-      }
-    });
   }
 
   openChangePasswordDialog(): void {
@@ -502,6 +474,46 @@ export class SettingsComponent implements OnInit {
 
   // ==================== HOTEL MANAGEMENT ====================
 
+  addTableType(): void {
+    const name = this.newTypeName().trim();
+    if (!name) {
+      this.snackBar.open('Please enter a type name', 'Close', { duration: 3000 });
+      return;
+    }
+    if (this.tableTypes().includes(name)) {
+      this.snackBar.open('Type already exists', 'Close', { duration: 3000 });
+      return;
+    }
+    const updated = [...this.tableTypes(), name];
+    this.tableTypes.set(updated);
+    this.newTableType.set(name);
+    this.newTypeName.set('');
+    this.settingsService.updateSettings({ tableTypes: updated }).subscribe();
+  }
+
+  removeTableType(type: string): void {
+    const hasTablesOfType = this.hotelService.tables().some(t => t.tableType === type);
+    if (hasTablesOfType) {
+      this.snackBar.open(`Cannot remove type '${type}' — it has existing tables`, 'Close', { duration: 3000 });
+      return;
+    }
+    const updated = this.tableTypes().filter(t => t !== type);
+    this.tableTypes.set(updated);
+    if (this.newTableType() === type) {
+      this.newTableType.set(updated[0] || '');
+    }
+    this.settingsService.updateSettings({ tableTypes: updated }).subscribe();
+  }
+
+  getTableTypeLabel(type: string): string {
+    const labels: Record<string, string> = { 'dine-in': 'Dine-In', 'parcel': 'Parcel / Takeaway' };
+    return labels[type] ?? type.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  getTablesByType(type: string): import('../../../core/models/hotel.model').RestaurantTable[] {
+    return this.hotelService.tables().filter(t => t.tableType === type);
+  }
+
   // Tables Management
   addTables(): void {
     const start = this.newTableStartNumber();
@@ -529,6 +541,34 @@ export class SettingsComponent implements OnInit {
     });
   }
 
+  addCustomTable(): void {
+    const tableType = this.newTableType();
+    const customName = this.customTableName().trim();
+
+    if (!customName) {
+      this.snackBar.open('Please enter a table name', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.saving.set(true);
+    this.hotelService.createTables({
+      startNumber: 1,
+      endNumber: 1,
+      tableType,
+      customTableName: customName
+    }).subscribe({
+      next: () => {
+        this.customTableName.set('');
+        this.saving.set(false);
+      },
+      error: (err) => {
+        const message = err?.error?.message || 'Failed to create table';
+        this.snackBar.open(message, 'Close', { duration: 3000 });
+        this.saving.set(false);
+      }
+    });
+  }
+
   deleteTable(table: RestaurantTable): void {
     if (table.status === 'occupied') {
       this.snackBar.open('Cannot delete occupied table', 'Close', { duration: 3000 });
@@ -542,49 +582,6 @@ export class SettingsComponent implements OnInit {
         },
         error: () => {
           this.snackBar.open('Failed to delete table', 'Close', { duration: 3000 });
-        }
-      });
-    }
-  }
-
-  getDineInTables(): RestaurantTable[] {
-    return this.hotelService.tables().filter(t => t.tableType === 'dine-in');
-  }
-
-  getParcelTables(): RestaurantTable[] {
-    return this.hotelService.tables().filter(t => t.tableType === 'parcel');
-  }
-
-  // Item Notes Management
-  addItemNote(): void {
-    const label = this.newNoteLabel().trim();
-    if (!label) {
-      this.snackBar.open('Please enter a note label', 'Close', { duration: 3000 });
-      return;
-    }
-
-    this.saving.set(true);
-    this.hotelService.createItemNote({ label }).subscribe({
-      next: () => {
-        this.newNoteLabel.set('');
-        this.saving.set(false);
-      },
-      error: (err) => {
-        const message = err.error?.message || 'Failed to add note';
-        this.snackBar.open(message, 'Close', { duration: 3000 });
-        this.saving.set(false);
-      }
-    });
-  }
-
-  deleteItemNote(note: ItemNote): void {
-    if (confirm(`Are you sure you want to delete "${note.label}"?`)) {
-      this.hotelService.deleteItemNote(note.id).subscribe({
-        next: () => {
-          // Note deleted successfully
-        },
-        error: () => {
-          this.snackBar.open('Failed to delete note', 'Close', { duration: 3000 });
         }
       });
     }
