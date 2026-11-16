@@ -4,10 +4,25 @@ import fs from 'fs';
 import db from '../config/database.js';
 
 // Generate unique product ID
+// Uses the highest existing numeric suffix (not COUNT(*)) so that IDs stay
+// unique even after products have been deleted, which would otherwise cause
+// a reused count to collide with an existing productId (PRIMARY KEY violation).
 const generateProductId = () => {
-  const result = db.prepare('SELECT COUNT(*) as count FROM products').get();
-  const count = result.count + 1;
-  return `PRD${count.toString().padStart(6, '0')}`;
+  const result = db.prepare(`
+    SELECT MAX(CAST(SUBSTR(productId, 4) AS INTEGER)) as maxNum
+    FROM products
+    WHERE productId LIKE 'PRD%'
+  `).get();
+  let nextNum = (result?.maxNum || 0) + 1;
+  let productId = `PRD${nextNum.toString().padStart(6, '0')}`;
+
+  // Guard against any residual collision (e.g. imported/custom IDs)
+  while (db.prepare('SELECT 1 FROM products WHERE productId = ?').get(productId)) {
+    nextNum += 1;
+    productId = `PRD${nextNum.toString().padStart(6, '0')}`;
+  }
+
+  return productId;
 };
 
 const parseYesNoBoolean = (value, fallback = false) => {
