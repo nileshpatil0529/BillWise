@@ -1056,6 +1056,23 @@
       min-width: 60px;
       @include m.dark-theme { color: v.$dark-primary; }
     }
+
+    .item-delete-btn {
+      width: 32px;
+      height: 32px;
+      min-width: 32px;
+      flex-shrink: 0;
+
+      &.mat-mdc-icon-button {
+        --mdc-icon-button-state-layer-size: 32px;
+      }
+
+      mat-icon {
+        font-size: 18px;
+        width: 18px;
+        height: 18px;
+      }
+    }
   }
 
   .item-extras {

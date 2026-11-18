@@ -5,7 +5,8 @@ import {
   createBill,
   updateBill,
   deleteBill,
-  getReport
+  getReport,
+  cancelReopen
 } from '../controllers/billController.js';
 import { requestPrint, markKOTPrinted } from '../controllers/printerController.js';
 import { authenticate } from '../middleware/auth.js';
@@ -21,6 +22,7 @@ router.get('/report', getReport);
 router.get('/:id', getBillById);
 router.post('/', createBill);
 router.put('/:id', updateBill);
+router.post('/:id/cancel-reopen', cancelReopen);
 router.delete('/:id', deleteBill);
 router.post('/print', requestPrint);
 router.post('/print-kot', (req, res) => { req.body.type = 'kot'; return requestPrint(req, res); });
