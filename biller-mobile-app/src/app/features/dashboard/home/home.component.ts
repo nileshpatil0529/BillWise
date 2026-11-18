@@ -309,7 +309,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                 discount: 0,
                 discountType: 'fixed' as const,
                 lineTotal: item.unitPrice * item.quantity,
-                note: item.note
+                note: item.note,
+                locked: Boolean(item.locked) // Already billed/printed -- cannot be removed
               }));
               this.billService.cartItems.set(cartItems);
             }
@@ -687,7 +688,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     
     if (newQuantity >= minQuantity) {
       this.billService.updateCartItem(item.productId, { quantity: newQuantity });
-    } else if (newQuantity <= 0) {
+    } else if (item.locked) {
+      // Already billed/printed item — block removal via quantity decrease.
+      this.snackBar.open('This item has already been billed and cannot be removed', 'Close', {
+        duration: 2500,
+        panelClass: ['warning-snackbar']
+      });
+    } else {
       this.removeItem(item.productId);
     }
   }
@@ -772,6 +779,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     const newQuantity = item.quantity + change;
     
     if (newQuantity <= 0) {
+      if (item.locked) {
+        // Already billed/printed item — floor at minimum instead of removing.
+        this.beepService.playError();
+        this.snackBar.open('This item has already been billed and cannot be removed', 'Close', {
+          duration: 2500,
+          panelClass: ['warning-snackbar']
+        });
+        return;
+      }
       this.removeItem(item.productId);
       this.beepService.playError();
     } else {
@@ -781,6 +797,14 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
 
   removeItem(productId: string): void {
+    const item = this.billService.cartItems().find(i => i.productId === productId);
+    if (item?.locked) {
+      this.snackBar.open('This item has already been billed and cannot be removed', 'Close', {
+        duration: 2500,
+        panelClass: ['warning-snackbar']
+      });
+      return;
+    }
     this.billService.removeFromCart(productId);
   }
 
@@ -788,7 +812,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     this.billService.updateCartItem(item.productId, { note: note || undefined });
   }
 
+  // Whether the current cart contains any already billed/printed (locked) items
+  hasLockedCartItems(): boolean {
+    return this.billService.cartItems().some(item => item.locked);
+  }
+
   clearCart(): void {
+    if (this.hasLockedCartItems()) {
+      this.snackBar.open('This order has already been billed and cannot be cleared. Remove only newly added items.', 'Close', {
+        duration: 3500,
+        panelClass: ['warning-snackbar']
+      });
+      return;
+    }
+
     const isHotel = this.isHotelMode();
     const table = this.selectedTable();
     const hasItems = this.billService.cartItems().length > 0;
@@ -1204,7 +1241,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
               discount: 0,
               discountType: 'fixed' as const,
               lineTotal: item.unitPrice * item.quantity,
-              note: item.note // Preserve note when loading existing bill
+              note: item.note, // Preserve note when loading existing bill
+              locked: Boolean(item.locked) // Already billed/printed -- cannot be removed
             }));
             this.billService.cartItems.set(cartItems);
           }

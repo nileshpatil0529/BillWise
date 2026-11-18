@@ -379,15 +379,22 @@ export const updateBill = async (req, res) => {
           } catch (snapshotError) {
             // Ignore snapshot failures to avoid blocking bill completion.
           }
-        } else if (bill.billStatus === 'completed' && updates.billStatus !== 'completed' && bill.tableId) {
+        } else if (bill.billStatus === 'completed' && updates.billStatus !== 'completed') {
           // Bill is being reopened (e.g. to add more items) from a completed/unsettled state.
-          // Move the table back to occupied so the active-order flow (KOT/complete) works normally again.
-          try {
-            const now2 = new Date().toISOString();
-            propagateTableStatusOnly(bill.tableId, 'occupied', now2, 'unsettled');
-          } catch (tableError) {
-            // Ignore table update failures to avoid blocking bill status update.
+          if (bill.tableId) {
+            // Move the table back to occupied so the active-order flow (KOT/complete) works normally again.
+            try {
+              const now2 = new Date().toISOString();
+              propagateTableStatusOnly(bill.tableId, 'occupied', now2, 'unsettled');
+            } catch (tableError) {
+              // Ignore table update failures to avoid blocking bill status update.
+            }
           }
+
+          // Lock all items that were already saved/printed on this bill so the
+          // client hides the delete option for them — only items added after
+          // this reopen remain removable until the bill is completed again.
+          db.prepare('UPDATE bill_items SET locked = 1 WHERE billId = ?').run(id);
         }
       }
 
@@ -407,7 +414,8 @@ export const updateBill = async (req, res) => {
           existingItemsMap[item.productId] = {
             quantity: item.quantity,
             kotPrinted: item.kotPrinted || 0,
-            kotPrintedQuantity: item.kotPrintedQuantity || 0
+            kotPrintedQuantity: item.kotPrintedQuantity || 0,
+            locked: item.locked || 0
           };
         });
         
@@ -428,8 +436,8 @@ export const updateBill = async (req, res) => {
         // Insert all items from current cart with correct quantities
         if (updates.items.length > 0) {
           const insertItem = db.prepare(`
-            INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, kotPrintedQuantity, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, kotPrintedQuantity, note, locked)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `);
 
           for (const item of updates.items) {
@@ -439,6 +447,10 @@ export const updateBill = async (req, res) => {
             // Preserve kotPrintedQuantity to track what was already sent to kitchen
             let kotPrintedStatus = 0;
             let kotPrintedQty = 0;
+            // Preserve the locked flag so items already marked as billed/printed
+            // (on a previous reopen) stay locked across subsequent cart saves;
+            // items without a prior locked flag (i.e. newly added) stay unlocked.
+            const lockedStatus = existingItem?.locked ? 1 : 0;
             if (existingItem) {
               // Preserve the quantity that was already printed
               kotPrintedQty = existingItem.kotPrintedQuantity || 0;
@@ -448,7 +460,7 @@ export const updateBill = async (req, res) => {
               }
             }
             
-            insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus, kotPrintedQty, item.note || null);
+            insertItem.run(id, item.productId || '', item.name, item.quantity, item.unitPrice, itemTotal, itemTotal, kotPrintedStatus, kotPrintedQty, item.note || null, lockedStatus);
             
             // Deduct stock for stock-tracked products
             if (item.productId) {

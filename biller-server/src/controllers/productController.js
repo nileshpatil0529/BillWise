@@ -25,6 +25,19 @@ const generateProductId = () => {
   return productId;
 };
 
+// Normalize a product name/label: trim surrounding whitespace, collapse repeated
+// internal spaces, and capitalize each word (e.g. " paneer tikka  " -> "Paneer Tikka").
+// Applied consistently to manually entered (form) and imported (Excel) product names.
+const toTitleCase = (value) => {
+  if (value === undefined || value === null) return value;
+  const trimmed = value.toString().trim().replace(/\s+/g, ' ');
+  if (!trimmed) return trimmed;
+  return trimmed
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
 const parseYesNoBoolean = (value, fallback = false) => {
   if (value === undefined || value === null || value === '') return fallback;
   if (typeof value === 'boolean') return value;
@@ -260,7 +273,8 @@ export const createProduct = async (req, res) => {
     const productData = req.body;
     const settings = db.prepare('SELECT applicationType FROM settings WHERE id = 1').get();
     const isHotelMode = settings?.applicationType === 'hotel';
-    const productName = productData.name;
+    const productName = toTitleCase(productData.name);
+    const productNameHi = productData.nameHi ? toTitleCase(productData.nameHi) : null;
     const productBarcode = productData.barcode || '';
     const isStockTracked = parseYesNoBoolean(productData.isStockTracked, !isHotelMode);
     const stockToAdd = isStockTracked ? (parseInt(productData.stockQuantity) || 0) : 0;
@@ -311,7 +325,7 @@ export const createProduct = async (req, res) => {
       `).run(
         productId,
         productName,
-        productData.nameHi || null,
+        productNameHi,
         isStockTracked ? 1 : 0,
         productData.category || 'General',
         productData.description || '',
@@ -384,8 +398,8 @@ export const updateProduct = async (req, res) => {
         updatedAt = ?
       WHERE productId = ?
     `).run(
-      updates.name,
-      updates.nameHi !== undefined ? updates.nameHi : null,
+      updates.name ? toTitleCase(updates.name) : updates.name,
+      updates.nameHi !== undefined ? (updates.nameHi ? toTitleCase(updates.nameHi) : null) : null,
       updates.category,
       updates.description,
       updates.barcode,
@@ -579,7 +593,7 @@ export const importProducts = async (req, res) => {
         try {
           // Log output intentionally removed; validation and errors are still collected.
           
-          const productName = (row.name || row.Name || row['Product Name'] || '').toString().trim();
+          const productName = toTitleCase(row.name || row.Name || row['Product Name'] || '');
           
           // Handle barcode - convert from number/scientific notation if needed
           // For hotel mode, use empty string
@@ -643,7 +657,7 @@ export const importProducts = async (req, res) => {
           const warrantyMonths = parseInt(row.warrantyMonths || row.WarrantyMonths || row['Warranty (Months)'] || row['Warranty'] || 0) || 0;
 
           // Parse Hindi name (optional)
-          const productNameHi = (row.nameHi || row.NameHi || row['Name (Hindi)'] || row['Product Name (Hindi)'] || '').toString().trim() || null;
+          const productNameHi = toTitleCase(row.nameHi || row.NameHi || row['Name (Hindi)'] || row['Product Name (Hindi)'] || '') || null;
 
           if (existingProduct) {
             // Update existing product - replace all values with new values

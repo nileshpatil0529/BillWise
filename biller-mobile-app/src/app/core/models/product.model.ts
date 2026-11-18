@@ -51,6 +51,7 @@ export interface CartItem extends Product {
   discountType: 'percentage' | 'fixed';
   lineTotal: number;
   note?: string; // Optional note for hotel mode (e.g., Spicy, No salt)
+  locked?: boolean; // Item was already saved/printed on a previously billed table — not removable
 }
 
 export interface ProductResponse {

@@ -437,8 +437,8 @@
         }
         
         <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())"
-                matTooltip="Clear All">
+                [disabled]="(billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())) || hasLockedCartItems()"
+                [matTooltip]="hasLockedCartItems() ? 'Already billed — cannot clear' : 'Clear All'">
           <mat-icon>delete_sweep</mat-icon>
         </button>
       </mat-card-header>
@@ -487,7 +487,9 @@
                 <th mat-header-cell *matHeaderCellDef>{{ translateService.t('common.quantity') }}</th>
                 <td mat-cell *matCellDef="let item">
                   <div class="quantity-controls">
-                    <button mat-icon-button (click)="updateQuantity(item, -1)" class="qty-btn" matTooltip="Decrease">
+                    <button mat-icon-button (click)="updateQuantity(item, -1)" class="qty-btn"
+                            [disabled]="item.locked && item.quantity <= (item.isLooseItem ? 0.1 : 1)"
+                            [matTooltip]="item.locked && item.quantity <= (item.isLooseItem ? 0.1 : 1) ? 'Already billed — cannot remove' : 'Decrease'">
                       <mat-icon>remove</mat-icon>
                     </button>
                     <span class="qty-value">
@@ -541,9 +543,13 @@
               <ng-container matColumnDef="actions">
                 <th mat-header-cell *matHeaderCellDef></th>
                 <td mat-cell *matCellDef="let item">
-                  <button mat-icon-button color="warn" (click)="removeItem(item.productId)" matTooltip="Remove">
-                    <mat-icon>delete</mat-icon>
-                  </button>
+                  @if (item.locked) {
+                    <mat-icon class="locked-icon" matTooltip="Already billed — cannot remove">lock</mat-icon>
+                  } @else {
+                    <button mat-icon-button color="warn" (click)="removeItem(item.productId)" matTooltip="Remove">
+                      <mat-icon>delete</mat-icon>
+                    </button>
+                  }
                 </td>
               </ng-container>
 

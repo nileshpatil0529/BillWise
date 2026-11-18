@@ -425,6 +425,18 @@
     overflow: auto;
     @include m.custom-scrollbar;
 
+    .locked-icon {
+      color: rgba(0, 0, 0, 0.38);
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      vertical-align: middle;
+
+      @include m.dark-theme {
+        color: rgba(255, 255, 255, 0.38);
+      }
+    }
+
     // Mobile mode specific styles
     &.mobile-mode {
       .cart-table {
