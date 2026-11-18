@@ -17,6 +17,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatBadgeModule } from '@angular/material/badge';
 import { MatMenuModule } from '@angular/material/menu';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { debounceTime, Subject, Subscription } from 'rxjs';
 
 import { ProductService } from '../../../core/services/product.service';
@@ -68,7 +69,8 @@ interface AttendedTableState {
     MatTooltipModule,
     MatChipsModule,
     MatBadgeModule,
-    MatMenuModule
+    MatMenuModule,
+    MatProgressSpinnerModule
   ],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
@@ -1115,8 +1117,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   
   // State for changing table
   changingTable = signal(false);
-  tableMode = signal<'change-table' | 'attend-new' | 'switch-table'>('change-table');
-  
+  tableMode = signal<'change-table' | 'attend-new' | 'switch-table' | 'merge-tables'>('change-table');
+
+  // Table merging state
+  mergeSelection = signal<Set<number>>(new Set());
+  mergeEditingGroupId = signal<string | null>(null); // null = creating a new merge, otherwise editing this group
+  mergeSaving = signal(false);
+
   // Start change table process
   startChangeTable(): void {
     this.changingTable.set(true);
@@ -1124,10 +1131,144 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   }
   
   // Set table mode
-  setTableMode(mode: 'change-table' | 'attend-new' | 'switch-table'): void {
+  setTableMode(mode: 'change-table' | 'attend-new' | 'switch-table' | 'merge-tables'): void {
     this.tableMode.set(mode);
+    if (mode === 'merge-tables') {
+      this.resetMergeSelection();
+    }
   }
-  
+
+  // Open the merge overlay. If the currently selected table is already merged,
+  // pre-select its whole group so the user can edit (add/remove) membership.
+  startMergeTables(): void {
+    this.changingTable.set(true);
+    this.tableMode.set('merge-tables');
+    const current = this.selectedTable();
+    if (current?.mergeGroupId) {
+      const group = this.hotelService.getMergeGroupTables(current);
+      this.mergeEditingGroupId.set(current.mergeGroupId);
+      this.mergeSelection.set(new Set(group.map(t => t.id)));
+    } else {
+      this.resetMergeSelection();
+    }
+  }
+
+  private resetMergeSelection(): void {
+    this.mergeEditingGroupId.set(null);
+    this.mergeSelection.set(new Set());
+  }
+
+  // Whether a table can be toggled in the merge selection grid
+  canToggleMergeTable(table: RestaurantTable): boolean {
+    if (this.mergeSelection().has(table.id)) return true; // always allow unchecking
+    if (this.mergeEditingGroupId()) {
+      // Editing an existing group — only unmerged available tables can be added
+      return table.status === 'available' && !table.mergeGroupId;
+    }
+    // Creating a brand new merge — available tables, or a single occupied/unsettled
+    // table may anchor the group (its order becomes the shared order)
+    if (table.mergeGroupId) return false;
+    if (table.status === 'available') return true;
+    if (table.status === 'occupied' || table.status === 'unsettled') {
+      const selected = this.mergeSelection();
+      const hasActiveSelection = Array.from(selected).some(id => {
+        const t = this.hotelService.tables().find(x => x.id === id);
+        return t && (t.status === 'occupied' || t.status === 'unsettled');
+      });
+      return !hasActiveSelection;
+    }
+    return false;
+  }
+
+  isMergeSelected(table: RestaurantTable): boolean {
+    return this.mergeSelection().has(table.id);
+  }
+
+  toggleMergeTableSelection(table: RestaurantTable): void {
+    if (!this.canToggleMergeTable(table)) return;
+    this.mergeSelection.update(sel => {
+      const next = new Set(sel);
+      if (next.has(table.id)) {
+        next.delete(table.id);
+      } else {
+        next.add(table.id);
+      }
+      return next;
+    });
+  }
+
+  getMergeSelectionCount(): number {
+    return this.mergeSelection().size;
+  }
+
+  // Confirm the merge (create new group) or save membership changes (editing existing group)
+  confirmMergeTables(): void {
+    const tableIds = Array.from(this.mergeSelection());
+    if (tableIds.length < 2) {
+      this.snackBar.open('Select at least two tables to merge', 'Close', { duration: 3000 });
+      return;
+    }
+
+    this.mergeSaving.set(true);
+    const editingGroupId = this.mergeEditingGroupId();
+    const request$ = editingGroupId
+      ? this.hotelService.updateMergeGroup(editingGroupId, { tableIds })
+      : this.hotelService.mergeTables({ tableIds });
+
+    request$.subscribe({
+      next: (response) => {
+        this.mergeSaving.set(false);
+        if (response.success) {
+          this.snackBar.open(editingGroupId ? 'Merge updated' : 'Tables merged', 'Close', { duration: 2000 });
+          this.afterMergeChange(response.data?.primaryTableId);
+        }
+      },
+      error: (err) => {
+        this.mergeSaving.set(false);
+        this.snackBar.open(err.error?.message || 'Failed to merge tables', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  // Unmerge the group the currently selected table belongs to (quick action, no selection needed)
+  unmergeCurrentGroup(): void {
+    const current = this.selectedTable();
+    if (!current?.mergeGroupId) return;
+
+    this.mergeSaving.set(true);
+    this.hotelService.unmergeTables(current.mergeGroupId).subscribe({
+      next: (response) => {
+        this.mergeSaving.set(false);
+        if (response.success) {
+          this.snackBar.open('Tables unmerged', 'Close', { duration: 2000 });
+          this.afterMergeChange(current.id);
+        }
+      },
+      error: (err) => {
+        this.mergeSaving.set(false);
+        this.snackBar.open(err.error?.message || 'Failed to unmerge tables', 'Close', { duration: 3000 });
+      }
+    });
+  }
+
+  // Refresh local state after a merge/update/unmerge: reload tables and keep the
+  // currently selected table pointed at the right (possibly new primary) row.
+  private afterMergeChange(fallbackTableId?: number): void {
+    const currentId = this.selectedTable()?.id ?? fallbackTableId;
+    this.hotelService.loadTables().subscribe({
+      next: () => {
+        if (currentId) {
+          const refreshed = this.hotelService.tables().find(t => t.id === currentId)
+            || this.hotelService.tables().find(t => t.id === fallbackTableId);
+          if (refreshed && this.selectedTable()) {
+            this.selectedTable.set(refreshed);
+          }
+        }
+      }
+    });
+    this.cancelChangeTable();
+  }
+
   // Handle table click based on mode
   handleTableClick(table: RestaurantTable): void {
     const mode = this.tableMode();
@@ -1142,6 +1283,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     } else if (mode === 'switch-table') {
       // Switch Table mode - move current order to another available table
       this.switchToTable(table);
+    } else if (mode === 'merge-tables') {
+      // Merge Tables mode - toggle the table in/out of the merge selection
+      this.toggleMergeTableSelection(table);
     }
   }
   
@@ -1149,6 +1293,7 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   cancelChangeTable(): void {
     this.changingTable.set(false);
     this.tableMode.set('change-table');
+    this.resetMergeSelection();
   }
   
   // Switch current table to another available table (keeps cart items and updates backend)
@@ -1875,9 +2020,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     return this.hotelService.tables().filter(t => t.status === 'available');
   }
 
-  // Get occupied tables (active orders)
+  // Get occupied tables (active orders) — merged groups count as a single occupied table
   getOccupiedTables(): RestaurantTable[] {
-    return this.hotelService.tables().filter(t => t.status === 'occupied' || t.status === 'unsettled');
+    const occupied = this.hotelService.tables().filter(t => t.status === 'occupied' || t.status === 'unsettled');
+    return this.hotelService.collapseMergedTables(occupied);
   }
 
   // Get dine-in tables
@@ -1902,6 +2048,13 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   // Get tables for a given type
   getTablesByType(tableType: string): RestaurantTable[] {
     return this.hotelService.tables().filter(t => (t.tableType || 'dine-in') === tableType);
+  }
+
+  // Display-collapsed tables for a given type — merged tables appear as a single
+  // tile (the primary table) everywhere except the merge-tables selection grid,
+  // where every individual member must stay selectable.
+  getDisplayTablesByType(tableType: string): RestaurantTable[] {
+    return this.hotelService.collapseMergedTables(this.getTablesByType(tableType));
   }
 
   // Human-readable title for each type section

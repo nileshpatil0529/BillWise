@@ -12,9 +12,9 @@
           <span class="bill-date">{{ formatDate(selectedBill()!.createdAt) }}</span>
         </div>
         @if (selectedBill()!.tableId) {
-          <div class="table-tag">
+          <div class="table-tag" [matTooltip]="isBillTableMerged(selectedBill()!) ? ('Merged: ' + getBillTableLabel(selectedBill()!)) : ''">
             <mat-icon>table_restaurant</mat-icon>
-            <span>{{ selectedBill()!.tableId }}</span>
+            <span>{{ getBillTableLabel(selectedBill()!) }}</span>
           </div>
         }
         <mat-chip [class]="getStatusClass()">
@@ -302,13 +302,13 @@
           <th mat-header-cell *matHeaderCellDef>{{ translateService.t('bills.table') }}</th>
           <td mat-cell *matCellDef="let bill">
             @if (bill.businessTypeData?.tableNumber) {
-              <mat-chip class="table-chip">
+              <mat-chip class="table-chip" [matTooltip]="isBillTableMerged(bill) ? ('Merged: ' + getBillTableLabel(bill)) : ''">
                 @if (bill.businessTypeData?.tableType === 'parcel') {
                   <mat-icon>takeout_dining</mat-icon>
-                  P{{ bill.businessTypeData.tableNumber }}
+                  @if (isBillTableMerged(bill)) { {{ getBillTableLabel(bill) }} } @else { P{{ bill.businessTypeData.tableNumber }} }
                 } @else {
                   <mat-icon>table_restaurant</mat-icon>
-                  T{{ bill.businessTypeData.tableNumber }}
+                  @if (isBillTableMerged(bill)) { {{ getBillTableLabel(bill) }} } @else { T{{ bill.businessTypeData.tableNumber }} }
                 }
               </mat-chip>
             } @else {

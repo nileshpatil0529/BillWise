@@ -7,6 +7,8 @@ export interface RestaurantTable {
   currentBillId?: string;
   billNumber?: string;
   grandTotal?: number;
+  mergeGroupId?: string | null;
+  isMergePrimary?: boolean | number;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -17,6 +19,18 @@ export interface CreateTablesRequest {
   tableType: string;
   capacity?: number;
   customTableName?: string;
+}
+
+export interface MergeTablesRequest {
+  tableIds: number[];
+  primaryTableId?: number;
+}
+
+export interface MergeTablesResult {
+  mergeGroupId: string;
+  primaryTableId: number;
+  tableIds: number[];
+  dissolved?: boolean;
 }
 
 export interface ItemNote {
@@ -30,3 +44,4 @@ export interface ItemNote {
 export interface CreateNoteRequest {
   label: string;
 }
+

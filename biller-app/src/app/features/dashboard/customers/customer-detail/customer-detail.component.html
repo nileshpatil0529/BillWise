@@ -30,7 +30,7 @@
               <mat-icon>table_restaurant</mat-icon>
               Table
             </span>
-            <span class="info-value">{{ selectedBill()!.tableId }}</span>
+            <span class="info-value" [matTooltip]="isBillTableMerged(selectedBill()!) ? ('Merged: ' + getBillTableLabel(selectedBill()!)) : ''">{{ getBillTableLabel(selectedBill()!) }}</span>
           </div>
         </mat-card>
       }

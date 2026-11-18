@@ -532,6 +532,20 @@ const initializeDatabase = () => {
     // Column might already exist
   }
 
+  // Migration: Add table merge columns to restaurant_tables (group id shared by merged tables + primary flag)
+  try {
+    const restaurantTableColumns = db.prepare('PRAGMA table_info(restaurant_tables)').all();
+    if (!restaurantTableColumns.some(col => col.name === 'mergeGroupId')) {
+      db.exec('ALTER TABLE restaurant_tables ADD COLUMN mergeGroupId TEXT');
+    }
+    if (!restaurantTableColumns.some(col => col.name === 'isMergePrimary')) {
+      db.exec('ALTER TABLE restaurant_tables ADD COLUMN isMergePrimary INTEGER DEFAULT 0');
+    }
+  } catch (e) {
+    // Columns might already exist
+  }
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_restaurant_tables_mergeGroupId ON restaurant_tables(mergeGroupId)`);
+
   // Update existing admin users to have all permissions if they don't have any
   try {
     const allPermissions = JSON.stringify(['dashboard', 'products', 'bills', 'customers', 'settings']);

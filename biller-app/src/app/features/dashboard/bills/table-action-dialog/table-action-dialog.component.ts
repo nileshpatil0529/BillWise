@@ -53,7 +53,7 @@ const PAYMENT_OPTIONS = [
       <div class="tad-table-name">
         @if (table) {
           <mat-icon>{{ table.tableType === 'parcel' ? 'takeout_dining' : 'table_restaurant' }}</mat-icon>
-          <span>{{ table.tableType === 'parcel' ? 'Parcel' : 'Table' }} {{ table.tableNumber }}</span>
+          <span>{{ table.tableType === 'parcel' ? 'Parcel' : 'Table' }} {{ table.mergeGroupId ? hotelService.getMergeGroupLabel(table) : table.tableNumber }}</span>
         } @else {
           <mat-icon>receipt_long</mat-icon>
           <span>Bill Details</span>
@@ -238,7 +238,7 @@ export class TableActionDialogComponent implements OnInit {
     @Inject(MAT_DIALOG_DATA) public data: TableActionDialogData,
     private dialogRef: MatDialogRef<TableActionDialogComponent>,
     private billService: BillService,
-    private hotelService: HotelService,
+    public hotelService: HotelService,
     public settingsService: SettingsService,
     private snackBar: MatSnackBar
   ) {}

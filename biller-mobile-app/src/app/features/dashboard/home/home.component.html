@@ -14,11 +14,11 @@
         </mat-card-header>
         <mat-card-content>
           @for (tableType of getTableTypes(); track tableType) {
-            @if (getTablesByType(tableType).length > 0) {
+            @if (getDisplayTablesByType(tableType).length > 0) {
               <div class="table-section">
                 <h3>{{ getTableTypeLabel(tableType) }}</h3>
                 <div class="table-grid">
-                  @for (table of getTablesByType(tableType); track table.id) {
+                  @for (table of getDisplayTablesByType(tableType); track table.id) {
                     <div class="table-card-wrap">
                       <button mat-raised-button 
                               class="table-btn"
@@ -30,7 +30,10 @@
                               (click)="selectTable(table)">
                         <div class="table-content">
                           <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
-                          <span class="table-number">{{ table.tableNumber }}</span>
+                          <span class="table-number" [class.merged-label]="!!table.mergeGroupId">{{ table.mergeGroupId ? hotelService.getMergeGroupLabel(table) : table.tableNumber }}</span>
+                          @if (table.mergeGroupId) {
+                            <span class="merge-badge"><mat-icon>call_merge</mat-icon></span>
+                          }
                           @if (table.status === 'occupied') {
                             <span class="table-status">Open Order</span>
                           }
@@ -97,9 +100,12 @@
             } @else if (tableMode() === 'attend-new') {
               <mat-icon>add_circle</mat-icon>
               <span>Attend New</span>
-            } @else {
+            } @else if (tableMode() === 'switch-table') {
               <mat-icon>compare_arrows</mat-icon>
               <span>Switch Table</span>
+            } @else {
+              <mat-icon>call_merge</mat-icon>
+              <span>{{ mergeEditingGroupId() ? 'Edit Merge' : 'Merge Tables' }}</span>
             }
           </mat-card-title>
           <span class="spacer"></span>
@@ -124,6 +130,12 @@
                     (click)="setTableMode('switch-table')">
               <mat-icon>compare_arrows</mat-icon>
             </button>
+            <button mat-icon-button 
+                    [color]="tableMode() === 'merge-tables' ? 'primary' : ''"
+                    [class.active]="tableMode() === 'merge-tables'"
+                    (click)="setTableMode('merge-tables')">
+              <mat-icon>call_merge</mat-icon>
+            </button>
           </div>
           
           <button mat-icon-button (click)="cancelChangeTable()">
@@ -140,10 +152,19 @@
             <p class="change-table-hint">
               Select available table to start new order.
             </p>
+          } @else if (tableMode() === 'switch-table') {
+            <p class="change-table-hint">
+              Current: <strong>{{ selectedTable()?.mergeGroupId ? hotelService.getMergeGroupLabel(selectedTable()!) : selectedTable()?.tableNumber }}</strong>. 
+              Select available table to transfer.
+            </p>
           } @else {
             <p class="change-table-hint">
-              Current: <strong>{{ selectedTable()?.tableNumber }}</strong>. 
-              Select available table to transfer.
+              @if (mergeEditingGroupId()) {
+                Add/remove tables, then save.
+              } @else {
+                Select two or more tables to merge.
+              }
+              <strong>{{ getMergeSelectionCount() }}</strong> selected.
             </p>
           }
           
@@ -152,11 +173,12 @@
               <div class="table-section">
                 <h3>{{ getTableTypeLabel(tableType) }}</h3>
                 <div class="table-grid">
-                  @for (table of getTablesByType(tableType); track table.id) {
+                  @for (table of (tableMode() === 'merge-tables' ? getTablesByType(tableType) : getDisplayTablesByType(tableType)); track table.id) {
                     @if (
                       (tableMode() === 'change-table' && (table.status === 'occupied' || table.status === 'unsettled')) ||
                       (tableMode() === 'attend-new') ||
-                      (tableMode() === 'switch-table' && (table.status === 'available' || table.id === selectedTable()?.id))
+                      (tableMode() === 'switch-table' && (table.status === 'available' || table.id === selectedTable()?.id)) ||
+                      (tableMode() === 'merge-tables')
                     ) {
                       <div class="table-card-wrap">
                         <button mat-raised-button 
@@ -166,15 +188,27 @@
                                 [class.current]="table.id === selectedTable()?.id"
                                 [class.occupied]="table.status === 'occupied' && table.id !== selectedTable()?.id"
                                 [class.unsettled]="table.status === 'unsettled'"
+                                [class.merge-selected]="tableMode() === 'merge-tables' && isMergeSelected(table)"
                                 [disabled]="
                                   (tableMode() === 'change-table' && table.id === selectedTable()?.id) ||
                                   (tableMode() === 'attend-new' && (table.status === 'occupied' || table.status === 'unsettled')) ||
-                                  (tableMode() === 'switch-table' && table.id === selectedTable()?.id)
+                                  (tableMode() === 'switch-table' && table.id === selectedTable()?.id) ||
+                                  (tableMode() === 'merge-tables' && !canToggleMergeTable(table))
                                 "
                                 (click)="handleTableClick(table)">
+                          @if (tableMode() === 'merge-tables') {
+                            <mat-icon class="merge-check">{{ isMergeSelected(table) ? 'check_box' : 'check_box_outline_blank' }}</mat-icon>
+                          }
                           <div class="table-content">
                             <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
-                            <span class="table-number">{{ table.tableNumber }}</span>
+                            <span class="table-number" [class.merged-label]="tableMode() !== 'merge-tables' && !!table.mergeGroupId">
+                              {{ tableMode() !== 'merge-tables' && table.mergeGroupId ? hotelService.getMergeGroupLabel(table) : table.tableNumber }}
+                            </span>
+                            @if (table.mergeGroupId) {
+                              <span class="merge-badge" matTooltip="Merged with {{ hotelService.getMergeGroupLabel(table) }}">
+                                <mat-icon>call_merge</mat-icon>
+                              </span>
+                            }
                             @if (table.id === selectedTable()?.id) {
                               <span class="table-status">Current</span>
                             } @else if (table.status === 'occupied') {
@@ -184,7 +218,7 @@
                             }
                           </div>
                         </button>
-                        @if (authService.isAdmin() && (table.status === 'occupied' || table.status === 'unsettled' || table.id === selectedTable()?.id)) {
+                        @if (tableMode() !== 'merge-tables' && authService.isAdmin() && (table.status === 'occupied' || table.status === 'unsettled' || table.id === selectedTable()?.id)) {
                           <div class="admin-table-actions">
                             @if (table.grandTotal) {
                               <span class="table-bill-amt">{{ formatCurrency(table.grandTotal) }}</span>
@@ -220,6 +254,25 @@
             }
           }
         </mat-card-content>
+        @if (tableMode() === 'merge-tables') {
+          <div class="merge-actions-footer">
+            @if (mergeEditingGroupId()) {
+              <button mat-stroked-button color="warn" [disabled]="mergeSaving()" (click)="unmergeCurrentGroup()">
+                <mat-icon>link_off</mat-icon> Unmerge All
+              </button>
+            }
+            <span class="spacer"></span>
+            <button mat-stroked-button [disabled]="mergeSaving()" (click)="cancelChangeTable()">Cancel</button>
+            <button mat-flat-button color="primary" [disabled]="getMergeSelectionCount() < 2 || mergeSaving()" (click)="confirmMergeTables()">
+              @if (mergeSaving()) {
+                <mat-spinner diameter="18"></mat-spinner>
+              } @else {
+                <mat-icon>call_merge</mat-icon>
+              }
+              {{ mergeEditingGroupId() ? 'Save Changes' : 'Merge Selected' }}
+            </button>
+          </div>
+        }
       </mat-card>
     </div>
   }
@@ -366,9 +419,17 @@
       </mat-icon>
       
       @if (selectedTable()) {
-        <mat-chip [highlighted]="true" class="table-chip">
-          <span>{{ selectedTable()?.tableNumber }}</span>
+        <mat-chip [highlighted]="true" class="table-chip" [matTooltip]="selectedTable()?.mergeGroupId ? ('Merged: ' + hotelService.getMergeGroupLabel(selectedTable()!)) : ''">
+          <span>{{ selectedTable()?.mergeGroupId ? hotelService.getMergeGroupLabel(selectedTable()!) : selectedTable()?.tableNumber }}</span>
+          @if (selectedTable()?.mergeGroupId) {
+            <mat-icon class="merged-chip-icon">call_merge</mat-icon>
+          }
         </mat-chip>
+        @if (selectedTable()?.mergeGroupId) {
+          <button mat-icon-button class="edit-merge-btn" (click)="startMergeTables()" matTooltip="Edit Merged Tables">
+            <mat-icon>edit</mat-icon>
+          </button>
+        }
       } @else {
         <mat-chip class="table-chip">
           <span>No Table</span>
