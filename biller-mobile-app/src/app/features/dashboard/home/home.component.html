@@ -447,7 +447,8 @@
         </button>
         
         <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())">
+                [disabled]="(billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())) || hasLockedCartItems()"
+                [matTooltip]="hasLockedCartItems() ? 'Already billed — cannot clear' : 'Clear All'">
           <mat-icon>delete</mat-icon>
         </button>
       </div>
@@ -470,7 +471,8 @@
         
         <!-- Clear Cart Button -->
         <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())">
+                [disabled]="(billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())) || hasLockedCartItems()"
+                [matTooltip]="hasLockedCartItems() ? 'Already billed — cannot clear' : 'Clear All'">
           <mat-icon>delete</mat-icon>
         </button>
       </div>
@@ -499,6 +501,9 @@
               <div class="item-details">
                 <div class="item-name-row">
                   <span class="item-name">{{ getDisplayName(item) }}</span>
+                  @if (item.locked) {
+                    <mat-icon class="locked-icon" matTooltip="Already billed — cannot remove">lock</mat-icon>
+                  }
                 </div>
                 <span class="item-price">{{ formatCurrency(item.unitPrice) }}@if (item.isLooseItem && item.unit) {/{{ item.unit }}}</span>
               </div>

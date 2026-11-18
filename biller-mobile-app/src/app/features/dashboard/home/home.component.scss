@@ -1030,6 +1030,13 @@
         }
 
         .kot-icon { font-size: 14px; width: 14px; height: 14px; color: v.$light-success; }
+        .locked-icon {
+          font-size: 14px;
+          width: 14px;
+          height: 14px;
+          color: rgba(0, 0, 0, 0.38);
+          @include m.dark-theme { color: rgba(255, 255, 255, 0.38); }
+        }
       }
 
       .item-price {

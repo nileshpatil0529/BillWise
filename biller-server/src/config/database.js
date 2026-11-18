@@ -400,6 +400,14 @@ const initializeDatabase = () => {
     if (!hasKotPrintedQuantity) {
       db.exec('ALTER TABLE bill_items ADD COLUMN kotPrintedQuantity REAL DEFAULT 0');
     }
+    // 'locked' marks items that were already part of a bill the last time it was
+    // billed/printed (billStatus = 'completed'). Once set, the client hides the
+    // ability to remove that item so a reopened (already-billed) table's saved
+    // items can't be deleted — only newly added items remain removable.
+    const hasLocked = itemColumns.some(col => col.name === 'locked');
+    if (!hasLocked) {
+      db.exec('ALTER TABLE bill_items ADD COLUMN locked INTEGER DEFAULT 0');
+    }
   } catch (e) {
     // Column might already exist
   }

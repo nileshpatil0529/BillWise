@@ -12,6 +12,7 @@ export interface BillItem {
   finalTotal: number;
   kotPrinted?: boolean; // Hotel mode: item sent to kitchen
   note?: string; // Optional note for item (e.g., No sugar, Extra spicy)
+  locked?: boolean; // Item was already saved/printed on a previously billed table — not removable
 }
 
 export interface Bill {
