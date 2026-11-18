@@ -379,6 +379,9 @@ export const updateBill = async (req, res) => {
           } catch (snapshotError) {
             // Ignore snapshot failures to avoid blocking bill completion.
           }
+
+          // The order has now been (re-)billed — any pre-reopen snapshot is stale.
+          db.prepare('UPDATE bills SET preReopenSnapshot = NULL WHERE billId = ?').run(id);
         } else if (bill.billStatus === 'completed' && updates.billStatus !== 'completed') {
           // Bill is being reopened (e.g. to add more items) from a completed/unsettled state.
           if (bill.tableId) {
@@ -390,6 +393,20 @@ export const updateBill = async (req, res) => {
               // Ignore table update failures to avoid blocking bill status update.
             }
           }
+
+          // Capture the exact items/totals as they stood when last billed, so a
+          // reopened order can be reverted back to this state later (e.g. if a
+          // waiter tries to remove an already-billed item instead of just adding
+          // new ones).
+          const preReopenItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+          const preReopenSnapshot = JSON.stringify({
+            items: preReopenItems,
+            subtotal: bill.subtotal,
+            discountTotal: bill.discountTotal,
+            taxTotal: bill.taxTotal,
+            grandTotal: bill.grandTotal
+          });
+          db.prepare('UPDATE bills SET preReopenSnapshot = ? WHERE billId = ?').run(preReopenSnapshot, id);
 
           // Lock all items that were already saved/printed on this bill so the
           // client hides the delete option for them — only items added after
@@ -589,6 +606,125 @@ export const updateBill = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update bill'
+    });
+  }
+};
+
+// Revert a reopened (billed-then-reopened) order back to exactly the state it
+// was in when it was last billed — restoring the original items/totals and
+// discarding anything added since reopening. Used when a waiter tries to
+// remove an already-billed item: rather than deleting just that item, the
+// whole reopen is cancelled and the order goes back to 'completed'/unsettled.
+export const cancelReopen = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const bill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
+
+    if (!bill) {
+      return res.status(404).json({
+        success: false,
+        message: 'Bill not found'
+      });
+    }
+
+    if (!bill.preReopenSnapshot) {
+      return res.status(400).json({
+        success: false,
+        message: 'This order has no previously billed state to revert to'
+      });
+    }
+
+    const snapshot = JSON.parse(bill.preReopenSnapshot);
+    const now = new Date().toISOString();
+
+    const settings = db.prepare('SELECT * FROM settings WHERE id = 1').get();
+    const isHotelMode = settings?.applicationType === 'hotel';
+    const getProduct = db.prepare('SELECT productId, isStockTracked FROM products WHERE productId = ?');
+
+    // Restore stock consumed by the current (reopened) items before replacing them
+    const currentItems = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+    for (const item of currentItems) {
+      if (item.productId) {
+        const product = getProduct.get(item.productId);
+        if (isStockTrackedProduct(product, isHotelMode)) {
+          db.prepare('UPDATE products SET stockQuantity = stockQuantity + ? WHERE productId = ?')
+            .run(item.quantity, item.productId);
+        }
+      }
+    }
+    db.prepare('DELETE FROM bill_items WHERE billId = ?').run(id);
+
+    // Re-insert the items exactly as they were the last time this order was billed
+    const insertItem = db.prepare(`
+      INSERT INTO bill_items (billId, productId, name, quantity, unitPrice, itemTotal, finalTotal, kotPrinted, kotPrintedQuantity, note, locked)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+    for (const item of snapshot.items) {
+      insertItem.run(
+        id,
+        item.productId || '',
+        item.name,
+        item.quantity,
+        item.unitPrice,
+        item.itemTotal,
+        item.finalTotal,
+        item.kotPrinted || 0,
+        item.kotPrintedQuantity || 0,
+        item.note || null,
+        0
+      );
+      if (item.productId) {
+        const product = getProduct.get(item.productId);
+        if (isStockTrackedProduct(product, isHotelMode)) {
+          db.prepare('UPDATE products SET stockQuantity = stockQuantity - ? WHERE productId = ?')
+            .run(item.quantity, item.productId);
+        }
+      }
+    }
+
+    db.prepare(`
+      UPDATE bills SET
+        subtotal = ?, discountTotal = ?, taxTotal = ?, grandTotal = ?,
+        billStatus = 'completed', preReopenSnapshot = NULL, updatedAt = ?
+      WHERE billId = ?
+    `).run(snapshot.subtotal, snapshot.discountTotal, snapshot.taxTotal, snapshot.grandTotal, now, id);
+
+    if (bill.tableId) {
+      try {
+        propagateTableStatusOnly(bill.tableId, 'unsettled', now);
+      } catch (tableError) {
+        // Ignore table update failures to avoid blocking the revert.
+      }
+    }
+
+    const updatedBill = db.prepare('SELECT * FROM bills WHERE billId = ?').get(id);
+    const items = db.prepare('SELECT * FROM bill_items WHERE billId = ?').all(id);
+    const billData = {
+      ...updatedBill,
+      items,
+      businessTypeData: updatedBill.businessTypeData ? JSON.parse(updatedBill.businessTypeData) : {}
+    };
+
+    emitBillUpdate(billData);
+    if (updatedBill.tableId) {
+      emitTableUpdate({
+        tableId: updatedBill.tableId,
+        billId: updatedBill.billId,
+        status: 'unsettled',
+        billStatus: 'completed'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Order reverted to its previously billed state',
+      data: billData
+    });
+  } catch (error) {
+    console.error('Cancel reopen error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to revert order'
     });
   }
 };

@@ -381,6 +381,13 @@ const initializeDatabase = () => {
     if (!hasTipAmount) {
       db.exec('ALTER TABLE bills ADD COLUMN tipAmount REAL DEFAULT 0');
     }
+    // Snapshot (items + totals) captured the moment a completed/billed order is
+    // reopened, so a reopened order can be reverted back to exactly that billed
+    // state (e.g. if a waiter tries to remove an already-billed item).
+    const hasPreReopenSnapshot = billColumns.some(col => col.name === 'preReopenSnapshot');
+    if (!hasPreReopenSnapshot) {
+      db.exec('ALTER TABLE bills ADD COLUMN preReopenSnapshot TEXT');
+    }
   } catch (e) {
     // Columns might already exist
   }

@@ -212,6 +212,12 @@ export class BillService {
     return this.http.put(`${this.API_URL}/${id}`, updates);
   }
 
+  // Revert a reopened (billed-then-reopened) order back to exactly the state
+  // it was in when it was last billed, discarding anything added since reopening.
+  cancelReopen(id: string): Observable<any> {
+    return this.http.post(`${this.API_URL}/${id}/cancel-reopen`, {});
+  }
+
   deleteBill(id: string): Observable<any> {
     return this.http.delete(`${this.API_URL}/${id}`);
   }

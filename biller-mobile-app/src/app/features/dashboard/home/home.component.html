@@ -446,11 +446,13 @@
           </mat-icon>
         </button>
         
-        <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="(billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())) || hasLockedCartItems()"
-                [matTooltip]="hasLockedCartItems() ? 'Already billed — cannot clear' : 'Clear All'">
-          <mat-icon>delete</mat-icon>
-        </button>
+        @if (!hasLockedCartItems()) {
+          <button mat-icon-button color="warn" (click)="clearCart()"
+                  [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())"
+                  matTooltip="Clear All">
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
       </div>
     </div>
   }
@@ -470,11 +472,13 @@
         <span class="spacer"></span>
         
         <!-- Clear Cart Button -->
-        <button mat-icon-button color="warn" (click)="clearCart()" 
-                [disabled]="(billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())) || hasLockedCartItems()"
-                [matTooltip]="hasLockedCartItems() ? 'Already billed — cannot clear' : 'Clear All'">
-          <mat-icon>delete</mat-icon>
-        </button>
+        @if (!hasLockedCartItems()) {
+          <button mat-icon-button color="warn" (click)="clearCart()"
+                  [disabled]="billService.cartItems().length === 0 && !(isHotelMode() && selectedTable())"
+                  matTooltip="Clear All">
+            <mat-icon>delete</mat-icon>
+          </button>
+        }
       </div>
     }
 
@@ -502,12 +506,18 @@
                 <div class="item-name-row">
                   <span class="item-name">{{ getDisplayName(item) }}</span>
                   @if (item.locked) {
-                    <mat-icon class="locked-icon" matTooltip="Already billed — cannot remove">lock</mat-icon>
+                    <mat-icon class="locked-icon" matTooltip="Already billed — long-press to revert this order">lock</mat-icon>
                   }
                 </div>
                 <span class="item-price">{{ formatCurrency(item.unitPrice) }}@if (item.isLooseItem && item.unit) {/{{ item.unit }}}</span>
               </div>
               <div class="item-total">{{ formatCurrency(getItemTotal(item)) }}</div>
+              <button mat-icon-button color="warn" class="item-delete-btn"
+                      (pointerdown)="$event.stopPropagation()"
+                      (click)="$event.stopPropagation(); removeItem(item.productId)"
+                      [matTooltip]="item.locked ? 'Already billed — tap to revert this order' : 'Remove'">
+                <mat-icon>delete</mat-icon>
+              </button>
             </div>
             @if (isHotelMode() || (item.warrantyMonths && item.warrantyMonths > 0)) {
               <div class="item-extras" 

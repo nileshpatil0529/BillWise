@@ -689,11 +689,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (newQuantity >= minQuantity) {
       this.billService.updateCartItem(item.productId, { quantity: newQuantity });
     } else if (item.locked) {
-      // Already billed/printed item — block removal via quantity decrease.
-      this.snackBar.open('This item has already been billed and cannot be removed', 'Close', {
-        duration: 2500,
-        panelClass: ['warning-snackbar']
-      });
+      // Already billed/printed item — decreasing to zero would remove it,
+      // so offer to revert the whole reopened order instead.
+      this.confirmCancelReopen();
     } else {
       this.removeItem(item.productId);
     }
@@ -780,12 +778,10 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     
     if (newQuantity <= 0) {
       if (item.locked) {
-        // Already billed/printed item — floor at minimum instead of removing.
+        // Already billed/printed item — removing it would need to revert the
+        // whole reopened order, so confirm with the user first.
         this.beepService.playError();
-        this.snackBar.open('This item has already been billed and cannot be removed', 'Close', {
-          duration: 2500,
-          panelClass: ['warning-snackbar']
-        });
+        this.confirmCancelReopen();
         return;
       }
       this.removeItem(item.productId);
@@ -799,13 +795,52 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
   removeItem(productId: string): void {
     const item = this.billService.cartItems().find(i => i.productId === productId);
     if (item?.locked) {
-      this.snackBar.open('This item has already been billed and cannot be removed', 'Close', {
-        duration: 2500,
-        panelClass: ['warning-snackbar']
-      });
+      // Already billed/printed item — can't be deleted on its own. Offer to
+      // revert the whole reopened order back to its last billed state instead.
+      this.confirmCancelReopen();
       return;
     }
     this.billService.removeFromCart(productId);
+  }
+
+  // Ask the user to confirm reverting a reopened order back to exactly the
+  // state it was in when it was last billed/printed, discarding anything
+  // added since reopening.
+  private confirmCancelReopen(): void {
+    const dialogRef = this.dialog.open(ConfirmDialogComponent, {
+      width: '440px',
+      maxWidth: '95vw',
+      data: {
+        title: 'Revert to Billed Order?',
+        message: 'This item is already billed and cannot be deleted on its own. Continuing will cancel this reopened order and restore it to its previously billed state with the original items — any items added since reopening will be discarded.',
+        detail: 'This action cannot be undone.',
+        confirmLabel: 'Yes, Revert to Billed'
+      } as ConfirmDialogData
+    });
+
+    dialogRef.afterClosed().subscribe((confirmed: boolean) => {
+      if (!confirmed) return;
+      this.cancelReopen();
+    });
+  }
+
+  private cancelReopen(): void {
+    const billId = this.currentBillId();
+    if (!billId) return;
+
+    this.billService.cancelReopen(billId).subscribe({
+      next: (response) => {
+        if (response.success) {
+          this.snackBar.open('Order reverted to its previously billed state', 'Close', { duration: 3000 });
+          this.clearCartAndResetState();
+          this.hotelService.loadTables().subscribe();
+        }
+      },
+      error: (err) => {
+        const message = err.error?.message || 'Failed to revert order';
+        this.snackBar.open(message, 'Close', { duration: 3500, panelClass: ['error-snackbar'] });
+      }
+    });
   }
 
   updateItemNote(item: CartItem, note: string): void {
@@ -2335,7 +2370,8 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
                         discount: 0,
                         discountType: 'fixed' as const,
                         lineTotal: item.unitPrice * item.quantity,
-                        note: item.note
+                        note: item.note,
+                        locked: Boolean(item.locked) // Already billed/printed — cannot be removed
                       }));
                       this.billService.cartItems.set(cartItems);
                     }
