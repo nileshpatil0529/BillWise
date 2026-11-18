@@ -190,6 +190,11 @@ const initializeDatabase = () => {
     )
   `);
 
+  // Create indexes for bill_items (speeds up joins to bills/products used by
+  // reports like top-selling products, especially as bill history grows)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bill_items_billId ON bill_items(billId)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bill_items_productId ON bill_items(productId)`);
+
   // Settings table (single row)
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (

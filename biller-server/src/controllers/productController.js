@@ -187,6 +187,12 @@ export const getTopSellingProducts = async (req, res) => {
     const parsedLimit = parseInt(req.query.limit, 10);
     const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
 
+    // Restrict to the trailing 6 months so the aggregation scans a bounded
+    // window of bill_items instead of the entire multi-year sales history.
+    const sinceDate = new Date();
+    sinceDate.setMonth(sinceDate.getMonth() - 6);
+    const since = sinceDate.toISOString();
+
     const items = db.prepare(`
       SELECT
         p.productId,
@@ -199,19 +205,21 @@ export const getTopSellingProducts = async (req, res) => {
         SUM(bi.quantity) as quantitySold,
         SUM(bi.finalTotal) as revenue
       FROM bill_items bi
+      INNER JOIN bills b ON b.billId = bi.billId
       INNER JOIN products p ON p.productId = bi.productId
-      WHERE p.unitPrice > ?
+      WHERE p.unitPrice > ? AND b.createdAt >= ?
       GROUP BY p.productId
       ORDER BY quantitySold DESC, revenue DESC
       LIMIT ?
-    `).all(minPrice, limit);
+    `).all(minPrice, since, limit);
 
     res.json({
       success: true,
       data: {
         items,
         minPrice,
-        limit
+        limit,
+        since
       }
     });
   } catch (error) {
