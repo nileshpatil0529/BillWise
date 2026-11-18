@@ -842,10 +842,20 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     // Mark table as available if in hotel mode
     if (this.isHotelMode() && this.selectedTable()) {
       const currentTable = this.selectedTable();
+      const mergeGroupId = currentTable!.mergeGroupId;
       this.hotelService.updateTableStatus(currentTable!.id, 'available', undefined).subscribe({
         next: () => {
-          // Reload tables to reflect the change
-          this.hotelService.loadTables().subscribe();
+          // If this table was part of a merge, dissolve the merge now that its
+          // shared order has been deleted — merged tables shouldn't stay linked
+          // once there's no longer an order connecting them.
+          if (mergeGroupId) {
+            this.hotelService.unmergeTables(mergeGroupId).subscribe({
+              error: (err) => console.error('Error unmerging tables:', err)
+            });
+          } else {
+            // Reload tables to reflect the change
+            this.hotelService.loadTables().subscribe();
+          }
         },
         error: (err) => {
           console.error('Error updating table status:', err);
