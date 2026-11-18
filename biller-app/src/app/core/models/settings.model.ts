@@ -53,6 +53,7 @@ export interface Settings {
   language?: LanguageType; // 'en' or 'hi' - UI language
   receiptLanguage?: LanguageType; // 'en' or 'hi' - Receipt/Bill language
   kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
+  showAmountOnKot?: boolean; // Show item amount column on Kitchen Order Tickets
   internetStatusCheckEnabled?: boolean;
   units?: Unit[]; // Units for loose items (grocery mode)
   tableTypes?: string[]; // Custom table type registry

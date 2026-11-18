@@ -37,6 +37,7 @@ export class SettingsService {
     lowStockAlertEnabled: true,
     lowStockThreshold: 10,
     internetStatusCheckEnabled: true,
+    showAmountOnKot: true,
     updatedAt: ''
   });
 

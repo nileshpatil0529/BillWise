@@ -532,6 +532,17 @@ const initializeDatabase = () => {
     // Column might already exist
   }
 
+  // Migration: Add showAmountOnKot to settings (defaults to enabled)
+  try {
+    const settingsColumns = db.prepare('PRAGMA table_info(settings)').all();
+    const hasShowAmountOnKot = settingsColumns.some(col => col.name === 'showAmountOnKot');
+    if (!hasShowAmountOnKot) {
+      db.exec('ALTER TABLE settings ADD COLUMN showAmountOnKot INTEGER DEFAULT 1');
+    }
+  } catch (e) {
+    // Column might already exist
+  }
+
   // Migration: Add table merge columns to restaurant_tables (group id shared by merged tables + primary flag)
   try {
     const restaurantTableColumns = db.prepare('PRAGMA table_info(restaurant_tables)').all();

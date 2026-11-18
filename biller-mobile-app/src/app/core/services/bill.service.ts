@@ -267,7 +267,8 @@ export class BillService {
       footerText: s.footerText,
       taxRates: s.taxRates,
       receiptLanguage: s.receiptLanguage,
-      kotLanguage: s.kotLanguage
+      kotLanguage: s.kotLanguage,
+      showAmountOnKot: s.showAmountOnKot ?? true
     };
   }
 }

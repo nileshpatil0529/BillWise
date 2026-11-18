@@ -658,6 +658,16 @@
 
               <mat-divider></mat-divider>
 
+              <div class="toggle-row">
+                <div class="toggle-info">
+                  <span class="toggle-title">Show Amount on KOT</span>
+                  <span class="toggle-description">Print each item's amount on the Kitchen Order Ticket (2 inch &amp; 3 inch)</span>
+                </div>
+                <mat-slide-toggle formControlName="showAmountOnKot"></mat-slide-toggle>
+              </div>
+
+              <mat-divider></mat-divider>
+
               <div class="form-row two-col">
                 <mat-form-field appearance="outline">
                   <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>
