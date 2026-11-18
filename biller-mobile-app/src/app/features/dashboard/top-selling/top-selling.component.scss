@@ -1,0 +1,266 @@
+@use '../../../../styles/variables' as v;
+@use '../../../../styles/mixins' as m;
+
+// ============================================
+// MOBILE TOP SELLING COMPONENT
+// ============================================
+
+:host {
+  display: block;
+  height: 100%;
+}
+
+.top-selling-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: v.$light-background;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+}
+
+// ============================================
+// FILTER HEADER
+// ============================================
+
+.filter-header {
+  flex-shrink: 0;
+  padding: v.$spacing-sm;
+  background: v.$light-surface;
+  border-bottom: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+    border-color: v.$dark-divider;
+  }
+}
+
+.price-filter {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  background: v.$light-background;
+  border-radius: 24px;
+  padding: 0 v.$spacing-sm 0 v.$spacing-md;
+  height: 44px;
+
+  @include m.dark-theme {
+    background: v.$dark-background;
+  }
+
+  .filter-icon {
+    flex-shrink: 0;
+    color: v.$light-text-secondary;
+    font-size: 20px;
+    width: 20px;
+    height: 20px;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+
+  .filter-label {
+    flex-shrink: 0;
+    font-size: 13px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+
+  .price-input-wrapper {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    min-width: 0;
+
+    .currency-symbol {
+      font-size: 14px;
+      color: v.$light-text-secondary;
+
+      @include m.dark-theme {
+        color: v.$dark-text-secondary;
+      }
+    }
+
+    input {
+      flex: 1;
+      min-width: 0;
+      border: none;
+      background: transparent;
+      font-size: 14px;
+      font-weight: 600;
+      outline: none;
+      color: inherit;
+
+      @include m.dark-theme {
+        color: white;
+      }
+    }
+  }
+
+  .apply-btn {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: v.$light-primary;
+
+    @include m.dark-theme {
+      color: v.$dark-primary;
+    }
+
+    mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+  }
+}
+
+// ============================================
+// TOP SELLING LIST
+// ============================================
+
+.top-selling-list {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: v.$spacing-sm;
+  display: flex;
+  flex-direction: column;
+  gap: v.$spacing-sm;
+}
+
+.item-card {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-md;
+  background: v.$light-surface;
+  border-radius: v.$radius-sm;
+  padding: v.$spacing-md;
+
+  @include m.dark-theme {
+    background: v.$dark-surface;
+  }
+}
+
+.item-rank {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, v.$light-primary, darken(v.$light-primary, 10%));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @include m.dark-theme {
+    background: linear-gradient(135deg, v.$dark-primary, darken(v.$dark-primary, 10%));
+  }
+
+  span {
+    font-size: 14px;
+    font-weight: 700;
+    color: white;
+
+    @include m.dark-theme {
+      color: black;
+    }
+  }
+}
+
+.item-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .item-name {
+    font-size: 15px;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+
+    @include m.dark-theme {
+      color: white;
+    }
+  }
+
+  .item-price {
+    font-size: 11px;
+    color: v.$light-text-secondary;
+
+    @include m.dark-theme {
+      color: v.$dark-text-secondary;
+    }
+  }
+}
+
+.item-stats {
+  flex-shrink: 0;
+  text-align: right;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+
+  .quantity-sold {
+    font-size: 14px;
+    font-weight: 700;
+    color: v.$light-success;
+
+    @include m.dark-theme {
+      color: v.$dark-success;
+    }
+  }
+}
+
+// ============================================
+// LOADING & EMPTY STATES
+// ============================================
+
+.loading-state {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: v.$spacing-xl;
+  color: v.$light-text-secondary;
+
+  @include m.dark-theme {
+    color: v.$dark-text-secondary;
+  }
+
+  mat-icon {
+    font-size: 56px;
+    width: 56px;
+    height: 56px;
+    margin-bottom: v.$spacing-md;
+    opacity: 0.4;
+  }
+
+  p {
+    margin: 0;
+    font-size: 14px;
+    text-align: center;
+  }
+}

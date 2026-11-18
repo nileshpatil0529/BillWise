@@ -2,6 +2,7 @@ import express from 'express';
 import multer from 'multer';
 import {
   getAllProducts,
+  getTopSellingProducts,
   getProductById,
   createProduct,
   updateProduct,
@@ -22,6 +23,7 @@ router.use(authenticate);
 // Product routes
 router.get('/', getAllProducts);
 router.get('/search', searchProducts);
+router.get('/top-selling', getTopSellingProducts);
 router.get('/export', exportProducts);
 router.post('/import', upload.single('file'), importProducts);
 router.post('/print-barcode', printBarcode);

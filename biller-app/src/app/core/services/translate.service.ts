@@ -56,6 +56,7 @@ const EN_TRANSLATIONS: Record<string, string> = {
   // Navigation
   'nav.home': 'Home',
   'nav.products': 'Products',
+  'nav.topSelling': 'Top Selling Items',
   'nav.bills': 'Bills & Reports',
   'nav.customers': 'Customers',
   'nav.users': 'Manage Users',
@@ -116,6 +117,14 @@ const EN_TRANSLATIONS: Record<string, string> = {
   'products.looseItem': 'Loose Item',
   'products.unit': 'Unit',
   'products.printBarcode': 'Print Barcode',
+
+  // Top Selling Items
+  'topSelling.title': 'Top Selling Items',
+  'topSelling.subtitle': 'Top 10 best selling items above the chosen price',
+  'topSelling.minPrice': 'Minimum Price',
+  'topSelling.apply': 'Apply',
+  'topSelling.quantitySold': 'Quantity Sold',
+  'topSelling.noItems': 'No top selling items found for this price range',
 
   // Bills
   'bills.title': 'Bills & Reports',
@@ -421,6 +430,7 @@ const HI_TRANSLATIONS: Record<string, string> = {
   // Navigation
   'nav.home': 'होम',
   'nav.products': 'उत्पाद',
+  'nav.topSelling': 'शीर्ष बिकने वाले आइटम',
   'nav.bills': 'बिल और रिपोर्ट',
   'nav.customers': 'ग्राहक',
   'nav.users': 'उपयोगकर्ता प्रबंधन',
@@ -481,6 +491,14 @@ const HI_TRANSLATIONS: Record<string, string> = {
   'products.looseItem': 'खुला आइटम',
   'products.unit': 'इकाई',
   'products.printBarcode': 'बारकोड प्रिंट करें',
+
+  // Top Selling Items
+  'topSelling.title': 'शीर्ष बिकने वाले आइटम',
+  'topSelling.subtitle': 'चयनित मूल्य से ऊपर के शीर्ष 10 सबसे अधिक बिकने वाले आइटम',
+  'topSelling.minPrice': 'न्यूनतम मूल्य',
+  'topSelling.apply': 'लागू करें',
+  'topSelling.quantitySold': 'बिकी हुई मात्रा',
+  'topSelling.noItems': 'इस मूल्य सीमा के लिए कोई शीर्ष बिकने वाला आइटम नहीं मिला',
 
   // Bills
   'bills.title': 'बिल और रिपोर्ट',

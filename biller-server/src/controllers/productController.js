@@ -176,6 +176,53 @@ export const getAllProducts = async (req, res) => {
   }
 };
 
+// Top selling products - ranked by quantity sold, filtered by a minimum unit price
+// (defaults to 150, overridable via the `minPrice` query param) so users can see
+// their best performing higher-value items.
+export const getTopSellingProducts = async (req, res) => {
+  try {
+    const parsedMinPrice = parseFloat(req.query.minPrice);
+    const minPrice = Number.isFinite(parsedMinPrice) ? parsedMinPrice : 150;
+
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
+
+    const items = db.prepare(`
+      SELECT
+        p.productId,
+        p.name,
+        p.nameHi,
+        p.category,
+        p.unitPrice,
+        p.imageUrl,
+        p.status,
+        SUM(bi.quantity) as quantitySold,
+        SUM(bi.finalTotal) as revenue
+      FROM bill_items bi
+      INNER JOIN products p ON p.productId = bi.productId
+      WHERE p.unitPrice > ?
+      GROUP BY p.productId
+      ORDER BY quantitySold DESC, revenue DESC
+      LIMIT ?
+    `).all(minPrice, limit);
+
+    res.json({
+      success: true,
+      data: {
+        items,
+        minPrice,
+        limit
+      }
+    });
+  } catch (error) {
+    console.error('Get top selling products error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch top selling products'
+    });
+  }
+};
+
 export const getProductById = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1114,6 +1161,7 @@ export const printBarcode = async (req, res) => {
 
 export default {
   getAllProducts,
+  getTopSellingProducts,
   getProductById,
   createProduct,
   updateProduct,

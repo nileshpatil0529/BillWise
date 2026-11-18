@@ -63,6 +63,9 @@ export class DashboardComponent implements OnInit {
       items.push({ icon: 'inventory_2', label: t('nav.products'), route: '/dashboard/products' });
     }
     
+    // Top Selling Items - available to all users regardless of permissions
+    items.push({ icon: 'trending_up', label: t('nav.topSelling'), route: '/dashboard/top-selling' });
+    
     if (hasPermission('customers') && this.settingsService.settings().debtEnabled) {
       items.push({ icon: 'account_balance_wallet', label: t('nav.customers'), route: '/dashboard/customers' });
     }

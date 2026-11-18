@@ -33,6 +33,10 @@ export const routes: Routes = [
         loadComponent: () => import('./features/dashboard/products/products.component').then(m => m.ProductsComponent)
       },
       {
+        path: 'top-selling',
+        loadComponent: () => import('./features/dashboard/top-selling/top-selling.component').then(m => m.TopSellingComponent)
+      },
+      {
         path: 'bills',
         data: { permission: 'bills' },
         loadComponent: () => import('./features/dashboard/bills/bills.component').then(m => m.BillsComponent)
