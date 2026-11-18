@@ -30,6 +30,6 @@ export class AppComponent {
     effect(() => {
       const isEnabled = this.settingsService.settings().internetStatusCheckEnabled ?? true;
       this.connectivityService.setEnabled(isEnabled);
-    });
+    }, { allowSignalWrites: true });
   }
 }

@@ -1870,6 +1870,15 @@
       font-weight: 600;
       font-size: 0.9rem;
       line-height: 1;
+
+      &.merged-label {
+        font-size: 0.68rem;
+        line-height: 1.15;
+        white-space: normal;
+        text-align: center;
+        max-width: 90px;
+        word-break: break-word;
+      }
     }
     
     .table-status {
@@ -1963,6 +1972,61 @@
   }
 }
 
+// Merge Tables mode — checkbox indicator + selected highlight on table cards
+.table-btn {
+  position: relative;
+
+  .merge-check {
+    position: absolute;
+    top: 4px;
+    left: 4px;
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    line-height: 16px;
+    opacity: 0.9;
+  }
+
+  .merge-badge {
+    display: inline-flex;
+    align-items: center;
+    margin-top: 1px;
+
+    mat-icon {
+      font-size: 12px !important;
+      width: 12px !important;
+      height: 12px !important;
+      opacity: 0.85;
+    }
+  }
+
+  &.merge-selected {
+    border: 2px solid #1565c0 !important;
+    box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.35) !important;
+  }
+}
+
+.merge-actions-footer {
+  display: flex;
+  align-items: center;
+  gap: v.$spacing-sm;
+  padding: v.$spacing-sm v.$spacing-md;
+  border-top: 1px solid v.$light-divider;
+
+  @include m.dark-theme {
+    border-color: v.$dark-divider;
+  }
+
+  .spacer {
+    flex: 1;
+  }
+
+  mat-spinner {
+    display: inline-block;
+    margin-right: 6px;
+  }
+}
+
 .no-tables-message {
   display: flex;
   flex-direction: column;
@@ -2021,6 +2085,30 @@
     span {
       line-height: 18px;
       vertical-align: middle;
+    }
+
+    .merged-chip-icon {
+      margin-left: 6px !important;
+      margin-right: 0 !important;
+      font-size: 15px !important;
+      width: 15px !important;
+      height: 15px !important;
+      opacity: 0.85;
+    }
+  }
+
+  .edit-merge-btn {
+    width: 28px;
+    height: 28px;
+    line-height: 28px;
+    padding: 0 !important;
+    --mdc-icon-button-state-layer-size: 28px;
+
+    mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+      line-height: 16px;
     }
   }
 }

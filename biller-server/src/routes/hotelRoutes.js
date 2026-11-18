@@ -7,6 +7,9 @@ import {
   deleteTable,
   updateTableStatus,
   settleTable,
+  mergeTables,
+  updateMergeGroup,
+  unmergeTables,
   getTipOptions,
   createTipOption,
   updateTipOption,
@@ -31,6 +34,12 @@ router.put('/tables/:id', updateTable);
 router.delete('/tables/:id', deleteTable);
 router.patch('/tables/:id/status', updateTableStatus);
 router.patch('/tables/:id/settle', requireAdmin, settleTable);
+
+// Table merging routes (must be declared before the generic '/tables/:id' routes above
+// are matched by Express — '/tables/merge' is a distinct literal segment so order is safe here)
+router.post('/tables/merge', mergeTables);
+router.put('/tables/merge/:mergeGroupId', updateMergeGroup);
+router.delete('/tables/merge/:mergeGroupId', unmergeTables);
 
 // Tip Options routes
 router.get('/tips', getTipOptions);

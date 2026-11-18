@@ -12,9 +12,9 @@
           <span class="bill-date">{{ formatDate(selectedBill()!.createdAt) }}</span>
         </div>
         @if (selectedBill()!.tableId) {
-          <div class="table-tag">
+          <div class="table-tag" [matTooltip]="isBillTableMerged(selectedBill()!) ? ('Merged: ' + getBillTableLabel(selectedBill()!)) : ''">
             <mat-icon>table_restaurant</mat-icon>
-            <span>{{ selectedBill()!.tableId }}</span>
+            <span>{{ getBillTableLabel(selectedBill()!) }}</span>
           </div>
         }
         <div class="status-badge" [class]="getStatusClass()">
@@ -238,8 +238,10 @@
           <div class="bill-footer">
             <div class="bill-meta">
               @if (bill.businessTypeData?.tableNumber) {
-                <span class="table-badge">
-                  @if (bill.businessTypeData?.tableType === 'parcel') {
+                <span class="table-badge" [matTooltip]="isBillTableMerged(bill) ? ('Merged: ' + getBillTableLabel(bill)) : ''">
+                  @if (isBillTableMerged(bill)) {
+                    {{ getBillTableLabel(bill) }}
+                  } @else if (bill.businessTypeData?.tableType === 'parcel') {
                     P{{ bill.businessTypeData.tableNumber }}
                   } @else {
                     T{{ bill.businessTypeData.tableNumber }}

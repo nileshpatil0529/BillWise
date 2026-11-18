@@ -410,6 +410,30 @@ export class BillsComponent implements OnInit, OnDestroy {
     return table?.status === 'unsettled';
   }
 
+  // Table label for a bill — prefers the merged-table snapshot saved on the bill
+  // when it was completed (survives the table being settled/unmerged afterwards),
+  // falling back to the table's current live merge state (only when this bill is
+  // still the table's active order — older bills for the same table must never
+  // be relabeled just because that table is merged again later), then the plain number.
+  getBillTableLabel(bill: Bill): string {
+    const snapshot = bill.businessTypeData?.mergedTableNumbers;
+    if (Array.isArray(snapshot) && snapshot.length > 1) {
+      return snapshot.join(' + ');
+    }
+    const table = bill.tableId ? this.hotelService.tables().find(t => t.id === bill.tableId) : undefined;
+    if (table?.mergeGroupId && table.currentBillId === bill.billId) {
+      return this.hotelService.getMergeGroupLabel(table);
+    }
+    return bill.businessTypeData?.tableNumber || '';
+  }
+
+  isBillTableMerged(bill: Bill): boolean {
+    const snapshot = bill.businessTypeData?.mergedTableNumbers;
+    if (Array.isArray(snapshot) && snapshot.length > 1) return true;
+    const table = bill.tableId ? this.hotelService.tables().find(t => t.id === bill.tableId) : undefined;
+    return !!(table?.mergeGroupId && table.currentBillId === bill.billId);
+  }
+
   settleTableFromBill(bill: Bill): void {
     if (!bill.tableId) return;
     if (confirm('Mark this table as settled? It will become available for new orders.')) {

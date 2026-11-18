@@ -86,4 +86,16 @@ export class ProductService {
       quantity
     });
   }
+
+  getTopSellingProducts(minPrice?: number, limit?: number): Observable<any> {
+    let httpParams = new HttpParams();
+    if (minPrice !== undefined && minPrice !== null) {
+      httpParams = httpParams.set('minPrice', minPrice.toString());
+    }
+    if (limit !== undefined && limit !== null) {
+      httpParams = httpParams.set('limit', limit.toString());
+    }
+
+    return this.http.get(`${this.API_URL}/top-selling`, { params: httpParams });
+  }
 }

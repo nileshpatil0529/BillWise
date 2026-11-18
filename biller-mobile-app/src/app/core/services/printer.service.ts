@@ -317,10 +317,10 @@ export class PrinterService {
   }
 
   private buildKOTImage(bill: any, settings: any, paperSize: PaperSize): string {
-    return this.renderKOTTableToPngBase64(bill, paperSize, settings?.kotLanguage === 'hi');
+    return this.renderKOTTableToPngBase64(bill, paperSize, settings?.kotLanguage === 'hi', settings?.showAmountOnKot ?? true);
   }
 
-  private renderKOTTableToPngBase64(bill: any, paperSize: PaperSize, isHindi: boolean): string {
+  private renderKOTTableToPngBase64(bill: any, paperSize: PaperSize, isHindi: boolean, showAmount: boolean = true): string {
     if (!this.isBrowser) throw new Error('Image print is available only in browser runtime');
 
     const newItems = (bill.items || []).filter((i: any) => i.quantity > (i.kotPrintedQuantity || 0));
@@ -335,10 +335,12 @@ export class PrinterService {
     const smallSize = paperSize === '2inch' ? 18 : 22;
     const rowHeight = paperSize === '2inch' ? 30 : 38;
 
-    // Column proportions: Items 50% | Qty 15% | Tip 35%
-    const colQtyW  = Math.round(innerW * 0.15);
-    const colTipW  = Math.round(innerW * 0.35);
-    const colItemW = innerW - colQtyW - colTipW;
+    // Column proportions: Items 50% | Qty 15% | Tip 35% (unchanged when amount is hidden)
+    // When the amount column is shown, Items/Qty/Tip shrink slightly to make room for it.
+    const colQtyW  = Math.round(innerW * (showAmount ? 0.13 : 0.15));
+    const colAmtW  = showAmount ? Math.round(innerW * 0.18) : 0;
+    const colTipW  = Math.round(innerW * (showAmount ? 0.27 : 0.35));
+    const colItemW = innerW - colQtyW - colAmtW - colTipW;
 
     const measureCanvas = document.createElement('canvas');
     const m = measureCanvas.getContext('2d')!;
@@ -348,6 +350,7 @@ export class PrinterService {
     let height = padding + titleSize + 6 + (smallSize + 4) * 2 + rowHeight;
     itemNameLines.forEach((lines: string[]) => { height += Math.max(1, lines.length) * rowHeight; });
     height += padding * 2; // inner bottom padding + outer bottom margin
+    if (paperSize === '3inch') height += rowHeight; // extra blank space at the bottom for easier tear-off
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -361,9 +364,9 @@ export class PrinterService {
     ctx.fillStyle = '#000000';
     ctx.textBaseline = 'top';
 
-    const x0 = padding, x1 = x0 + colItemW, x2 = x1 + colQtyW, x3 = x2 + colTipW;
+    const x0 = padding, x1 = x0 + colItemW, x2 = x1 + colQtyW, x3 = x2 + colAmtW, x4 = x3 + colTipW;
     const drawH = (yPos: number) => {
-      ctx.beginPath(); ctx.moveTo(x0, yPos); ctx.lineTo(x3, yPos);
+      ctx.beginPath(); ctx.moveTo(x0, yPos); ctx.lineTo(x4, yPos);
       ctx.lineWidth = 1; ctx.strokeStyle = '#000'; ctx.stroke();
     };
     const drawV = (xPos: number, y1: number, y2: number) => {
@@ -384,7 +387,7 @@ export class PrinterService {
     ctx.fillText(`Bill: ${(bill.billNumber || '').slice(-5)}`, x0 + 4, y + 4);
     if (btd.tableNumber) {
       const label = btd.tableType === 'parcel' ? 'Parcel' : 'Table';
-      ctx.fillText(`${label}: ${btd.tableNumber}`, Math.round(x3 / 2), y + 4);
+      ctx.fillText(`${label}: ${btd.tableNumber}`, Math.round(x4 / 2), y + 4);
     }
     y += smallSize + 4;
     const dateStr = new Date().toLocaleString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true });
@@ -396,7 +399,8 @@ export class PrinterService {
     ctx.font = `700 ${bodySize}px ${fontFamily}`;
     ctx.fillText('Items', x0 + 4, y + 4);
     ctx.fillText('Qty', x1 + 4, y + 4);
-    ctx.fillText('Tip', x2 + 4, y + 4);
+    if (showAmount) ctx.fillText('Amt', x2 + 4, y + 4);
+    ctx.fillText('Tip', x3 + 4, y + 4);
     y += rowHeight;
     drawH(y);
 
@@ -408,15 +412,20 @@ export class PrinterService {
       const rowY = y;
       nameLines.forEach((line: string, li: number) => ctx.fillText(line, x0 + 4, rowY + 4 + li * rowHeight));
       ctx.fillText(qty, x1 + 4, rowY + 4);
-      if (item.note) ctx.fillText(String(item.note), x2 + 4, rowY + 4);
+      if (showAmount) {
+        const amt = Number(newQty * Number(item.unitPrice || 0)).toFixed(0);
+        ctx.fillText(amt, x2 + 4, rowY + 4);
+      }
+      if (item.note) ctx.fillText(String(item.note), x3 + 4, rowY + 4);
       y += Math.max(1, nameLines.length) * rowHeight;
     });
     y += padding; // bottom padding inside KOT box (same as top)
     drawH(y);
 
     drawV(x0, tableStartY, y); drawV(x1, tableStartY, y);
-    drawV(x2, tableStartY, y); drawV(x3, tableStartY, y);
-    drawV(x0, padding, y); drawV(x3, padding, y);
+    if (showAmount) drawV(x2, tableStartY, y);
+    drawV(x3, tableStartY, y); drawV(x4, tableStartY, y);
+    drawV(x0, padding, y); drawV(x4, padding, y);
     drawH(padding);
 
     return this.toHighContrastPngBase64(canvas);
@@ -472,6 +481,7 @@ export class PrinterService {
     if (showQr) height += qrDisplaySize + smallSize + 18;
     height += smallSize + 4; // footer text
     height += padding * 2; // inner bottom padding + outer bottom margin
+    if (paperSize === '3inch') height += rowHeight; // extra blank space at the bottom for easier tear-off
 
     const scale = 2;
     const canvas = document.createElement('canvas');

@@ -1,0 +1,49 @@
+<div class="top-selling-container">
+  <!-- Filter Header -->
+  <div class="filter-header">
+    <div class="price-filter">
+      <mat-icon class="filter-icon">filter_alt</mat-icon>
+      <span class="filter-label">{{ translateService.t('topSelling.minPrice') }}</span>
+      <div class="price-input-wrapper">
+        <span class="currency-symbol">{{ settingsService.settings().currency }}</span>
+        <input type="number"
+               min="0"
+               [value]="minPrice()"
+               (input)="onMinPriceChange($any($event.target).value)"
+               (keyup.enter)="applyFilter()">
+      </div>
+      <button mat-icon-button class="apply-btn" (click)="applyFilter()">
+        <mat-icon>check</mat-icon>
+      </button>
+    </div>
+  </div>
+
+  <!-- Top Selling List -->
+  <div class="top-selling-list">
+    @if (loading()) {
+      <div class="loading-state">
+        <mat-spinner diameter="36"></mat-spinner>
+      </div>
+    } @else if (items().length === 0) {
+      <div class="empty-state">
+        <mat-icon>trending_up</mat-icon>
+        <p>{{ translateService.t('topSelling.noItems') }}</p>
+      </div>
+    } @else {
+      @for (item of items(); track item.productId; let i = $index) {
+        <div class="item-card">
+          <div class="item-rank">
+            <span>{{ i + 1 }}</span>
+          </div>
+          <div class="item-info">
+            <span class="item-name">{{ item.name }}</span>
+            <span class="item-price">{{ translateService.t('products.unitPrice') }}: {{ formatCurrency(item.unitPrice) }}</span>
+          </div>
+          <div class="item-stats">
+            <span class="quantity-sold">{{ item.quantitySold }} {{ translateService.t('common.quantity') }}</span>
+          </div>
+        </div>
+      }
+    }
+  </div>
+</div>

@@ -565,6 +565,20 @@
           </div>
         </div>
 
+        <!-- Show Amount on KOT -->
+        <div class="setting-item">
+          <div class="setting-left">
+            <div class="setting-icon receipt">
+              <mat-icon>currency_rupee</mat-icon>
+            </div>
+            <div class="setting-info">
+              <span class="setting-label">Show Amount on KOT</span>
+              <span class="setting-value">Print each item's amount on the Kitchen Order Ticket</span>
+            </div>
+          </div>
+          <mat-slide-toggle formControlName="showAmountOnKot"></mat-slide-toggle>
+        </div>
+
         <div class="receipt-fields">
           <mat-form-field appearance="outline">
             <mat-label>{{ translateService.t('settings.invoicePrefix') }}</mat-label>

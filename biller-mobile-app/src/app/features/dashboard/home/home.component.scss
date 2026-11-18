@@ -151,7 +151,18 @@
       box-sizing: border-box;
 
       mat-icon { font-size: 24px; width: 24px; height: 24px; }
-      .table-number { font-weight: 600; font-size: 14px; }
+      .table-number {
+        font-weight: 600;
+        font-size: 14px;
+
+        &.merged-label {
+          font-size: 10px;
+          line-height: 1.15;
+          white-space: normal;
+          text-align: center;
+          word-break: break-word;
+        }
+      }
       .table-status { 
         font-size: 9px; 
         opacity: 0.9; 
@@ -258,6 +269,18 @@
         --mdc-icon-button-state-layer-size: 20px;
         mat-icon { font-size: 14px; width: 14px; height: 14px; line-height: 14px; }
       }
+
+      .add-items-btn {
+        width: 20px;
+        height: 20px;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #40c4ff;
+        --mdc-icon-button-state-layer-size: 20px;
+        mat-icon { font-size: 14px; width: 14px; height: 14px; line-height: 14px; }
+      }
     }
   }
 
@@ -282,6 +305,59 @@
       height: 14px;
       vertical-align: middle;
       margin: 0 2px;
+    }
+  }
+
+  // Merge Tables mode — checkbox indicator + selected highlight on table cards
+  .table-btn {
+    position: relative;
+
+    .merge-check {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      line-height: 15px;
+      opacity: 0.9;
+    }
+
+    .merge-badge {
+      display: inline-flex;
+      align-items: center;
+
+      mat-icon {
+        font-size: 11px !important;
+        width: 11px !important;
+        height: 11px !important;
+        opacity: 0.85;
+      }
+    }
+
+    &.merge-selected {
+      border: 2px solid #1565c0 !important;
+      box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.35) !important;
+    }
+  }
+
+  .merge-actions-footer {
+    display: flex;
+    align-items: center;
+    gap: v.$spacing-sm;
+    padding: v.$spacing-sm v.$spacing-md;
+    border-top: 1px solid v.$light-divider;
+    flex-shrink: 0;
+
+    @include m.dark-theme {
+      border-color: v.$dark-divider;
+    }
+
+    .spacer { flex: 1; }
+
+    mat-spinner {
+      display: inline-block;
+      margin-right: 6px;
     }
   }
   
@@ -632,6 +708,29 @@
     height: 24px;
     display: inline-flex;
     align-items: center;
+
+    .merged-chip-icon {
+      font-size: 13px !important;
+      width: 13px !important;
+      height: 13px !important;
+      margin-left: 4px;
+      opacity: 0.85;
+    }
+  }
+
+  .edit-merge-btn {
+    width: 26px;
+    height: 26px;
+    line-height: 26px;
+    padding: 0 !important;
+    --mdc-icon-button-state-layer-size: 26px;
+
+    mat-icon {
+      font-size: 15px;
+      width: 15px;
+      height: 15px;
+      line-height: 15px;
+    }
   }
 
   .change-table-btn {

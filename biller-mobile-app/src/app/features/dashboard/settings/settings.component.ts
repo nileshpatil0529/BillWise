@@ -199,7 +199,8 @@ export class SettingsComponent implements OnInit {
       invoicePrefix: ['INV'],
       invoiceStartNumber: [1, [Validators.required, Validators.min(1)]],
       receiptLanguage: ['en'],
-      kotLanguage: ['en']
+      kotLanguage: ['en'],
+      showAmountOnKot: [true]
     });
   }
 
@@ -234,7 +235,8 @@ export class SettingsComponent implements OnInit {
       invoicePrefix: settings.invoicePrefix,
       invoiceStartNumber: settings.invoiceStartNumber,
       receiptLanguage: settings.receiptLanguage || 'en',
-      kotLanguage: settings.kotLanguage || 'en'
+      kotLanguage: settings.kotLanguage || 'en',
+      showAmountOnKot: settings.showAmountOnKot ?? true
     });
 
     // Load receipt/KOT language preferences
@@ -430,7 +432,8 @@ export class SettingsComponent implements OnInit {
       invoicePrefix: formValue.invoicePrefix,
       invoiceStartNumber: formValue.invoiceStartNumber,
       receiptLanguage: formValue.receiptLanguage || 'en',
-      kotLanguage: formValue.kotLanguage || 'en'
+      kotLanguage: formValue.kotLanguage || 'en',
+      showAmountOnKot: !!formValue.showAmountOnKot
     };
 
     this.settingsService.updateSettings(settings).subscribe({

@@ -89,7 +89,8 @@ export const requestPrint = async (req, res) => {
       footerText: settings?.footerText,
       taxRates: settings?.taxRates ? JSON.parse(settings.taxRates) : [],
       receiptLanguage: settings?.receiptLanguage || 'en',
-      kotLanguage: settings?.kotLanguage || 'en'
+      kotLanguage: settings?.kotLanguage || 'en',
+      showAmountOnKot: Boolean(settings?.showAmountOnKot ?? 1)
     };
 
     const result = routePrintJob({ bill: billData, settings: settingsData, type }, requesterUserId);

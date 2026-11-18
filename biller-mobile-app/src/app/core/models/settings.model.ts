@@ -60,6 +60,7 @@ export interface Settings {
   language?: LanguageType;
   receiptLanguage?: LanguageType;
   kotLanguage?: LanguageType; // 'en' or 'hi' - KOT language
+  showAmountOnKot?: boolean; // Show item amount column on Kitchen Order Tickets
   internetStatusCheckEnabled?: boolean;
   units?: Unit[];
   viewMode?: ViewMode;

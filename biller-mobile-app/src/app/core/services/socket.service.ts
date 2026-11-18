@@ -34,7 +34,7 @@ export class SocketService {
       } else {
         this.disconnect();
       }
-    });
+    }, { allowSignalWrites: true });
 
     // Keep server registration in sync when print agent goes offline
     effect(() => {

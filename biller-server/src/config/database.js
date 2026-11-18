@@ -190,6 +190,11 @@ const initializeDatabase = () => {
     )
   `);
 
+  // Create indexes for bill_items (speeds up joins to bills/products used by
+  // reports like top-selling products, especially as bill history grows)
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bill_items_billId ON bill_items(billId)`);
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_bill_items_productId ON bill_items(productId)`);
+
   // Settings table (single row)
   db.exec(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -531,6 +536,31 @@ const initializeDatabase = () => {
   } catch (e) {
     // Column might already exist
   }
+
+  // Migration: Add showAmountOnKot to settings (defaults to enabled)
+  try {
+    const settingsColumns = db.prepare('PRAGMA table_info(settings)').all();
+    const hasShowAmountOnKot = settingsColumns.some(col => col.name === 'showAmountOnKot');
+    if (!hasShowAmountOnKot) {
+      db.exec('ALTER TABLE settings ADD COLUMN showAmountOnKot INTEGER DEFAULT 1');
+    }
+  } catch (e) {
+    // Column might already exist
+  }
+
+  // Migration: Add table merge columns to restaurant_tables (group id shared by merged tables + primary flag)
+  try {
+    const restaurantTableColumns = db.prepare('PRAGMA table_info(restaurant_tables)').all();
+    if (!restaurantTableColumns.some(col => col.name === 'mergeGroupId')) {
+      db.exec('ALTER TABLE restaurant_tables ADD COLUMN mergeGroupId TEXT');
+    }
+    if (!restaurantTableColumns.some(col => col.name === 'isMergePrimary')) {
+      db.exec('ALTER TABLE restaurant_tables ADD COLUMN isMergePrimary INTEGER DEFAULT 0');
+    }
+  } catch (e) {
+    // Columns might already exist
+  }
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_restaurant_tables_mergeGroupId ON restaurant_tables(mergeGroupId)`);
 
   // Update existing admin users to have all permissions if they don't have any
   try {

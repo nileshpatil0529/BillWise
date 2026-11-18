@@ -61,7 +61,8 @@ export const getSettings = async (req, res) => {
       internetStatusCheckEnabled: Boolean(settings.internetStatusCheckEnabled ?? 1),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
       debtEnabled: Boolean(settings.debtEnabled ?? 0),
-      lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)
+      lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled),
+      showAmountOnKot: Boolean(settings.showAmountOnKot ?? 1)
     };
 
     res.json({
@@ -86,7 +87,7 @@ export const updateSettings = async (req, res) => {
     const allowedFields = [
       'businessName', 'logo', 'address', 'phone', 'email', 'taxNumber', 'upiId',
       'currency', 'currencyCode', 'applicationType', 'theme', 'scannerType',
-      'taxEnabled', 'taxRates', 'tableColumns', 'tableTypes', 'units', 'viewMode', 'language', 'receiptLanguage', 'internetStatusCheckEnabled', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
+      'taxEnabled', 'taxRates', 'tableColumns', 'tableTypes', 'units', 'viewMode', 'language', 'receiptLanguage', 'showAmountOnKot', 'internetStatusCheckEnabled', 'discountEnabled', 'debtEnabled', 'invoicePrefix', 'invoiceStartNumber',
       'footerText', 'lowStockAlertEnabled', 'lowStockThreshold'
     ];
 
@@ -100,7 +101,7 @@ export const updateSettings = async (req, res) => {
         // Handle special conversions
         if (field === 'taxRates' || field === 'tableColumns' || field === 'tableTypes' || field === 'units') {
           values.push(JSON.stringify(updates[field]));
-        } else if (field === 'taxEnabled' || field === 'internetStatusCheckEnabled' || field === 'discountEnabled' || field === 'debtEnabled' || field === 'lowStockAlertEnabled') {
+        } else if (field === 'taxEnabled' || field === 'internetStatusCheckEnabled' || field === 'discountEnabled' || field === 'debtEnabled' || field === 'lowStockAlertEnabled' || field === 'showAmountOnKot') {
           values.push(updates[field] ? 1 : 0);
         } else {
           values.push(updates[field]);
@@ -135,7 +136,8 @@ export const updateSettings = async (req, res) => {
       internetStatusCheckEnabled: Boolean(settings.internetStatusCheckEnabled ?? 1),
       discountEnabled: Boolean(settings.discountEnabled ?? 1),
       debtEnabled: Boolean(settings.debtEnabled ?? 0),
-      lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled)
+      lowStockAlertEnabled: Boolean(settings.lowStockAlertEnabled),
+      showAmountOnKot: Boolean(settings.showAmountOnKot ?? 1)
     };
 
     res.json({

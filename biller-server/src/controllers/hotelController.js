@@ -1,5 +1,10 @@
+import { v4 as uuidv4 } from 'uuid';
 import db from '../config/database.js';
 import { emitTableUpdate, emitTablesRefresh } from '../sockets/index.js';
+import {
+  propagateTableStatus,
+  dissolveMergeGroup
+} from '../services/tableMergeService.js';
 
 // ==================== RESTAURANT TABLES ====================
 
@@ -214,6 +219,18 @@ export const deleteTable = async (req, res) => {
       });
     }
 
+    // Leave any merge group cleanly — free every sibling to 'available' (the whole
+    // shared order ends when one of its tables is removed) so none are left stranded.
+    if (table.mergeGroupId) {
+      const affectedIds = propagateTableStatus(table.id, { status: 'available', currentBillId: null });
+      dissolveMergeGroup(table.id);
+      for (const affectedId of affectedIds) {
+        if (affectedId !== table.id) {
+          emitTableUpdate({ tableId: affectedId, status: 'available', currentBillId: null });
+        }
+      }
+    }
+
     db.prepare('DELETE FROM restaurant_tables WHERE id = ?').run(id);
 
     // Emit WebSocket event for real-time updates
@@ -237,15 +254,16 @@ export const updateTableStatus = async (req, res) => {
   try {
     const { id } = req.params;
     const { status, currentBillId } = req.body;
+    const tableId = parseInt(id);
 
-    db.prepare(`
-      UPDATE restaurant_tables 
-      SET status = ?, currentBillId = ?, updatedAt = ?
-      WHERE id = ?
-    `).run(status, currentBillId || null, new Date().toISOString(), id);
+    // Propagate to every table sharing a merge group with this one, so merged
+    // tables always mirror the same occupied/unsettled/available state and bill.
+    const affectedIds = propagateTableStatus(tableId, { status, currentBillId: currentBillId || null });
 
     // Emit WebSocket events for real-time updates
-    emitTableUpdate({ tableId: parseInt(id), status, currentBillId: currentBillId || null });
+    for (const affectedId of affectedIds) {
+      emitTableUpdate({ tableId: affectedId, status, currentBillId: currentBillId || null });
+    }
     emitTablesRefresh(); // Refresh all table grids
 
     res.json({
@@ -265,6 +283,7 @@ export const updateTableStatus = async (req, res) => {
 export const settleTable = async (req, res) => {
   try {
     const { id } = req.params;
+    const tableId = parseInt(id);
 
     const table = db.prepare('SELECT * FROM restaurant_tables WHERE id = ?').get(id);
     if (!table) {
@@ -275,17 +294,262 @@ export const settleTable = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Table is not in unsettled state' });
     }
 
-    const now = new Date().toISOString();
-    db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL, updatedAt = ? WHERE id = ?')
-      .run('available', now, id);
+    // Free every table in the merge group (if any) — settling ends the whole shared order
+    const affectedIds = propagateTableStatus(tableId, { status: 'available', currentBillId: null });
+    if (table.mergeGroupId) {
+      dissolveMergeGroup(tableId);
+    }
 
-    emitTableUpdate({ tableId: parseInt(id), status: 'available', currentBillId: null });
+    for (const affectedId of affectedIds) {
+      emitTableUpdate({ tableId: affectedId, status: 'available', currentBillId: null });
+    }
     emitTablesRefresh();
 
     res.json({ success: true, message: 'Table settled successfully' });
   } catch (error) {
     console.error('Settle table error:', error);
     res.status(500).json({ success: false, message: 'Failed to settle table' });
+  }
+};
+
+// ==================== TABLE MERGING ====================
+
+// Merge two or more tables into a single shared-bill group. If one of the
+// selected tables already has an active order (occupied/unsettled) that
+// table becomes the "primary" and the others mirror its status/bill so any
+// of them can be clicked to reach the same order.
+export const mergeTables = async (req, res) => {
+  try {
+    const rawIds = Array.isArray(req.body.tableIds) ? req.body.tableIds : [];
+    const tableIds = [...new Set(rawIds.map(id => parseInt(id)))].filter(id => !Number.isNaN(id));
+
+    if (tableIds.length < 2) {
+      return res.status(400).json({ success: false, message: 'Select at least two tables to merge' });
+    }
+
+    const tables = tableIds.map(id => db.prepare('SELECT * FROM restaurant_tables WHERE id = ?').get(id));
+    const missingIndex = tables.findIndex(t => !t);
+    if (missingIndex !== -1) {
+      return res.status(404).json({ success: false, message: `Table ${tableIds[missingIndex]} not found` });
+    }
+
+    const alreadyMerged = tables.find(t => t.mergeGroupId);
+    if (alreadyMerged) {
+      return res.status(400).json({ success: false, message: `Table ${alreadyMerged.tableNumber} is already part of a merge group` });
+    }
+
+    const invalidStatus = tables.find(t => !['available', 'occupied', 'unsettled'].includes(t.status));
+    if (invalidStatus) {
+      return res.status(400).json({ success: false, message: `Table ${invalidStatus.tableNumber} is not available to merge` });
+    }
+
+    const activeTables = tables.filter(t => t.status === 'occupied' || t.status === 'unsettled');
+    if (activeTables.length > 1) {
+      return res.status(400).json({ success: false, message: 'Only one of the selected tables can have an active order' });
+    }
+
+    let primaryTableId = req.body.primaryTableId ? parseInt(req.body.primaryTableId) : null;
+    if (primaryTableId && !tableIds.includes(primaryTableId)) {
+      return res.status(400).json({ success: false, message: 'Primary table must be one of the selected tables' });
+    }
+    if (!primaryTableId) {
+      primaryTableId = activeTables.length === 1 ? activeTables[0].id : Math.min(...tableIds);
+    }
+
+    const primaryTable = tables.find(t => t.id === primaryTableId);
+    const mergeGroupId = uuidv4();
+    const now = new Date().toISOString();
+
+    const applyMerge = db.transaction(() => {
+      const update = db.prepare(`
+        UPDATE restaurant_tables
+        SET mergeGroupId = ?, isMergePrimary = ?, status = ?, currentBillId = ?, updatedAt = ?
+        WHERE id = ?
+      `);
+      for (const id of tableIds) {
+        update.run(mergeGroupId, id === primaryTableId ? 1 : 0, primaryTable.status, primaryTable.currentBillId, now, id);
+      }
+    });
+    applyMerge();
+
+    for (const id of tableIds) {
+      emitTableUpdate({ tableId: id, status: primaryTable.status, currentBillId: primaryTable.currentBillId });
+    }
+    emitTablesRefresh();
+
+    res.status(201).json({
+      success: true,
+      message: 'Tables merged successfully',
+      data: { mergeGroupId, primaryTableId, tableIds }
+    });
+  } catch (error) {
+    console.error('Merge tables error:', error);
+    res.status(500).json({ success: false, message: 'Failed to merge tables' });
+  }
+};
+
+// Change which tables belong to an existing merge group (e.g. switch 4,5,6 -> 6,7,8).
+// Tables leaving the group are freed to 'available'; tables joining must currently
+// be available. The primary table keeps (or hands off) the real bill reference.
+export const updateMergeGroup = async (req, res) => {
+  try {
+    const { mergeGroupId } = req.params;
+    const rawIds = Array.isArray(req.body.tableIds) ? req.body.tableIds : [];
+    const newIds = [...new Set(rawIds.map(id => parseInt(id)))].filter(id => !Number.isNaN(id));
+
+    const members = db.prepare('SELECT * FROM restaurant_tables WHERE mergeGroupId = ?').all(mergeGroupId);
+    if (members.length === 0) {
+      return res.status(404).json({ success: false, message: 'Merge group not found' });
+    }
+
+    const currentIds = members.map(m => m.id);
+    const currentPrimary = members.find(m => m.isMergePrimary) || members[0];
+
+    const toAdd = newIds.filter(id => !currentIds.includes(id));
+    const toRemove = currentIds.filter(id => !newIds.includes(id));
+    const toKeep = currentIds.filter(id => newIds.includes(id));
+    const finalSet = [...toKeep, ...toAdd];
+
+    if (toAdd.length > 0) {
+      const addedTables = toAdd.map(id => db.prepare('SELECT * FROM restaurant_tables WHERE id = ?').get(id));
+      const missingIndex = addedTables.findIndex(t => !t);
+      if (missingIndex !== -1) {
+        return res.status(404).json({ success: false, message: `Table ${toAdd[missingIndex]} not found` });
+      }
+      const notAvailable = addedTables.find(t => t.status !== 'available' || t.mergeGroupId);
+      if (notAvailable) {
+        return res.status(400).json({ success: false, message: `Table ${notAvailable.tableNumber} is not available to merge` });
+      }
+    }
+
+    const now = new Date().toISOString();
+
+    // Fewer than 2 tables left — dissolve the group entirely instead of leaving a 1-table "merge".
+    if (finalSet.length < 2) {
+      const dissolve = db.transaction(() => {
+        const free = db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL, mergeGroupId = NULL, isMergePrimary = 0, updatedAt = ? WHERE id = ?');
+        for (const id of toRemove) {
+          free.run('available', now, id);
+        }
+        const clear = db.prepare('UPDATE restaurant_tables SET mergeGroupId = NULL, isMergePrimary = 0, updatedAt = ? WHERE id = ?');
+        for (const id of finalSet) {
+          clear.run(now, id);
+        }
+      });
+      dissolve();
+
+      for (const id of currentIds) {
+        emitTableUpdate({ tableId: id, status: finalSet.includes(id) ? undefined : 'available', currentBillId: finalSet.includes(id) ? undefined : null });
+      }
+      emitTablesRefresh();
+
+      return res.json({
+        success: true,
+        message: 'Merge group dissolved',
+        data: { dissolved: true, tableIds: finalSet }
+      });
+    }
+
+    let newPrimaryId = req.body.primaryTableId ? parseInt(req.body.primaryTableId) : null;
+    if (newPrimaryId && !finalSet.includes(newPrimaryId)) {
+      return res.status(400).json({ success: false, message: 'Primary table must be one of the merged tables' });
+    }
+    if (!newPrimaryId) {
+      newPrimaryId = finalSet.includes(currentPrimary.id) ? currentPrimary.id : Math.min(...finalSet);
+    }
+
+    const groupStatus = currentPrimary.status;
+    const groupBillId = currentPrimary.currentBillId;
+
+    const applyUpdate = db.transaction(() => {
+      const free = db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL, mergeGroupId = NULL, isMergePrimary = 0, updatedAt = ? WHERE id = ?');
+      for (const id of toRemove) {
+        free.run('available', now, id);
+      }
+
+      const join = db.prepare('UPDATE restaurant_tables SET mergeGroupId = ?, status = ?, currentBillId = ?, updatedAt = ? WHERE id = ?');
+      for (const id of toAdd) {
+        join.run(mergeGroupId, groupStatus, groupBillId, now, id);
+      }
+
+      const setPrimaryFlag = db.prepare('UPDATE restaurant_tables SET isMergePrimary = ?, updatedAt = ? WHERE id = ?');
+      for (const id of finalSet) {
+        setPrimaryFlag.run(id === newPrimaryId ? 1 : 0, now, id);
+      }
+
+      // Keep bills.tableId pointing at the primary so existing billController sync logic keeps working
+      if (newPrimaryId !== currentPrimary.id && groupBillId) {
+        db.prepare('UPDATE bills SET tableId = ?, updatedAt = ? WHERE billId = ?').run(newPrimaryId, now, groupBillId);
+      }
+    });
+    applyUpdate();
+
+    for (const id of [...toRemove, ...toAdd]) {
+      const isRemoved = toRemove.includes(id);
+      emitTableUpdate({
+        tableId: id,
+        status: isRemoved ? 'available' : groupStatus,
+        currentBillId: isRemoved ? null : groupBillId
+      });
+    }
+    emitTablesRefresh();
+
+    res.json({
+      success: true,
+      message: 'Merge group updated successfully',
+      data: { mergeGroupId, primaryTableId: newPrimaryId, tableIds: finalSet }
+    });
+  } catch (error) {
+    console.error('Update merge group error:', error);
+    res.status(500).json({ success: false, message: 'Failed to update merge group' });
+  }
+};
+
+// Dissolve a merge group entirely. Non-primary members are freed to 'available';
+// the primary table keeps its current status/bill and simply stops being "merged".
+export const unmergeTables = async (req, res) => {
+  try {
+    const { mergeGroupId } = req.params;
+
+    const members = db.prepare('SELECT * FROM restaurant_tables WHERE mergeGroupId = ?').all(mergeGroupId);
+    if (members.length === 0) {
+      return res.status(404).json({ success: false, message: 'Merge group not found' });
+    }
+
+    const primary = members.find(m => m.isMergePrimary) || members[0];
+    const now = new Date().toISOString();
+
+    const applyUnmerge = db.transaction(() => {
+      const free = db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL, mergeGroupId = NULL, isMergePrimary = 0, updatedAt = ? WHERE id = ?');
+      const clear = db.prepare('UPDATE restaurant_tables SET mergeGroupId = NULL, isMergePrimary = 0, updatedAt = ? WHERE id = ?');
+      for (const member of members) {
+        if (member.id === primary.id) {
+          clear.run(now, member.id);
+        } else {
+          free.run('available', now, member.id);
+        }
+      }
+    });
+    applyUnmerge();
+
+    for (const member of members) {
+      const isPrimary = member.id === primary.id;
+      emitTableUpdate({
+        tableId: member.id,
+        status: isPrimary ? member.status : 'available',
+        currentBillId: isPrimary ? member.currentBillId : null
+      });
+    }
+    emitTablesRefresh();
+
+    res.json({
+      success: true,
+      message: 'Tables unmerged successfully',
+      data: { primaryTableId: primary.id, tableIds: members.map(m => m.id) }
+    });
+  } catch (error) {
+    console.error('Unmerge tables error:', error);
+    res.status(500).json({ success: false, message: 'Failed to unmerge tables' });
   }
 };
 
@@ -536,6 +800,10 @@ export default {
   updateTable,
   deleteTable,
   updateTableStatus,
+  settleTable,
+  mergeTables,
+  updateMergeGroup,
+  unmergeTables,
   getTipOptions,
   createTipOption,
   updateTipOption,

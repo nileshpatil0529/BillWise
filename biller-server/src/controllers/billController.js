@@ -2,6 +2,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import db from '../config/database.js';
 import { emitBillCreated, emitBillUpdate, emitKOTPrinted, emitTableUpdate, emitBillDeleted } from '../sockets/index.js';
+import { propagateTableStatus, propagateTableStatusOnly, dissolveMergeGroup, getMergeGroupTableIds, getMergeGroupTableNumbers } from '../services/tableMergeService.js';
 
 // Generate bill number (should be called inside transaction for thread safety)
 const generateBillNumber = () => {
@@ -354,6 +355,7 @@ export const updateBill = async (req, res) => {
     }
 
     // Handle hotel mode updates
+    let mergedTableNumbersSnapshot = null;
     if (updates.billStatus !== undefined || updates.kotItems !== undefined || updates.items !== undefined) {
       // Update bill status and KOT fields
       if (updates.billStatus) {
@@ -364,10 +366,27 @@ export const updateBill = async (req, res) => {
         if (updates.billStatus === 'completed' && bill.tableId) {
           try {
             const now2 = new Date().toISOString();
-            db.prepare('UPDATE restaurant_tables SET status = ?, updatedAt = ? WHERE id = ?')
-              .run('unsettled', now2, bill.tableId);
+            propagateTableStatusOnly(bill.tableId, 'unsettled', now2);
           } catch (tableError) {
             // Ignore table update failures to avoid blocking bill completion.
+          }
+
+          // Snapshot the merged table numbers onto the bill now, while the merge
+          // group still exists — settling the table later dissolves it, so without
+          // this snapshot historical bills would lose the other merged tables.
+          try {
+            mergedTableNumbersSnapshot = getMergeGroupTableNumbers(bill.tableId);
+          } catch (snapshotError) {
+            // Ignore snapshot failures to avoid blocking bill completion.
+          }
+        } else if (bill.billStatus === 'completed' && updates.billStatus !== 'completed' && bill.tableId) {
+          // Bill is being reopened (e.g. to add more items) from a completed/unsettled state.
+          // Move the table back to occupied so the active-order flow (KOT/complete) works normally again.
+          try {
+            const now2 = new Date().toISOString();
+            propagateTableStatusOnly(bill.tableId, 'occupied', now2, 'unsettled');
+          } catch (tableError) {
+            // Ignore table update failures to avoid blocking bill status update.
           }
         }
       }
@@ -452,11 +471,17 @@ export const updateBill = async (req, res) => {
         const newDiscountTotal = updates.billDiscount !== undefined
           ? (parseFloat(updates.billDiscount) || 0)
           : (bill.discountTotal || 0);
-        const newTaxTotal = bill.taxTotal || 0;
+
+        // Recalculate tax proportionally using the bill's own originally-applied tax rate,
+        // since items (and therefore the taxable amount) may have changed since the bill was created.
+        const originalTaxableAmount = (bill.subtotal || 0) - (bill.discountTotal || 0);
+        const effectiveTaxRate = originalTaxableAmount > 0 ? (bill.taxTotal || 0) / originalTaxableAmount : 0;
+        const newTaxableAmount = subtotal - newDiscountTotal;
+        const newTaxTotal = effectiveTaxRate > 0 ? Math.round(newTaxableAmount * effectiveTaxRate * 100) / 100 : 0;
         const newGrandTotal = subtotal - newDiscountTotal + newTaxTotal;
 
-        db.prepare('UPDATE bills SET subtotal = ?, discountTotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
-          .run(subtotal, newDiscountTotal, newGrandTotal, now, id);
+        db.prepare('UPDATE bills SET subtotal = ?, discountTotal = ?, taxTotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
+          .run(subtotal, newDiscountTotal, newTaxTotal, newGrandTotal, now, id);
       }
       
       // Note: kotItems marking is handled by printKOT endpoint after successful printing
@@ -464,14 +489,34 @@ export const updateBill = async (req, res) => {
 
     // Persist tableId when switching tables
     if (updates.tableId !== undefined) {
+      // If the order is leaving a merge group for a standalone table, free the siblings
+      // left behind instead of leaving them stuck "occupied" with a stale bill reference.
+      if (bill.tableId && updates.tableId !== bill.tableId) {
+        const oldGroupIds = getMergeGroupTableIds(bill.tableId);
+        if (oldGroupIds.length > 1 && !oldGroupIds.includes(updates.tableId)) {
+          propagateTableStatus(bill.tableId, { status: 'available', currentBillId: null, updatedAt: now });
+          dissolveMergeGroup(bill.tableId);
+          for (const freedId of oldGroupIds) {
+            emitTableUpdate({ tableId: freedId, status: 'available', currentBillId: null });
+          }
+        }
+      }
+
       db.prepare('UPDATE bills SET tableId = ?, updatedAt = ? WHERE billId = ?')
         .run(updates.tableId, now, id);
     }
 
-    // Persist businessTypeData when switching tables
-    if (updates.businessTypeData !== undefined) {
+    // Persist businessTypeData when switching tables, and/or merge in the merged-table
+    // snapshot captured above when the bill was just completed.
+    if (updates.businessTypeData !== undefined || mergedTableNumbersSnapshot) {
+      const baseData = updates.businessTypeData !== undefined
+        ? { ...updates.businessTypeData }
+        : (bill.businessTypeData ? JSON.parse(bill.businessTypeData) : {});
+      if (mergedTableNumbersSnapshot) {
+        baseData.mergedTableNumbers = mergedTableNumbersSnapshot;
+      }
       db.prepare('UPDATE bills SET businessTypeData = ?, updatedAt = ? WHERE billId = ?')
-        .run(JSON.stringify(updates.businessTypeData), now, id);
+        .run(JSON.stringify(baseData), now, id);
     }
 
     // Update other allowed fields
@@ -1137,10 +1182,12 @@ export const deleteBill = async (req, res) => {
     // If bill has a table, try to mark table as available (skip if table doesn't exist)
     if (bill.tableId) {
       try {
-        db.prepare('UPDATE restaurant_tables SET status = ?, currentBillId = NULL WHERE id = ?')
-          .run('available', bill.tableId);
-        // Emit table update
-        emitTableUpdate({ tableId: bill.tableId, billId: null, status: 'available' });
+        // Free the whole merge group (if any) — cancelling the bill ends the shared order
+        const affectedIds = propagateTableStatus(bill.tableId, { status: 'available', currentBillId: null });
+        dissolveMergeGroup(bill.tableId);
+        for (const affectedId of affectedIds) {
+          emitTableUpdate({ tableId: affectedId, billId: null, status: 'available' });
+        }
       } catch (tableError) {
         // Continue with bill deletion even if table update fails
       }

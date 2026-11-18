@@ -18,6 +18,7 @@ import { MatDialog, MatDialogModule } from '@angular/material/dialog';
 import { CustomerService } from '../../../../core/services/customer.service';
 import { SettingsService } from '../../../../core/services/settings.service';
 import { BillService } from '../../../../core/services/bill.service';
+import { HotelService } from '../../../../core/services/hotel.service';
 import { CustomerWithDebts, CustomerDebt } from '../../../../core/models/customer.model';
 import { Bill } from '../../../../core/models/bill.model';
 import { BillDetailDialogComponent } from '../../bills/bill-detail-dialog/bill-detail-dialog.component';
@@ -54,6 +55,7 @@ export class CustomerDetailComponent implements OnInit {
   private customerService = inject(CustomerService);
   public settingsService = inject(SettingsService);
   private billService = inject(BillService);
+  public hotelService = inject(HotelService);
   private snackBar = inject(MatSnackBar);
   private dialog = inject(MatDialog);
 
@@ -77,6 +79,7 @@ export class CustomerDetailComponent implements OnInit {
     this.customerId = this.route.snapshot.paramMap.get('id') || '';
     if (this.customerId) {
       this.loadCustomer();
+      this.hotelService.loadTables().subscribe();
     } else {
       this.goBack();
     }
@@ -494,5 +497,29 @@ export class CustomerDetailComponent implements OnInit {
       case 'partial': return 'Partial';
       default: return 'Pending';
     }
+  }
+
+  // Table label for a bill — prefers the merged-table snapshot saved on the bill
+  // when it was completed (survives the table being settled/unmerged afterwards),
+  // falling back to the table's current live merge state (only when this bill is
+  // still the table's active order — older bills for the same table must never
+  // be relabeled just because that table is merged again later), then the plain number.
+  getBillTableLabel(bill: Bill): string {
+    const snapshot = bill.businessTypeData?.mergedTableNumbers;
+    if (Array.isArray(snapshot) && snapshot.length > 1) {
+      return snapshot.join(' + ');
+    }
+    const table = bill.tableId ? this.hotelService.tables().find(t => t.id === bill.tableId) : undefined;
+    if (table?.mergeGroupId && table.currentBillId === bill.billId) {
+      return this.hotelService.getMergeGroupLabel(table);
+    }
+    return bill.businessTypeData?.tableNumber || '';
+  }
+
+  isBillTableMerged(bill: Bill): boolean {
+    const snapshot = bill.businessTypeData?.mergedTableNumbers;
+    if (Array.isArray(snapshot) && snapshot.length > 1) return true;
+    const table = bill.tableId ? this.hotelService.tables().find(t => t.id === bill.tableId) : undefined;
+    return !!(table?.mergeGroupId && table.currentBillId === bill.billId);
   }
 }

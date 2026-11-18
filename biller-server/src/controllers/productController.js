@@ -4,10 +4,25 @@ import fs from 'fs';
 import db from '../config/database.js';
 
 // Generate unique product ID
+// Uses the highest existing numeric suffix (not COUNT(*)) so that IDs stay
+// unique even after products have been deleted, which would otherwise cause
+// a reused count to collide with an existing productId (PRIMARY KEY violation).
 const generateProductId = () => {
-  const result = db.prepare('SELECT COUNT(*) as count FROM products').get();
-  const count = result.count + 1;
-  return `PRD${count.toString().padStart(6, '0')}`;
+  const result = db.prepare(`
+    SELECT MAX(CAST(SUBSTR(productId, 4) AS INTEGER)) as maxNum
+    FROM products
+    WHERE productId LIKE 'PRD%'
+  `).get();
+  let nextNum = (result?.maxNum || 0) + 1;
+  let productId = `PRD${nextNum.toString().padStart(6, '0')}`;
+
+  // Guard against any residual collision (e.g. imported/custom IDs)
+  while (db.prepare('SELECT 1 FROM products WHERE productId = ?').get(productId)) {
+    nextNum += 1;
+    productId = `PRD${nextNum.toString().padStart(6, '0')}`;
+  }
+
+  return productId;
 };
 
 const parseYesNoBoolean = (value, fallback = false) => {
@@ -157,6 +172,61 @@ export const getAllProducts = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to fetch products'
+    });
+  }
+};
+
+// Top selling products - ranked by quantity sold, filtered by a minimum unit price
+// (defaults to 150, overridable via the `minPrice` query param) so users can see
+// their best performing higher-value items.
+export const getTopSellingProducts = async (req, res) => {
+  try {
+    const parsedMinPrice = parseFloat(req.query.minPrice);
+    const minPrice = Number.isFinite(parsedMinPrice) ? parsedMinPrice : 150;
+
+    const parsedLimit = parseInt(req.query.limit, 10);
+    const limit = Number.isInteger(parsedLimit) && parsedLimit > 0 ? Math.min(parsedLimit, 100) : 10;
+
+    // Restrict to the trailing 6 months so the aggregation scans a bounded
+    // window of bill_items instead of the entire multi-year sales history.
+    const sinceDate = new Date();
+    sinceDate.setMonth(sinceDate.getMonth() - 6);
+    const since = sinceDate.toISOString();
+
+    const items = db.prepare(`
+      SELECT
+        p.productId,
+        p.name,
+        p.nameHi,
+        p.category,
+        p.unitPrice,
+        p.imageUrl,
+        p.status,
+        SUM(bi.quantity) as quantitySold,
+        SUM(bi.finalTotal) as revenue
+      FROM bill_items bi
+      INNER JOIN bills b ON b.billId = bi.billId
+      INNER JOIN products p ON p.productId = bi.productId
+      WHERE p.unitPrice > ? AND b.createdAt >= ?
+      GROUP BY p.productId
+      ORDER BY quantitySold DESC, revenue DESC
+      LIMIT ?
+    `).all(minPrice, since, limit);
+
+    res.json({
+      success: true,
+      data: {
+        items,
+        minPrice,
+        limit,
+        since
+      }
+    });
+  } catch (error) {
+    console.error('Get top selling products error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch top selling products'
     });
   }
 };
@@ -1099,6 +1169,7 @@ export const printBarcode = async (req, res) => {
 
 export default {
   getAllProducts,
+  getTopSellingProducts,
   getProductById,
   createProduct,
   updateProduct,
