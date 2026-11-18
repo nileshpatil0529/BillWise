@@ -26,7 +26,7 @@
                               [class.occupied]="table.status === 'occupied'"
                               [class.available]="table.status === 'available'"
                               [class.unsettled]="table.status === 'unsettled'"
-                              [disabled]="table.status === 'occupied' || table.status === 'unsettled'"
+                              [disabled]="table.status === 'occupied'"
                               (click)="selectTable(table)">
                         <div class="table-content">
                           <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
@@ -53,6 +53,11 @@
                               </button>
                             }
                             @if (table.status === 'unsettled') {
+                              <button mat-icon-button class="add-items-btn"
+                                      (click)="$event.stopPropagation(); reopenTableForItems(table)"
+                                      matTooltip="Add Items">
+                                <mat-icon>add_shopping_cart</mat-icon>
+                              </button>
                               <button mat-icon-button class="settle-btn"
                                       (click)="$event.stopPropagation(); settleTable(table.id)"
                                       matTooltip="Settle Table">
@@ -149,7 +154,7 @@
                 <div class="table-grid">
                   @for (table of getTablesByType(tableType); track table.id) {
                     @if (
-                      (tableMode() === 'change-table' && table.status === 'occupied') ||
+                      (tableMode() === 'change-table' && (table.status === 'occupied' || table.status === 'unsettled')) ||
                       (tableMode() === 'attend-new') ||
                       (tableMode() === 'switch-table' && (table.status === 'available' || table.id === selectedTable()?.id))
                     ) {
@@ -193,6 +198,11 @@
                                 </button>
                               }
                               @if (table.status === 'unsettled') {
+                                <button mat-icon-button class="add-items-btn"
+                                        (click)="$event.stopPropagation(); reopenTableForItems(table)"
+                                        matTooltip="Add Items">
+                                  <mat-icon>add_shopping_cart</mat-icon>
+                                </button>
                                 <button mat-icon-button class="settle-btn"
                                         (click)="$event.stopPropagation(); settleTable(table.id)"
                                         matTooltip="Settle Table">

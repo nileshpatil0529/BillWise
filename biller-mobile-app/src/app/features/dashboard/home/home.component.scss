@@ -258,6 +258,18 @@
         --mdc-icon-button-state-layer-size: 20px;
         mat-icon { font-size: 14px; width: 14px; height: 14px; line-height: 14px; }
       }
+
+      .add-items-btn {
+        width: 20px;
+        height: 20px;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        color: #40c4ff;
+        --mdc-icon-button-state-layer-size: 20px;
+        mat-icon { font-size: 14px; width: 14px; height: 14px; line-height: 14px; }
+      }
     }
   }
 

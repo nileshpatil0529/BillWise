@@ -369,6 +369,16 @@ export const updateBill = async (req, res) => {
           } catch (tableError) {
             // Ignore table update failures to avoid blocking bill completion.
           }
+        } else if (bill.billStatus === 'completed' && updates.billStatus !== 'completed' && bill.tableId) {
+          // Bill is being reopened (e.g. to add more items) from a completed/unsettled state.
+          // Move the table back to occupied so the active-order flow (KOT/complete) works normally again.
+          try {
+            const now2 = new Date().toISOString();
+            db.prepare('UPDATE restaurant_tables SET status = ?, updatedAt = ? WHERE id = ? AND status = ?')
+              .run('occupied', now2, bill.tableId, 'unsettled');
+          } catch (tableError) {
+            // Ignore table update failures to avoid blocking bill status update.
+          }
         }
       }
 
@@ -452,11 +462,17 @@ export const updateBill = async (req, res) => {
         const newDiscountTotal = updates.billDiscount !== undefined
           ? (parseFloat(updates.billDiscount) || 0)
           : (bill.discountTotal || 0);
-        const newTaxTotal = bill.taxTotal || 0;
+
+        // Recalculate tax proportionally using the bill's own originally-applied tax rate,
+        // since items (and therefore the taxable amount) may have changed since the bill was created.
+        const originalTaxableAmount = (bill.subtotal || 0) - (bill.discountTotal || 0);
+        const effectiveTaxRate = originalTaxableAmount > 0 ? (bill.taxTotal || 0) / originalTaxableAmount : 0;
+        const newTaxableAmount = subtotal - newDiscountTotal;
+        const newTaxTotal = effectiveTaxRate > 0 ? Math.round(newTaxableAmount * effectiveTaxRate * 100) / 100 : 0;
         const newGrandTotal = subtotal - newDiscountTotal + newTaxTotal;
 
-        db.prepare('UPDATE bills SET subtotal = ?, discountTotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
-          .run(subtotal, newDiscountTotal, newGrandTotal, now, id);
+        db.prepare('UPDATE bills SET subtotal = ?, discountTotal = ?, taxTotal = ?, grandTotal = ?, updatedAt = ? WHERE billId = ?')
+          .run(subtotal, newDiscountTotal, newTaxTotal, newGrandTotal, now, id);
       }
       
       // Note: kotItems marking is handled by printKOT endpoint after successful printing

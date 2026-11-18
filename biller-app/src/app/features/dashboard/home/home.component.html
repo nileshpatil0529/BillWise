@@ -26,7 +26,7 @@
                               [class.occupied]="table.status === 'occupied'"
                               [class.available]="table.status === 'available'"
                               [class.unsettled]="table.status === 'unsettled'"
-                              [disabled]="table.status === 'occupied' || table.status === 'unsettled'"
+                              [disabled]="table.status === 'occupied'"
                               (click)="selectTable(table)">
                         <div class="table-content">
                           <mat-icon>{{ getTableTypeIcon(tableType) }}</mat-icon>
@@ -140,7 +140,7 @@
                 <div class="table-grid">
                   @for (table of getTablesByType(tableType); track table.id) {
                     @if (
-                      (tableMode() === 'change-table' && table.status === 'occupied') ||
+                      (tableMode() === 'change-table' && (table.status === 'occupied' || table.status === 'unsettled')) ||
                       (tableMode() === 'attend-new') ||
                       (tableMode() === 'switch-table' && (table.status === 'available' || table.id === selectedTable()?.id))
                     ) {

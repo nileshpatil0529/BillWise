@@ -22,6 +22,8 @@ export interface TableActionDialogData {
 export interface TableActionDialogResult {
   settled?: boolean;
   saved?: boolean;
+  reopenForItems?: boolean;
+  bill?: Bill;
 }
 
 const PAYMENT_OPTIONS = [
@@ -101,6 +103,9 @@ const PAYMENT_OPTIONS = [
         </button>
       }
       @if (tableStatus === 'unsettled') {
+        <button mat-stroked-button (click)="addItems()" [disabled]="saving()">
+          <mat-icon>add_shopping_cart</mat-icon> Add Items
+        </button>
         <button mat-flat-button color="primary" (click)="settleTable()" [disabled]="saving()">
           <mat-icon>check_circle</mat-icon> Settle Table
         </button>
@@ -309,6 +314,12 @@ export class TableActionDialogComponent implements OnInit {
         this.snackBar.open(err.error?.message || 'Save failed', 'OK', { duration: 3000 });
       }
     });
+  }
+
+  addItems(): void {
+    const b = this.bill();
+    if (!b) return;
+    this.dialogRef.close({ reopenForItems: true, bill: b });
   }
 
   settleTable(): void {

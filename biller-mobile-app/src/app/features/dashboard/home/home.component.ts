@@ -1135,6 +1135,9 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
     if (table.status === 'occupied' && table.currentBillId) {
       // Load existing bill for this table
       this.loadExistingBill(table);
+    } else if (table.status === 'unsettled' && table.currentBillId) {
+      // Billed table — reopen it so more items can be added (available to any user)
+      this.reopenTableForItems(table);
     } else {
       // Start new order for this table
       this.selectedTable.set(table);
@@ -1363,6 +1366,15 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
       
       // Close the overlay
       this.cancelChangeTable();
+      return;
+    }
+
+    // If new table is a Billed/unsettled table, reopen it so more items can be added
+    if (newTable.status === 'unsettled') {
+      if (oldTable) {
+        this.saveCurrentTableState();
+      }
+      this.reopenTableForItems(newTable);
       return;
     }
     
@@ -1880,6 +1892,38 @@ export class HomeComponent implements OnInit, OnDestroy, AfterViewInit {
         }
       });
     }
+  }
+
+  // Reopen a completed/unsettled table's bill so more items can be added (Admin only).
+  // The server moves the table back to 'occupied'; we then reuse the normal
+  // selectTable()/loadExistingBill() flow to restore the cart for editing.
+  reopenTableForItems(table: RestaurantTable): void {
+    if (!table.currentBillId) return;
+    this.billService.getBillById(table.currentBillId).subscribe({
+      next: (response: any) => {
+        const bill = response?.data;
+        const targetBillStatus = bill?.kotPrintedAt ? 'kot-printed' : 'draft';
+        this.billService.updateBill(table.currentBillId!, { billStatus: targetBillStatus } as any).subscribe({
+          next: () => {
+            // Dismiss any table-selection overlay so the cart editing view is visible
+            this.changingTable.set(false);
+            this.tableSelectionDismissed.set(false);
+            this.hotelService.loadTables().subscribe(() => {
+              const reopenedTable = this.hotelService.tables().find(t => t.id === table.id);
+              if (reopenedTable) {
+                this.selectTable(reopenedTable);
+              }
+            });
+          },
+          error: () => {
+            this.snackBar.open('Failed to reopen bill for adding items', 'Close', { duration: 3000 });
+          }
+        });
+      },
+      error: () => {
+        this.snackBar.open('Failed to load bill details', 'Close', { duration: 3000 });
+      }
+    });
   }
 
   // Print bill and complete it for any occupied table (Admin overlay)
