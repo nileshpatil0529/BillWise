@@ -874,6 +874,11 @@ h3 {
   --mdc-snackbar-supporting-text-color: white;
 }
 
+.update-snackbar {
+  --mdc-snackbar-container-color: #{v.$light-primary};
+  --mdc-snackbar-supporting-text-color: white;
+}
+
 // Bill Detail Dialog
 .bill-detail-dialog {
   .mat-mdc-dialog-container {

@@ -79,6 +79,11 @@ export class LoginComponent {
               this.router.navigate([this.returnUrl]);
             }, 100);
           }
+        } else {
+          this.snackBar.open(response.message || 'Login failed', 'Close', {
+            duration: 5000,
+            panelClass: ['error-snackbar']
+          });
         }
       },
       error: (error) => {
