@@ -4,6 +4,7 @@ import { MatIconRegistry } from '@angular/material/icon';
 import { SettingsService } from './core/services/settings.service';
 import { AutoBlurService } from './core/services/auto-blur.service';
 import { InternetConnectivityService } from './core/services/internet-connectivity.service';
+import { AppUpdateService } from './core/services/app-update.service';
 
 @Component({
   selector: 'app-root',
@@ -17,6 +18,7 @@ export class AppComponent {
   settingsService = inject(SettingsService);
   private autoBlurService = inject(AutoBlurService);
   private matIconRegistry = inject(MatIconRegistry);
+  private appUpdateService = inject(AppUpdateService);
   connectivityService = inject(InternetConnectivityService);
 
   constructor() {
@@ -25,6 +27,9 @@ export class AppComponent {
 
     // Initialize auto-blur service to prevent barcode scanner triggering buttons
     this.autoBlurService.initialize();
+
+    // Automatically pick up and apply newly deployed versions
+    this.appUpdateService.initialize();
     
     // Lock orientation to portrait
     this.lockOrientation();
