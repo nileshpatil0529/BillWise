@@ -333,7 +333,8 @@ export class PrinterService {
     const titleSize = paperSize === '2inch' ? 28 : 34;
     const bodySize = paperSize === '2inch' ? 22 : 28;
     const smallSize = paperSize === '2inch' ? 18 : 22;
-    const rowHeight = paperSize === '2inch' ? 30 : 38;
+    const rowHeight = paperSize === '2inch' ? 36 : 46;
+    const rowTextOffset = Math.round((rowHeight - bodySize) / 2);
 
     // Column proportions: Items 50% | Qty 15% | Tip 35% (unchanged when amount is hidden)
     // When the amount column is shown, Items/Qty/Tip shrink slightly to make room for it.
@@ -398,10 +399,10 @@ export class PrinterService {
     // Column header
     const tableStartY = y;
     ctx.font = `700 ${bodySize}px ${fontFamily}`;
-    ctx.fillText('Items', x0 + 4, y + 4);
-    ctx.fillText('Qty', x1 + 4, y + 4);
-    if (showAmount) ctx.fillText('Amt', x2 + 4, y + 4);
-    ctx.fillText('Tip', x3 + 4, y + 4);
+    ctx.fillText('Items', x0 + 4, y + rowTextOffset);
+    ctx.fillText('Qty', x1 + 4, y + rowTextOffset);
+    if (showAmount) ctx.fillText('Amt', x2 + 4, y + rowTextOffset);
+    ctx.fillText('Tip', x3 + 4, y + rowTextOffset);
     y += rowHeight;
     drawH(y);
 
@@ -411,13 +412,13 @@ export class PrinterService {
       const newQty = item.quantity - (item.kotPrintedQuantity || 0);
       const qty = item.isLooseItem ? Number(newQty).toFixed(2) : String(Math.round(newQty));
       const rowY = y;
-      nameLines.forEach((line: string, li: number) => ctx.fillText(line, x0 + 4, rowY + 4 + li * rowHeight));
-      ctx.fillText(qty, x1 + 4, rowY + 4);
+      nameLines.forEach((line: string, li: number) => ctx.fillText(line, x0 + 4, rowY + rowTextOffset + li * rowHeight));
+      ctx.fillText(qty, x1 + 4, rowY + rowTextOffset);
       if (showAmount) {
         const amt = Number(newQty * Number(item.unitPrice || 0)).toFixed(0);
-        ctx.fillText(amt, x2 + 4, rowY + 4);
+        ctx.fillText(amt, x2 + 4, rowY + rowTextOffset);
       }
-      if (item.note) ctx.fillText(String(item.note), x3 + 4, rowY + 4);
+      if (item.note) ctx.fillText(String(item.note), x3 + 4, rowY + rowTextOffset);
       y += Math.max(1, nameLines.length) * rowHeight;
     });
     y += padding; // bottom padding inside KOT box (same as top)
@@ -457,7 +458,9 @@ export class PrinterService {
     const titleSize = paperSize === '2inch' ? 28 : 34;
     const bodySize = paperSize === '2inch' ? 22 : 28;
     const smallSize = paperSize === '2inch' ? 18 : 22;
-    const rowHeight = paperSize === '2inch' ? 30 : 38;
+    const rowHeight = paperSize === '2inch' ? 36 : 46;
+    const rowTextOffset = Math.round((rowHeight - bodySize) / 2);
+    const smallTextOffset = Math.round((rowHeight - smallSize) / 2);
 
     const measureCanvas = document.createElement('canvas');
     const m = measureCanvas.getContext('2d');
@@ -560,21 +563,21 @@ export class PrinterService {
     const billNo = String((bill.billNumber || '').slice(-5) || '-');
 
     ctx.font = `700 ${smallSize}px ${fontFamily}`;
-    ctx.fillText(`TABLE NO :  ${tableNo}`, Math.round(x0 + 6), Math.round(y + 4));
-    drawRight(`TIME:  ${timeStr}`, x1, y + 4, x4 - x1, `700 ${smallSize}px ${fontFamily}`);
+    ctx.fillText(`TABLE NO :  ${tableNo}`, Math.round(x0 + 6), Math.round(y + smallTextOffset));
+    drawRight(`TIME:  ${timeStr}`, x1, y + smallTextOffset, x4 - x1, `700 ${smallSize}px ${fontFamily}`);
     y += rowHeight;
-    ctx.fillText(`NO :  ${billNo}`, Math.round(x0 + 6), Math.round(y + 4));
-    drawRight(`DATE:  ${dateStr}`, x1, y + 4, x4 - x1, `700 ${smallSize}px ${fontFamily}`);
+    ctx.fillText(`NO :  ${billNo}`, Math.round(x0 + 6), Math.round(y + smallTextOffset));
+    drawRight(`DATE:  ${dateStr}`, x1, y + smallTextOffset, x4 - x1, `700 ${smallSize}px ${fontFamily}`);
     y += rowHeight;
     drawH(y);
 
     // Column header row
     const tableStartY = y;
     ctx.font = `700 ${bodySize}px ${fontFamily}`;
-    ctx.fillText('Particular', Math.round(x0 + 6), Math.round(y + 4));
-    drawRight('Qty', x1, y + 4, colQtyW, `700 ${bodySize}px ${fontFamily}`);
-    drawRight('Rate', x2, y + 4, colRateW, `700 ${bodySize}px ${fontFamily}`);
-    drawRight('Amt.', x3, y + 4, colAmtW, `700 ${bodySize}px ${fontFamily}`);
+    ctx.fillText('Particular', Math.round(x0 + 6), Math.round(y + rowTextOffset));
+    drawRight('Qty', x1, y + rowTextOffset, colQtyW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Rate', x2, y + rowTextOffset, colRateW, `700 ${bodySize}px ${fontFamily}`);
+    drawRight('Amt.', x3, y + rowTextOffset, colAmtW, `700 ${bodySize}px ${fontFamily}`);
     y += rowHeight;
     drawH(y);
 
@@ -587,12 +590,12 @@ export class PrinterService {
 
       const rowY = y;
       nameLines.forEach((line, index) => {
-        ctx.fillText(line, Math.round(x0 + 6), Math.round(rowY + 4 + (index * rowHeight)));
+        ctx.fillText(line, Math.round(x0 + 6), Math.round(rowY + rowTextOffset + (index * rowHeight)));
       });
 
-      drawRight(qty, x1, rowY + 4, colQtyW, `500 ${bodySize}px ${fontFamily}`);
-      drawRight(rate, x2, rowY + 4, colRateW, `500 ${bodySize}px ${fontFamily}`);
-      drawRight(amt, x3, rowY + 4, colAmtW, `500 ${bodySize}px ${fontFamily}`);
+      drawRight(qty, x1, rowY + rowTextOffset, colQtyW, `500 ${bodySize}px ${fontFamily}`);
+      drawRight(rate, x2, rowY + rowTextOffset, colRateW, `500 ${bodySize}px ${fontFamily}`);
+      drawRight(amt, x3, rowY + rowTextOffset, colAmtW, `500 ${bodySize}px ${fontFamily}`);
 
       y += Math.max(1, nameLines.length) * rowHeight;
       if (i === items.length - 1) {
@@ -609,8 +612,8 @@ export class PrinterService {
 
     const drawTotalLine = (label: string, value: string, bold = false) => {
       ctx.font = `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`;
-      ctx.fillText(label, Math.round(x0 + 6), Math.round(y + 4));
-      drawRight(value, x3, y + 4, colAmtW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
+      ctx.fillText(label, Math.round(x0 + 6), Math.round(y + rowTextOffset));
+      drawRight(value, x3, y + rowTextOffset, colAmtW, `${bold ? 700 : 400} ${bodySize}px ${fontFamily}`);
       y += rowHeight;
       drawH(y);
     };
