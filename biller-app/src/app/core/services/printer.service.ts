@@ -461,6 +461,7 @@ export class PrinterService {
     const rowHeight = paperSize === '2inch' ? 36 : 46;
     const rowTextOffset = Math.round((rowHeight - bodySize) / 2);
     const smallTextOffset = Math.round((rowHeight - smallSize) / 2);
+    const businessHeadingHeight = titleSize + 24;
 
     const measureCanvas = document.createElement('canvas');
     const m = measureCanvas.getContext('2d');
@@ -472,7 +473,7 @@ export class PrinterService {
 
     let height = 0;
     height += padding;
-    height += titleSize + 6;
+    height += businessHeadingHeight;
     height += rowHeight * 2; // two date/table header rows
     height += rowHeight; // col header
 
@@ -551,8 +552,10 @@ export class PrinterService {
     ctx.font = `700 ${titleSize}px ${fontFamily}`;
     const heading = String(settings?.businessName || 'RESTAURANT').toUpperCase();
     const titleW = ctx.measureText(heading).width;
-    ctx.fillText(heading, Math.max(x0 + 4, x0 + ((innerW - titleW) / 2)), y + 4);
-    y += titleSize + 6;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(heading, Math.max(x0 + 4, x0 + ((innerW - titleW) / 2)), y + businessHeadingHeight / 2);
+    ctx.textBaseline = 'top';
+    y += businessHeadingHeight;
     drawH(y);
 
     const dt = new Date(bill.createdAt || Date.now());
