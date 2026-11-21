@@ -350,7 +350,7 @@ export class PrinterService {
     let height = padding + titleSize + 6 + (smallSize + 4) * 2 + rowHeight;
     itemNameLines.forEach((lines: string[]) => { height += Math.max(1, lines.length) * rowHeight; });
     height += padding * 2; // inner bottom padding + outer bottom margin
-    if (paperSize === '3inch') height += rowHeight; // extra blank space at the bottom for easier tear-off
+    if (paperSize === '3inch') height += smallSize + 300; // leave space above and below the bottom dots
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -428,6 +428,12 @@ export class PrinterService {
     drawV(x0, padding, y); drawV(x4, padding, y);
     drawH(padding);
 
+    if (paperSize === '3inch') {
+      ctx.font = `700 ${smallSize}px ${fontFamily}`;
+      const dotsWidth = ctx.measureText('...').width;
+      ctx.fillText('...', Math.round(x0 + (innerW - dotsWidth) / 2), y + padding + 150);
+    }
+
     return this.toHighContrastPngBase64(canvas);
   }
 
@@ -481,7 +487,7 @@ export class PrinterService {
     if (showQr) height += qrDisplaySize + smallSize + 18;
     height += smallSize + 4; // footer text
     height += padding * 2; // inner bottom padding + outer bottom margin
-    if (paperSize === '3inch') height += rowHeight; // extra blank space at the bottom for easier tear-off
+    if (paperSize === '3inch') height += smallSize + 300; // leave space above and below the bottom dots
 
     const scale = 2;
     const canvas = document.createElement('canvas');
@@ -663,6 +669,12 @@ export class PrinterService {
     drawV(x0, topY, y);
     drawV(x4, topY, y);
     drawH(y);
+
+    if (paperSize === '3inch') {
+      ctx.font = `700 ${smallSize}px ${fontFamily}`;
+      const dotsWidth = ctx.measureText('...').width;
+      ctx.fillText('...', Math.round(x0 + (innerW - dotsWidth) / 2), y + padding + 150);
+    }
 
     return this.toHighContrastPngBase64(canvas);
   }
