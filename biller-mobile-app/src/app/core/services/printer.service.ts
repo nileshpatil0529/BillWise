@@ -353,7 +353,7 @@ export class PrinterService {
     height += padding * 2; // inner bottom padding + outer bottom margin
     if (paperSize === '3inch') height += smallSize + 300; // leave space above and below the bottom dots
 
-    const scale = 2;
+    const scale = 1;
     const canvas = document.createElement('canvas');
     canvas.width = width * scale;
     canvas.height = Math.max(200, Math.ceil(height * scale));
@@ -488,11 +488,11 @@ export class PrinterService {
     const showQr = bill.paymentMethod === 'online' && !!settings?.upiId;
     const qrDisplaySize = paperSize === '2inch' ? 120 : 160;
     if (showQr) height += qrDisplaySize + smallSize + 18;
-    height += smallSize + 4; // footer text
+    height += smallSize + 16; // footer text with vertical padding
     height += padding * 2; // inner bottom padding + outer bottom margin
     if (paperSize === '3inch') height += smallSize + 300; // leave space above and below the bottom dots
 
-    const scale = 2;
+    const scale = 1;
     const canvas = document.createElement('canvas');
     canvas.width = width * scale;
     canvas.height = Math.max(300, Math.ceil(height * scale));
@@ -664,8 +664,10 @@ export class PrinterService {
 
     const thanks = (settings?.footerText || 'THANKS VISIT AGAIN').toUpperCase();
     const thanksW = ctx.measureText(thanks).width;
-    ctx.fillText(thanks, Math.round(Math.max(x0 + 4, x0 + ((innerW - thanksW) / 2))), Math.round(y + 2));
-    y += smallSize + 4;
+    ctx.textBaseline = 'middle';
+    ctx.fillText(thanks, Math.round(Math.max(x0 + 4, x0 + ((innerW - thanksW) / 2))), y + 8 + ((smallSize + 8) / 2));
+    ctx.textBaseline = 'top';
+    y += smallSize + 16;
     y += padding; // bottom padding inside receipt box (same as top)
 
     // Close outer border
